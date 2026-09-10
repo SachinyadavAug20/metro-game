@@ -2,347 +2,341 @@
 #include "isometric.hpp"
 #include "audio.hpp"
 
-PeepManager::PeepManager() {
-    Init({2.0f, 12.0f}, {7.0f, 13.0f}, {8.0f, 14.0f});
+CommuterManager::CommuterManager() {
+    Init({2.0f, 12.0f}, {7.0f, 12.0f}, {8.0f, 13.0f});
 }
 
-void PeepManager::Init(Vector2 parkEntrance, Vector2 stationQueueEntrance, Vector2 stationExit) {
-    entrancePos = parkEntrance;
-    queueStartPos = stationQueueEntrance;
+void CommuterManager::Init(Vector2 stationEntrance, Vector2 platformEntrance, Vector2 stationExit) {
+    entrancePos = stationEntrance;
+    queueStartPos = platformEntrance;
     exitPos = stationExit;
-    peeps.clear();
-    queuePeeps.clear();
+    commuters.clear();
+    queueCommuters.clear();
     overcrowdActive = false;
     overcrowdTimer = MAX_OVERCROWD_TIME;
 
-    // Pre-spawn initial happy crowd
-    for (int i = 0; i < 8; ++i) {
-        SpawnPeep();
+    // Initial pre-spawned city commuters
+    for (int i = 0; i < 9; ++i) {
+        SpawnCommuter();
     }
 }
 
-void PeepManager::SpawnPeep() {
-    static const char* peepNames[] = {
-        "Alex", "Maya", "Sam", "Chloe", "Leo", "Zoe", "Ryan", "Ella",
-        "Lucas", "Mia", "Noah", "Harper", "Ben", "Lily", "Ethan", "Aria",
-        "Mason", "Ivy", "James", "Ruby", "Logan", "Nora", "Jack", "Grace"
+void CommuterManager::SpawnCommuter() {
+    static const struct Profile {
+        const char* name;
+        const char* occupation;
+        CommuterType type;
+    } profiles[] = {
+        {"Kenji Sato", "Software Architect", COMMUTER_WORKER},
+        {"Elena Rostova", "Financial Analyst", COMMUTER_EXECUTIVE},
+        {"Marcus Vance", "Urban Planner", COMMUTER_WORKER},
+        {"Aoi Tanaka", "Graphic Designer", COMMUTER_WORKER},
+        {"Liam Chen", "Biotech Researcher", COMMUTER_STUDENT},
+        {"Sophia Dubois", "Operations Director", COMMUTER_EXECUTIVE},
+        {"David Kim", "Data Scientist", COMMUTER_WORKER},
+        {"Chloe Martin", "Architecture Student", COMMUTER_STUDENT},
+        {"Mateo Silva", "Photojournalist", COMMUTER_TOURIST},
+        {"Yuki Mori", "Medical Resident", COMMUTER_STUDENT},
+        {"Lucas Weber", "Structural Engineer", COMMUTER_WORKER},
+        {"Zoe Al-Mansoor", "Diplomatic Envoy", COMMUTER_EXECUTIVE},
+        {"James O'Connor", "Sound Designer", COMMUTER_WORKER},
+        {"Nora Lindqvist", "Environmental Chemist", COMMUTER_STUDENT},
+        {"Arjun Patel", "Financial Trader", COMMUTER_EXECUTIVE},
+        {"Mei Lin", "Museum Curator", COMMUTER_TOURIST}
     };
 
-    Peep p;
-    p.name = peepNames[rand() % 24];
-    p.pos = entrancePos;
-    p.targetPos = queueStartPos;
-    p.state = PEEP_WALKING_TO_RIDE;
-    p.walkTimer = ((float)rand() / RAND_MAX) * 2.0f * PI;
-    p.happiness = 75.0f + (float)(rand() % 25);
-    p.nausea = 0.0f;
-    p.thought = "Can't wait to ride the coaster!";
+    int pIdx = rand() % 16;
+    Commuter c;
+    c.name = profiles[pIdx].name;
+    c.occupation = profiles[pIdx].occupation;
+    c.type = profiles[pIdx].type;
+    c.pos = entrancePos;
+    c.targetPos = queueStartPos;
+    c.state = COMMUTER_ENTERING;
+    c.walkTimer = ((float)rand() / RAND_MAX) * 2.0f * PI;
+    c.happiness = 88.0f + (float)(rand() % 12);
+    c.metroPassBalance = 20.0f + (float)(rand() % 40);
+    c.hasBriefcase = (c.type == COMMUTER_WORKER || c.type == COMMUTER_EXECUTIVE);
+    c.hasCoffee = (rand() % 100 < 30);
 
-    int r = rand() % 100;
-    if (r < 35) {
-        p.type = PEEP_THRILL_SEEKER;
-        p.shirtColor = Color{229, 57, 53, 255}; // Red
-    } else if (r < 80) {
-        p.type = PEEP_CASUAL;
-        p.shirtColor = Color{67, 160, 71, 255}; // Green
+    // Assign Mini Metro Destination Shape (Circle, Triangle, Square, Cross)
+    int rShape = 1 + (rand() % 4);
+    c.targetShape = static_cast<StationShape>(rShape);
+
+    if (c.type == COMMUTER_EXECUTIVE) {
+        c.shirtColor = Color{30, 41, 59, 255}; // Charcoal suit
+        c.pantsColor = Color{15, 23, 42, 255};
+        c.thought = "Heading to Financial CBD [Square]";
+    } else if (c.type == COMMUTER_STUDENT) {
+        c.shirtColor = Color{37, 99, 235, 255}; // Royal blue jacket
+        c.pantsColor = Color{71, 85, 105, 255};
+        c.thought = "Rushing to Campus [Cross] for lecture!";
+    } else if (c.type == COMMUTER_TOURIST) {
+        c.shirtColor = Color{234, 88, 12, 255}; // Bright orange windbreaker
+        c.pantsColor = Color{100, 116, 139, 255};
+        c.thought = "Exploring the Waterfront [Triangle]!";
     } else {
-        p.type = PEEP_QUEASY;
-        p.shirtColor = Color{253, 216, 53, 255}; // Yellow
+        c.shirtColor = Color{13, 148, 136, 255}; // Teal blazer
+        c.pantsColor = Color{51, 65, 85, 255};
+        c.thought = "Line 1 is always fast and on time.";
     }
 
-    p.pantsColor = (rand() % 2 == 0) ? Color{30, 136, 229, 255} : Color{69, 90, 100, 255};
-    peeps.push_back(p);
+    commuters.push_back(c);
 }
 
-float PeepManager::GetQueueOvercrowdRatio() const {
-    return (float)queuePeeps.size() / (float)maxQueueCap;
+float CommuterManager::GetQueueOvercrowdRatio() const {
+    return (float)queueCommuters.size() / (float)maxQueueCap;
 }
 
-void PeepManager::Update(float dt, CoasterTrain& train, ParticleSystem& particles, float& outParkRating, int& outAngryLeaves, std::vector<ParkMess>& outMesses) {
-    // 1. Spawning
+void CommuterManager::Update(float dt, MetroTrain& train, ParticleSystem& particles, float& outSatisfaction, int& outAngryLeaves, std::vector<StationMess>& outMesses) {
+    (void)outMesses;
+
+    // 1. Spawning Commuters
     spawnTimer -= dt;
     if (spawnTimer <= 0.0f) {
-        if ((int)peeps.size() < 60) {
-            SpawnPeep();
+        if ((int)commuters.size() < 65) {
+            SpawnCommuter();
         }
         spawnTimer = spawnInterval;
     }
 
-    // 2. Queue Overcrowding Clock (Mini Metro Triage)
-    if (queuePeeps.size() >= 10) {
+    // 2. Station Overcrowding Triage Clock (Mini Metro)
+    if (queueCommuters.size() >= 10) {
         overcrowdActive = true;
         overcrowdTimer -= dt;
 
-        if (fmodf(overcrowdTimer, 2.0f) < dt) {
-            AudioManager::Play(SFX_QUEUE_ALARM, 0.4f);
+        if (fmodf(overcrowdTimer, 1.8f) < dt) {
+            AudioManager::Play(SFX_QUEUE_ALARM, 0.45f);
         }
 
-        // Triage Failed! Station explodes into riot
+        // Triage Countdown expired: Service Failure / Platform Evacuation!
         if (overcrowdTimer <= 0.0f) {
             overcrowdActive = false;
             overcrowdTimer = MAX_OVERCROWD_TIME;
-            outParkRating = std::max(0.0f, outParkRating - 15.0f); // Huge penalty!
+            outSatisfaction = std::max(0.0f, outSatisfaction - 12.0f); // Heavy penalty!
 
-            // All queue peeps leave angry
-            for (size_t idx : queuePeeps) {
-                peeps[idx].state = PEEP_LEAVING_ANGRY;
-                peeps[idx].targetPos = entrancePos;
-                peeps[idx].isAngry = true;
+            for (size_t idx : queueCommuters) {
+                commuters[idx].state = COMMUTER_LEAVING_ANGRY;
+                commuters[idx].targetPos = entrancePos;
+                commuters[idx].isAngry = true;
+                commuters[idx].thought = "Platform overcrowded! Taking a cab!";
                 outAngryLeaves++;
             }
-            queuePeeps.clear();
+            queueCommuters.clear();
         }
     } else {
-        // Reset or recover clock slowly
         overcrowdActive = false;
-        overcrowdTimer = std::min(MAX_OVERCROWD_TIME, overcrowdTimer + dt * 2.0f);
+        overcrowdTimer = std::min(MAX_OVERCROWD_TIME, overcrowdTimer + dt * 2.2f);
     }
 
-    // 3. Train Boarding from Queue
-    if (train.CanBoard() && !queuePeeps.empty()) {
-        size_t peepIdx = queuePeeps.front();
-        if (train.BoardPassenger(peeps[peepIdx].shirtColor)) {
-            peeps[peepIdx].state = PEEP_RIDING;
-            queuePeeps.erase(queuePeeps.begin());
-
-            // Check nausea for queasy peeps
-            if (peeps[peepIdx].type == PEEP_QUEASY) {
-                peeps[peepIdx].nausea = 100.0f;
-            }
+    // 3. Boarding Train from Platform Queue
+    if (train.CanBoard() && !queueCommuters.empty()) {
+        size_t cIdx = queueCommuters.front();
+        if (train.BoardCommuter(commuters[cIdx].targetShape, commuters[cIdx].shirtColor)) {
+            commuters[cIdx].state = COMMUTER_RIDING;
+            commuters[cIdx].thought = "Boarded Line 1 EMU!";
+            queueCommuters.erase(queueCommuters.begin());
+            particles.SpawnSparks(Vector3{commuters[cIdx].pos.x, commuters[cIdx].pos.y, 0.2f}, 4);
         }
     }
 
-    // 4. Update each peep
-    queuePeeps.clear(); // Rebuild queue indices
+    // 4. Update each commuter state & movement
+    queueCommuters.clear();
 
-    for (size_t i = 0; i < peeps.size();) {
-        auto& p = peeps[i];
-        p.walkTimer += dt * 6.0f;
+    for (size_t i = 0; i < commuters.size();) {
+        auto& c = commuters[i];
+        c.walkTimer += dt * 6.5f;
 
-        switch (p.state) {
-            case PEEP_WALKING_TO_RIDE: {
-                UpdatePeepMovement(p, dt);
-                // Arrived at queue entrance
-                if (Vector2Distance(p.pos, p.targetPos) < 0.2f) {
-                    if ((int)queuePeeps.size() < maxQueueCap) {
-                        p.state = PEEP_IN_QUEUE;
-                    } else {
-                        // Queue physically full: wander temporarily
-                        p.targetPos = {p.pos.x + (((float)rand()/RAND_MAX)-0.5f)*3.0f, p.pos.y + (((float)rand()/RAND_MAX)-0.5f)*3.0f};
-                        p.state = PEEP_WANDERING;
-                    }
+        switch (c.state) {
+            case COMMUTER_ENTERING: {
+                UpdateCommuterMovement(c, dt);
+                if (Vector2Distance(c.pos, c.targetPos) < 0.25f) {
+                    c.state = COMMUTER_SWIPING_GATE;
+                    c.queueTimer = 0.45f;
+                    AudioManager::Play(SFX_SMARTCARD_BEEP, 0.5f);
+                    particles.SpawnSparks(Vector3{c.pos.x, c.pos.y, 0.4f}, 3);
                 }
                 break;
             }
 
-            case PEEP_IN_QUEUE: {
-                // Determine slot position in queue line
-                int qPos = (int)queuePeeps.size();
-                queuePeeps.push_back(i);
-                Vector2 targetSlot = {queueStartPos.x + (float)qPos * 0.35f, queueStartPos.y};
-                p.pos = Vector2Lerp(p.pos, targetSlot, dt * 5.0f);
-                break;
-            }
-
-            case PEEP_RIDING: {
-                // Invisible while riding inside train car
-                break;
-            }
-
-            case PEEP_EXITING: {
-                UpdatePeepMovement(p, dt);
-                if (p.nausea >= 90.0f) {
-                    // Sick peep vomits on path!
-                    particles.SpawnVomit(Vector3{p.pos.x, p.pos.y, 0.0f}, 14);
-                    if (outMesses.size() < 40) {
-                        ParkMess m;
-                        m.pos = p.pos;
-                        m.isVomit = true;
-                        m.timer = 0.0f;
-                        outMesses.push_back(m);
-                    }
-                    p.nausea = 0.0f;
-                    p.thought = "Ugh, I feel so sick... *blarf*";
-                }
-                if (Vector2Distance(p.pos, p.targetPos) < 0.3f) {
-                    // Ride again or wander
-                    p.targetPos = queueStartPos;
-                    p.state = PEEP_WALKING_TO_RIDE;
+            case COMMUTER_SWIPING_GATE: {
+                c.queueTimer -= dt;
+                if (c.queueTimer <= 0.0f) {
+                    c.state = COMMUTER_ON_PLATFORM;
+                    c.targetPos = {queueStartPos.x + 0.5f, queueStartPos.y};
                 }
                 break;
             }
 
-            case PEEP_WANDERING: {
-                UpdatePeepMovement(p, dt);
-                if (Vector2Distance(p.pos, p.targetPos) < 0.2f) {
-                    p.targetPos = queueStartPos;
-                    p.state = PEEP_WALKING_TO_RIDE;
+            case COMMUTER_ON_PLATFORM: {
+                int qPos = (int)queueCommuters.size();
+                queueCommuters.push_back(i);
+
+                // Line up along the tactile floor edge
+                Vector2 slotPos = {
+                    queueStartPos.x - (float)qPos * 0.4f,
+                    queueStartPos.y + (float)(qPos % 2) * 0.25f
+                };
+                c.targetPos = slotPos;
+                UpdateCommuterMovement(c, dt);
+
+                c.queuePatience -= dt;
+                if (c.queuePatience < 15.0f) {
+                    c.thought = "Train is delayed... checking transit app.";
+                    c.happiness = std::max(20.0f, c.happiness - dt * 1.5f);
                 }
                 break;
             }
 
-            case PEEP_LEAVING_ANGRY: {
-                UpdatePeepMovement(p, dt);
-                if (Vector2Distance(p.pos, entrancePos) < 0.4f) {
-                    // Departed the park
-                    peeps.erase(peeps.begin() + i);
+            case COMMUTER_RIDING: {
+                // Inside the train
+                c.pos = {train.GetLocomotivePos().x, train.GetLocomotivePos().y};
+                break;
+            }
+
+            case COMMUTER_ALIGHTING: {
+                c.state = COMMUTER_EXITING_STATION;
+                c.targetPos = entrancePos;
+                c.happiness = 100.0f;
+                c.thought = "Arrived safely at my destination!";
+                break;
+            }
+
+            case COMMUTER_EXITING_STATION:
+            case COMMUTER_LEAVING_ANGRY: {
+                UpdateCommuterMovement(c, dt);
+                if (Vector2Distance(c.pos, entrancePos) < 0.3f) {
+                    commuters.erase(commuters.begin() + i);
                     continue;
                 }
                 break;
             }
 
-            default:
-                break;
+            default: break;
         }
 
         ++i;
     }
 }
 
-void PeepManager::UpdatePeepMovement(Peep& p, float dt) {
-    Vector2 dir = Vector2Subtract(p.targetPos, p.pos);
+void CommuterManager::UpdateCommuterMovement(Commuter& c, float dt) {
+    Vector2 dir = Vector2Subtract(c.targetPos, c.pos);
     float dist = Vector2Length(dir);
-    if (dist > 0.05f) {
+
+    if (dist > 0.08f) {
         dir = Vector2Normalize(dir);
-        p.pos.x += dir.x * p.speed * dt;
-        p.pos.y += dir.y * p.speed * dt;
+        c.pos.x += dir.x * c.speed * dt;
+        c.pos.y += dir.y * c.speed * dt;
+    } else {
+        c.pos = c.targetPos;
     }
 }
 
-void PeepManager::Draw(Vector2 camOffset, float zoom) const {
-    for (const auto& p : peeps) {
-        if (p.state == PEEP_RIDING) continue; // Inside train
+void CommuterManager::CheckSceneryInteractions(const SceneryType scenery[GRID_SIZE][GRID_SIZE], ParticleSystem& particles, float& outFunds, std::vector<StationMess>& outMesses) {
+    for (auto& c : commuters) {
+        if (c.state == COMMUTER_RIDING) continue;
+        int gx = (int)roundf(c.pos.x);
+        int gy = (int)roundf(c.pos.y);
+        if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) continue;
 
-        Vector2 sPos = Iso::GridToScreen(p.pos.x, p.pos.y, 0.0f, camOffset, zoom);
-        float bob = (p.state != PEEP_IN_QUEUE) ? sinf(p.walkTimer) * 1.5f * zoom : 0.0f;
+        SceneryType s = scenery[gx][gy];
+        if (s == SCENERY_NEWSSTAND && !c.hasCoffee) {
+            c.hasCoffee = true;
+            c.happiness = std::min(100.0f, c.happiness + 15.0f);
+            c.thought = "Got an espresso from the Metro Cafe!";
+            outFunds += 3.50f;
+            AudioManager::Play(SFX_COFFEE_SIP, 0.6f);
+            particles.SpawnSparks(Vector3{c.pos.x, c.pos.y, 0.2f}, 4);
 
-        // Feet shadow
-        DrawEllipse((int)sPos.x, (int)sPos.y, 4.0f * zoom, 2.0f * zoom, Color{0, 0, 0, 70});
+            // 15% chance to drop paper cup
+            if ((rand() % 100) < 15 && outMesses.size() < 30) {
+                StationMess mess;
+                mess.pos = {c.pos.x + (((float)rand()/RAND_MAX)-0.5f)*0.3f, c.pos.y + (((float)rand()/RAND_MAX)-0.5f)*0.3f};
+                mess.isSpill = true;
+                mess.timer = 0.0f;
+                outMesses.push_back(mess);
+            }
+        } else if (s == SCENERY_BENCH) {
+            c.happiness = std::min(100.0f, c.happiness + 0.1f);
+            c.thought = "Resting on the station bench.";
+        } else if (s == SCENERY_MAP_KIOSK) {
+            c.thought = "Checking the Harry Beck route diagram.";
+        }
+    }
+}
+
+void CommuterManager::Draw(Vector2 camOffset, float zoom) const {
+    for (const auto& c : commuters) {
+        if (c.state == COMMUTER_RIDING) continue;
+
+        Vector2 sPos = Iso::GridToScreen(c.pos.x, c.pos.y, 0.0f, camOffset, zoom);
+        float bob = sinf(c.walkTimer) * 1.5f * zoom;
+
+        // Commuter Foot Shadow
+        DrawEllipse((int)sPos.x, (int)sPos.y, 4.0f * zoom, 2.0f * zoom, Color{0, 0, 0, 75});
 
         float bodyH = 10.0f * zoom;
         float bodyW = 5.0f * zoom;
 
-        // Legs / Pants
-        DrawRectangle((int)(sPos.x - bodyW * 0.4f), (int)(sPos.y - bodyH * 0.4f + bob), (int)(bodyW * 0.8f), (int)(bodyH * 0.4f), p.pantsColor);
+        // Slacks / Trousers
+        DrawRectangle((int)(sPos.x - bodyW * 0.4f), (int)(sPos.y - bodyH * 0.45f + bob), (int)(bodyW * 0.8f), (int)(bodyH * 0.45f), c.pantsColor);
 
-        // Torso / Shirt
-        DrawRectangle((int)(sPos.x - bodyW / 2.0f), (int)(sPos.y - bodyH + bob), (int)bodyW, (int)(bodyH * 0.6f), p.shirtColor);
+        // Blazer / Coat
+        DrawRectangle((int)(sPos.x - bodyW * 0.5f), (int)(sPos.y - bodyH + bob), (int)bodyW, (int)(bodyH * 0.6f), c.shirtColor);
 
         // Head (Skin tone)
-        DrawCircle((int)sPos.x, (int)(sPos.y - bodyH - 3.0f * zoom + bob), 2.8f * zoom, Color{255, 224, 178, 255});
+        DrawCircle((int)sPos.x, (int)(sPos.y - bodyH - 2.8f * zoom + bob), 2.5f * zoom, Color{255, 224, 178, 255});
 
-        // Cap / Hat matching shirt
-        DrawCircle((int)sPos.x, (int)(sPos.y - bodyH - 4.5f * zoom + bob), 2.2f * zoom, p.shirtColor);
+        // Hair / Cap
+        DrawCircle((int)sPos.x, (int)(sPos.y - bodyH - 4.2f * zoom + bob), 2.0f * zoom, Color{51, 65, 85, 255});
 
-        // Floating helium balloon
-        if (p.hasBalloon) {
-            float balloonSway = sinf(p.walkTimer * 2.5f) * 2.5f * zoom;
-            Vector2 bPos = { sPos.x + 5.0f * zoom + balloonSway, sPos.y - bodyH - 15.0f * zoom + bob * 0.5f };
-            DrawLineEx({sPos.x + 2.0f * zoom, sPos.y - bodyH * 0.4f + bob}, bPos, 1.0f * zoom, Color{180, 180, 180, 220});
-            DrawEllipse((int)bPos.x, (int)bPos.y, 4.0f * zoom, 5.0f * zoom, p.balloonColor);
-            DrawCircle((int)(bPos.x - 1.2f * zoom), (int)(bPos.y - 1.5f * zoom), 1.0f * zoom, WHITE);
+        // Briefcase / Bag
+        if (c.hasBriefcase) {
+            Vector2 bagPos = { sPos.x + 3.5f * zoom, sPos.y - bodyH * 0.4f + bob };
+            DrawRectangle((int)bagPos.x, (int)bagPos.y, (int)(3.5f * zoom), (int)(2.8f * zoom), Color{120, 53, 15, 255}); // Leather briefcase
         }
 
-        // Angry red icon above head if furious
-        if (p.isAngry) {
-            DrawCircle((int)sPos.x, (int)(sPos.y - bodyH - 11.0f * zoom), 3.5f * zoom, Color{244, 67, 54, 255});
-            DrawText("!", (int)(sPos.x - 2.0f * zoom), (int)(sPos.y - bodyH - 14.0f * zoom), (int)(6.0f * zoom), WHITE);
+        // Mini Metro Floating Shape Badge above Head
+        Vector2 badgePos = { sPos.x, sPos.y - bodyH - 10.0f * zoom + bob };
+        Color badgeColor = GetShapeColor(c.targetShape);
+
+        DrawCircle((int)badgePos.x, (int)badgePos.y, 4.2f * zoom, Color{15, 23, 42, 230});
+        DrawCircle((int)badgePos.x, (int)badgePos.y, 3.0f * zoom, badgeColor);
+
+        if (c.targetShape == SHAPE_SQUARE) {
+            DrawRectangle((int)(badgePos.x - 1.8f * zoom), (int)(badgePos.y - 1.8f * zoom), (int)(3.6f * zoom), (int)(3.6f * zoom), WHITE);
+        } else if (c.targetShape == SHAPE_TRIANGLE) {
+            DrawTriangle({badgePos.x, badgePos.y - 2.2f * zoom}, {badgePos.x - 2.2f * zoom, badgePos.y + 2.2f * zoom}, {badgePos.x + 2.2f * zoom, badgePos.y + 2.2f * zoom}, WHITE);
+        } else if (c.targetShape == SHAPE_CROSS) {
+            DrawRectangle((int)(badgePos.x - 0.8f * zoom), (int)(badgePos.y - 2.2f * zoom), (int)(1.6f * zoom), (int)(4.4f * zoom), WHITE);
+            DrawRectangle((int)(badgePos.x - 2.2f * zoom), (int)(badgePos.y - 0.8f * zoom), (int)(4.4f * zoom), (int)(1.6f * zoom), WHITE);
         }
     }
 
-    // Draw Circular Radial Overcrowding Clock (Mini Metro Triage Icon) above station
+    // Mini Metro Radial Overcrowding Triage Clock above station
     if (overcrowdActive) {
-        Vector2 clockPos = Iso::GridToScreen(queueStartPos.x, queueStartPos.y, 1.2f, camOffset, zoom);
-        float radius = 16.0f * zoom;
+        Vector2 clockPos = Iso::GridToScreen(queueStartPos.x, queueStartPos.y, 1.4f, camOffset, zoom);
+        float radius = 17.0f * zoom;
 
-        // Background dark circle
-        DrawCircle((int)clockPos.x, (int)clockPos.y, radius, Color{33, 33, 33, 220});
+        DrawCircle((int)clockPos.x, (int)clockPos.y, radius, Color{15, 23, 42, 235});
         DrawCircleLines((int)clockPos.x, (int)clockPos.y, radius, Color{255, 255, 255, 200});
 
-        // Ticking pie sector (Red clock winding down)
         float pct = 1.0f - (overcrowdTimer / MAX_OVERCROWD_TIME);
         float endAngle = -90.0f + pct * 360.0f;
-        DrawCircleSector(clockPos, radius - 2.0f * zoom, -90.0f, endAngle, 24, Color{244, 67, 54, 230});
+        DrawCircleSector(clockPos, radius - 2.0f * zoom, -90.0f, endAngle, 24, Color{239, 68, 68, 235});
 
-        // Exclamation alert in center
-        DrawText("!", (int)(clockPos.x - 3.0f * zoom), (int)(clockPos.y - 6.0f * zoom), (int)(12.0f * zoom), WHITE);
+        DrawText("!", (int)(clockPos.x - 3.0f * zoom), (int)(clockPos.y - 6.0f * zoom), (int)(13.0f * zoom), WHITE);
     }
 }
 
-int PeepManager::FindPeepAtScreenPos(Vector2 mouseScreen, Vector2 camOffset, float zoom) const {
-    for (size_t i = 0; i < peeps.size(); ++i) {
-        if (peeps[i].state == PEEP_RIDING) continue;
-        Vector2 sPos = Iso::GridToScreen(peeps[i].pos.x, peeps[i].pos.y, 0.0f, camOffset, zoom);
-        Vector2 peepCenter = {sPos.x, sPos.y - 8.0f * zoom};
-        if (Vector2Distance(mouseScreen, peepCenter) < 14.0f * zoom) {
+int CommuterManager::FindCommuterAtScreenPos(Vector2 mouseScreen, Vector2 camOffset, float zoom) const {
+    for (size_t i = 0; i < commuters.size(); ++i) {
+        if (commuters[i].state == COMMUTER_RIDING) continue;
+        Vector2 sPos = Iso::GridToScreen(commuters[i].pos.x, commuters[i].pos.y, 0.0f, camOffset, zoom);
+        Vector2 center = {sPos.x, sPos.y - 8.0f * zoom};
+        if (Vector2Distance(mouseScreen, center) < 14.0f * zoom) {
             return (int)i;
         }
     }
     return -1;
-}
-
-void PeepManager::CheckSceneryInteractions(const SceneryType scenery[GRID_SIZE][GRID_SIZE], ParticleSystem& particles, float& outMoney, std::vector<ParkMess>& outMesses) {
-    for (auto& p : peeps) {
-        if (p.state == PEEP_RIDING) continue;
-        int gx = (int)roundf(p.pos.x);
-        int gy = (int)roundf(p.pos.y);
-        if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) continue;
-
-        SceneryType s = scenery[gx][gy];
-        if (s == SCENERY_DRINK_STALL) {
-            if (p.nausea > 30.0f || p.happiness < 70.0f) {
-                p.nausea = std::max(0.0f, p.nausea - 50.0f);
-                p.happiness = std::min(100.0f, p.happiness + 20.0f);
-                p.thought = "That cold soda was so refreshing!";
-                outMoney += 2.5f;
-                AudioManager::Play(SFX_SODA_SLURP, 0.6f);
-                particles.SpawnSparks(Vector3{p.pos.x, p.pos.y, 0.2f}, 4);
-
-                // 35% chance to drop cup litter
-                if ((rand() % 100) < 35 && outMesses.size() < 40) {
-                    ParkMess cup;
-                    cup.pos = {p.pos.x + (((float)rand()/RAND_MAX)-0.5f)*0.3f, p.pos.y + (((float)rand()/RAND_MAX)-0.5f)*0.3f};
-                    cup.isVomit = false;
-                    cup.timer = 0.0f;
-                    outMesses.push_back(cup);
-                }
-            }
-        } else if (s == SCENERY_BENCH) {
-            if (p.nausea > 20.0f) {
-                p.nausea = std::max(0.0f, p.nausea - 10.0f);
-                p.thought = "Resting on the bench helps my stomach.";
-            }
-        } else if (s == SCENERY_FOUNTAIN) {
-            p.happiness = std::min(100.0f, p.happiness + 0.2f);
-            p.thought = "The fountain is so soothing and beautiful!";
-        } else if (s == SCENERY_FLOWER_BED) {
-            p.happiness = std::min(100.0f, p.happiness + 0.15f);
-            p.thought = "The flowerbeds smell delightful!";
-        } else if (s == SCENERY_BALLOON_STALL) {
-            if (!p.hasBalloon && (rand() % 100) < 30) {
-                p.hasBalloon = true;
-                p.happiness = 100.0f;
-                outMoney += 3.5f;
-                Color bCols[] = {Color{239, 68, 68, 255}, Color{59, 130, 246, 255}, Color{234, 179, 8, 255}, Color{168, 85, 247, 255}};
-                p.balloonColor = bCols[rand() % 4];
-                p.thought = "Look at my awesome balloon!";
-                AudioManager::Play(SFX_DELIVERY_CHIME, 0.5f);
-            }
-        }
-
-        // React to nearby messes
-        for (const auto& m : outMesses) {
-            if (Vector2Distance(p.pos, m.pos) < 0.65f) {
-                if (m.isVomit) {
-                    p.happiness = std::max(0.0f, p.happiness - 0.4f);
-                    p.nausea = std::min(100.0f, p.nausea + 0.2f);
-                    p.thought = "Gross! Someone threw up on the path!";
-                } else {
-                    p.happiness = std::max(0.0f, p.happiness - 0.15f);
-                    p.thought = "Trash on the path? Where are the cleaners?";
-                }
-                break;
-            }
-        }
-    }
 }

@@ -4,66 +4,83 @@
 #include "particles.hpp"
 #include "train.hpp"
 
-struct Peep {
+struct Commuter {
     std::string name;
+    std::string occupation;
     Vector2 pos;
     Vector2 targetPos;
-    PeepType type;
-    PeepState state;
-    Color shirtColor;
-    Color pantsColor;
+    CommuterType type = COMMUTER_WORKER;
+    CommuterState state = COMMUTER_ENTERING;
+    StationShape targetShape = SHAPE_SQUARE; // Mini Metro target shape
+    Color shirtColor = Color{30, 58, 138, 255};
+    Color pantsColor = Color{51, 65, 85, 255};
     float speed = 1.6f;
     float walkTimer = 0.0f;
-    float happiness = 85.0f;
-    float nausea = 0.0f;
-    float queuePatience = 35.0f;
+    float happiness = 92.0f;
+    float metroPassBalance = 25.0f;
+    float queuePatience = 45.0f;
     float queueTimer = 0.0f;
     bool isAngry = false;
-    bool hasBalloon = false;
-    Color balloonColor = Color{239, 68, 68, 255};
-    std::string thought = "Excited to ride!";
+    bool hasCoffee = false;
+    bool hasBriefcase = true;
+    std::string thought = "Tapped my transit card, waiting for Line 1!";
 };
 
-class PeepManager {
+class CommuterManager {
 public:
-    PeepManager();
+    CommuterManager();
 
-    void Init(Vector2 parkEntrance, Vector2 stationQueueEntrance, Vector2 stationExit);
-    void Update(float dt, CoasterTrain& train, ParticleSystem& particles, float& outParkRating, int& outAngryLeaves, std::vector<ParkMess>& outMesses);
-    void CheckSceneryInteractions(const SceneryType scenery[GRID_SIZE][GRID_SIZE], ParticleSystem& particles, float& outMoney, std::vector<ParkMess>& outMesses);
+    void Init(Vector2 stationEntrance, Vector2 platformEntrance, Vector2 stationExit);
+    void Update(float dt, MetroTrain& train, ParticleSystem& particles, float& outSatisfaction, int& outAngryLeaves, std::vector<StationMess>& outMesses);
+    void CheckSceneryInteractions(const SceneryType scenery[GRID_SIZE][GRID_SIZE], ParticleSystem& particles, float& outFunds, std::vector<StationMess>& outMesses);
     void Draw(Vector2 camOffset, float zoom) const;
 
-    int GetTotalPeepsInPark() const { return (int)peeps.size(); }
-    int GetQueueCount() const { return (int)queuePeeps.size(); }
+    int GetTotalCommuters() const { return (int)commuters.size(); }
+    int GetQueueCount() const { return (int)queueCommuters.size(); }
     int GetMaxQueueCapacity() const { return maxQueueCap; }
     float GetQueueOvercrowdRatio() const;
     float GetOvercrowdTimer() const { return overcrowdTimer; }
     bool IsOvercrowded() const { return overcrowdActive; }
 
-    int FindPeepAtScreenPos(Vector2 mouseScreen, Vector2 camOffset, float zoom) const;
-    const Peep* GetPeep(int index) const {
-        if (index >= 0 && index < (int)peeps.size()) return &peeps[index];
+    int FindCommuterAtScreenPos(Vector2 mouseScreen, Vector2 camOffset, float zoom) const;
+    const Commuter* GetCommuter(int index) const {
+        if (index >= 0 && index < (int)commuters.size()) return &commuters[index];
         return nullptr;
     }
 
-    void SpawnPeep();
+    void SpawnCommuter();
     void SetSpawnInterval(float seconds) { spawnInterval = seconds; }
 
+    // Compatibility aliases
+    int GetTotalPeepsInPark() const { return GetTotalCommuters(); }
+    int FindPeepAtScreenPos(Vector2 mouseScreen, Vector2 camOffset, float zoom) const {
+        return FindCommuterAtScreenPos(mouseScreen, camOffset, zoom);
+    }
+    const Commuter* GetPeep(int index) const { return GetCommuter(index); }
+    void SpawnPeep() { SpawnCommuter(); }
+
 private:
-    std::vector<Peep> peeps;
-    std::vector<size_t> queuePeeps; // Indices of peeps currently in queue line
+    std::vector<Commuter> commuters;
+    std::vector<size_t> queueCommuters;
     Vector2 entrancePos;
     Vector2 queueStartPos;
     Vector2 exitPos;
 
     float spawnTimer = 0.0f;
-    float spawnInterval = 2.5f;
+    float spawnInterval = 2.4f;
     int maxQueueCap = 14;
 
     // Overcrowding Mini-Metro style clock
     bool overcrowdActive = false;
-    float overcrowdTimer = 18.0f;
-    const float MAX_OVERCROWD_TIME = 18.0f;
+    float overcrowdTimer = 20.0f;
+    const float MAX_OVERCROWD_TIME = 20.0f;
 
-    void UpdatePeepMovement(Peep& p, float dt);
+    void UpdateCommuterMovement(Commuter& c, float dt);
 };
+
+// Aliases for seamless drop-in replacement
+using Peep = Commuter;
+using PeepManager = CommuterManager;
+using PeepType = CommuterType;
+using PeepState = CommuterState;
+
