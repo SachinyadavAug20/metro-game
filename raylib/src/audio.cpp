@@ -37,50 +37,84 @@ void Init() {
 
     int sr = 44100;
 
-    // 1. SFX_CHAIN_CLICK: Short metallic ratchet click (0.035s)
+    // 1. SFX_DOOR_CHIME: Japanese/European Metro 4-note melodic departure chime (E5, G#5, B5, E6)
     {
-        int n = (int)(sr * 0.035f);
+        int n = (int)(sr * 0.52f);
+        std::vector<float> buf(n);
+        float freqs[4] = {659.25f, 830.61f, 987.77f, 1318.51f};
+        for (int i = 0; i < n; ++i) {
+            float t = (float)i / sr;
+            float stepT = t * 7.5f;
+            int note = std::min(3, (int)stepT);
+            float noteT = fmodf(stepT, 1.0f) * 0.133f;
+            float env = expf(-8.5f * noteT);
+            float harmonic = sinf(2.0f * PI * freqs[note] * 2.0f * t) * 0.15f;
+            buf[i] = (sinf(2.0f * PI * freqs[note] * t) * 0.85f + harmonic) * env * 0.65f;
+        }
+        sounds[SFX_DOOR_CHIME] = CreateProceduralSound(buf, sr);
+    }
+
+    // 2. SFX_VVVF_MOTOR: Electric traction inverter motor whine sweeping up in frequency
+    {
+        int n = (int)(sr * 0.65f);
         std::vector<float> buf(n);
         for (int i = 0; i < n; ++i) {
             float t = (float)i / sr;
-            float env = 1.0f - (float)i / n;
-            float wave1 = sinf(2.0f * PI * 1800.0f * t);
-            float wave2 = sinf(2.0f * PI * 3200.0f * t);
-            buf[i] = (wave1 * 0.6f + wave2 * 0.4f) * env * env;
+            float progress = (float)i / n;
+            float env = sinf(progress * PI);
+            // Multi-harmonic carrier frequency rising in pitch
+            float freqCarrier = 140.0f + 550.0f * powf(progress, 1.3f);
+            float carrier = sinf(2.0f * PI * freqCarrier * t);
+            float harmonic2 = sinf(2.0f * PI * (freqCarrier * 2.0f) * t) * 0.35f;
+            float harmonic3 = sinf(2.0f * PI * (freqCarrier * 3.0f) * t) * 0.15f;
+            buf[i] = (carrier + harmonic2 + harmonic3) * env * 0.45f;
         }
-        sounds[SFX_CHAIN_CLICK] = CreateProceduralSound(buf, sr);
+        sounds[SFX_VVVF_MOTOR] = CreateProceduralSound(buf, sr);
     }
 
-    // 2. SFX_WHOOSH: Low-pass filtered noise rush (0.35s)
+    // 3. SFX_AIR_BRAKE: Pneumatic brake pressure release hiss (0.38s)
     {
-        int n = (int)(sr * 0.35f);
+        int n = (int)(sr * 0.38f);
         std::vector<float> buf(n);
         float last = 0.0f;
         for (int i = 0; i < n; ++i) {
-            float t = (float)i / n;
-            float env = sinf(t * PI); // Smooth bell curve
+            float t = (float)i / sr;
+            float env = expf(-6.0f * t);
             float white = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
-            last += 0.15f * (white - last); // Simple low pass
-            buf[i] = last * env * 0.8f;
+            last += 0.22f * (white - last); // Low-pass filter for air hiss
+            buf[i] = last * env * 0.75f;
         }
-        sounds[SFX_WHOOSH] = CreateProceduralSound(buf, sr);
+        sounds[SFX_AIR_BRAKE] = CreateProceduralSound(buf, sr);
     }
 
-    // 3. SFX_STATION_BELL: Clean double chime (0.4s)
+    // 4. SFX_SMARTCARD_BEEP: High-frequency contactless IC card gate tap ("Pip-pip!") (0.12s)
     {
-        int n = (int)(sr * 0.4f);
+        int n = (int)(sr * 0.12f);
         std::vector<float> buf(n);
         for (int i = 0; i < n; ++i) {
             float t = (float)i / sr;
-            float env = expf(-6.0f * t);
+            float freq = (t < 0.05f) ? 2300.0f : (t > 0.06f ? 2800.0f : 0.0f);
+            float env = (t < 0.05f) ? expf(-30.0f * t) : (t > 0.06f ? expf(-30.0f * (t - 0.06f)) : 0.0f);
+            buf[i] = sinf(2.0f * PI * freq * t) * env * 0.5f;
+        }
+        sounds[SFX_SMARTCARD_BEEP] = CreateProceduralSound(buf, sr);
+    }
+
+    // 5. SFX_STATION_BELL: Clean double arrival chime (0.42s)
+    {
+        int n = (int)(sr * 0.42f);
+        std::vector<float> buf(n);
+        for (int i = 0; i < n; ++i) {
+            float t = (float)i / sr;
+            float env = expf(-6.5f * t);
             float tone1 = sinf(2.0f * PI * 880.0f * t);
             float tone2 = sinf(2.0f * PI * 1760.0f * t);
-            buf[i] = (tone1 * 0.7f + tone2 * 0.3f) * env;
+            buf[i] = (tone1 * 0.7f + tone2 * 0.3f) * env * 0.7f;
         }
         sounds[SFX_STATION_BELL] = CreateProceduralSound(buf, sr);
     }
 
-    // 4. SFX_DELIVERY_CHIME: Pentatonic bright arpeggio (C-E-G-C, 0.3s)
+    // 6. SFX_DELIVERY_CHIME: Pentatonic bright arpeggio for completed commute (0.35s)
     {
         int n = (int)(sr * 0.35f);
         std::vector<float> buf(n);
@@ -96,34 +130,19 @@ void Init() {
         sounds[SFX_DELIVERY_CHIME] = CreateProceduralSound(buf, sr);
     }
 
-    // 5. SFX_QUEUE_ALARM: Urgent high dual beep (0.2s)
+    // 7. SFX_QUEUE_ALARM: Urgent high dual alert beep for platform congestion (0.2s)
     {
         int n = (int)(sr * 0.2f);
         std::vector<float> buf(n);
         for (int i = 0; i < n; ++i) {
             float t = (float)i / sr;
-            float freq = (t < 0.1f) ? 950.0f : 1200.0f;
-            (void)t;
+            float freq = (t < 0.1f) ? 1050.0f : 1350.0f;
             buf[i] = sinf(2.0f * PI * freq * t) * 0.5f;
         }
         sounds[SFX_QUEUE_ALARM] = CreateProceduralSound(buf, sr);
     }
 
-    // 6. SFX_CRASH: Low explosion with pitch drop & noisy crunch (0.6s)
-    {
-        int n = (int)(sr * 0.6f);
-        std::vector<float> buf(n);
-        for (int i = 0; i < n; ++i) {
-            float t = (float)i / sr;
-            float env = expf(-4.0f * t);
-            float freq = 160.0f * expf(-8.0f * t) + 40.0f;
-            float noise = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
-            buf[i] = (sinf(2.0f * PI * freq * t) * 0.6f + noise * 0.4f) * env;
-        }
-        sounds[SFX_CRASH] = CreateProceduralSound(buf, sr);
-    }
-
-    // 7. SFX_UPGRADE_FANFARE: Grand rising fanfare chord (0.6s)
+    // 8. SFX_UPGRADE_FANFARE: Grand transit grant fanfare chord (0.6s)
     {
         int n = (int)(sr * 0.6f);
         std::vector<float> buf(n);
@@ -140,7 +159,7 @@ void Init() {
         sounds[SFX_UPGRADE_FANFARE] = CreateProceduralSound(buf, sr);
     }
 
-    // 8. SFX_BUTTON_CLICK: Subtle UI click (0.05s)
+    // 9. SFX_BUTTON_CLICK: Subtle OCC console click (0.05s)
     {
         int n = (int)(sr * 0.05f);
         std::vector<float> buf(n);
@@ -151,38 +170,20 @@ void Init() {
         sounds[SFX_BUTTON_CLICK] = CreateProceduralSound(buf, sr);
     }
 
-    // 9. SFX_CASH_REGISTER: "Ka-ching!" metallic chime (0.28s)
-    {
-        int n = (int)(sr * 0.28f);
-        std::vector<float> buf(n);
-        for (int i = 0; i < n; ++i) {
-            float t = (float)i / sr;
-            float s = 0.0f;
-            if (t < 0.08f) {
-                s = sinf(2.0f * PI * 987.0f * t) * expf(-25.0f * t);
-            } else {
-                float t2 = t - 0.08f;
-                s = (sinf(2.0f * PI * 1318.0f * t2) * 0.7f + sinf(2.0f * PI * 1975.0f * t2) * 0.3f) * expf(-14.0f * t2);
-            }
-            buf[i] = s * 0.5f;
-        }
-        sounds[SFX_CASH_REGISTER] = CreateProceduralSound(buf, sr);
-    }
-
-    // 10. SFX_CONSTRUCTION: Mallet / steel rail lock thud (0.12s)
+    // 10. SFX_CONSTRUCTION: Steel rail and concrete sleeper placement clank (0.12s)
     {
         int n = (int)(sr * 0.12f);
         std::vector<float> buf(n);
         for (int i = 0; i < n; ++i) {
             float t = (float)i / sr;
-            float s = sinf(2.0f * PI * 160.0f * t) * expf(-35.0f * t) +
-                      sinf(2.0f * PI * 480.0f * t) * expf(-50.0f * t) * 0.4f;
+            float s = sinf(2.0f * PI * 180.0f * t) * expf(-35.0f * t) +
+                      sinf(2.0f * PI * 520.0f * t) * expf(-50.0f * t) * 0.45f;
             buf[i] = s * 0.6f;
         }
         sounds[SFX_CONSTRUCTION] = CreateProceduralSound(buf, sr);
     }
 
-    // 11. SFX_BULLDOZE: Rubble crumble scrape (0.25s)
+    // 11. SFX_BULLDOZE: Demolition rubble scrape (0.25s)
     {
         int n = (int)(sr * 0.25f);
         std::vector<float> buf(n);
@@ -195,30 +196,30 @@ void Init() {
         sounds[SFX_BULLDOZE] = CreateProceduralSound(buf, sr);
     }
 
-    // 12. SFX_PEEP_CHEER: Thrill crowd cheer (0.6s)
+    // 12. SFX_COMMUTER_CHATTER: Warm platform boarding murmur (0.45s)
     {
-        int n = (int)(sr * 0.6f);
+        int n = (int)(sr * 0.45f);
         std::vector<float> buf(n);
         for (int i = 0; i < n; ++i) {
             float t = (float)i / sr;
-            float env = sinf(t / 0.6f * PI);
+            float env = sinf(t / 0.45f * PI);
             float noise = (((float)rand() / RAND_MAX) * 2.0f - 1.0f);
-            float s = (sinf(2.0f * PI * 340.0f * t) * 0.3f + sinf(2.0f * PI * 520.0f * t) * 0.2f + noise * 0.3f) * env;
+            float s = (sinf(2.0f * PI * 320.0f * t) * 0.3f + sinf(2.0f * PI * 480.0f * t) * 0.2f + noise * 0.3f) * env;
             buf[i] = s * 0.5f;
         }
-        sounds[SFX_PEEP_CHEER] = CreateProceduralSound(buf, sr);
+        sounds[SFX_COMMUTER_CHATTER] = CreateProceduralSound(buf, sr);
     }
 
-    // 13. SFX_SODA_SLURP: Refreshing fizz (0.3s)
+    // 13. SFX_COFFEE_SIP: Station kiosk coffee sip (0.25s)
     {
-        int n = (int)(sr * 0.3f);
+        int n = (int)(sr * 0.25f);
         std::vector<float> buf(n);
         for (int i = 0; i < n; ++i) {
             float t = (float)i / sr;
             float noise = (((float)rand() / RAND_MAX) * 2.0f - 1.0f);
-            buf[i] = noise * expf(-8.0f * t) * 0.35f;
+            buf[i] = noise * expf(-9.0f * t) * 0.35f;
         }
-        sounds[SFX_SODA_SLURP] = CreateProceduralSound(buf, sr);
+        sounds[SFX_COFFEE_SIP] = CreateProceduralSound(buf, sr);
     }
 
     initialized = true;
@@ -248,3 +249,4 @@ void SetMute(bool isMuted) { muted = isMuted; }
 bool IsMuted() { return muted; }
 
 } // namespace AudioManager
+
