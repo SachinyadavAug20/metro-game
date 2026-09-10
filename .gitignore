@@ -1,0 +1,8 @@
+*.o
+*.a
+*.so
+raylib/coaster_grid
+raylib/metro_grid
+raylib/test_capture
+build/
+.cache/
