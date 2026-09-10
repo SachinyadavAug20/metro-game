@@ -15,6 +15,8 @@ namespace Iso {
     void DrawShadow(float gx, float gy, float radius, Vector2 camOffset, float zoom);
     void DrawScenery(int gx, int gy, int gz, SceneryType type, Vector2 camOffset, float zoom);
     void DrawStaff(const StaffMember& staff, Vector2 camOffset, float zoom);
-    void DrawMess(const ParkMess& mess, Vector2 camOffset, float zoom);
-    void DrawEntranceArch(Vector2 gridPos, Vector2 camOffset, float zoom);
+    void DrawMess(const StationMess& mess, Vector2 camOffset, float zoom);
+    void DrawTransitPortalArch(Vector2 gridPos, Vector2 camOffset, float zoom);
+    void DrawEntranceArch(Vector2 gridPos, Vector2 camOffset, float zoom); // Alias for compatibility
 }
+
