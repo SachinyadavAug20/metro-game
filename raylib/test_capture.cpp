@@ -14,31 +14,34 @@ public:
     void OpenStatsWindow(bool open) {
         statsWindowOpen = open;
     }
-    void SelectPeep(int idx) {
+    void OpenManualOverlay(bool open) {
+        helpOverlayOpen = open;
+    }
+    void SelectCommuter(int idx) {
         selectedPeepIdx = idx;
     }
     void SetWeekTimer(float t) {
         weekTimer = t;
     }
-    void RepaintCoaster(Color c, const std::string& name) {
+    void RepaintRoute(Color c, const std::string& name) {
         cachedStats.themeColor = c;
-        cachedStats.coasterName = name;
+        cachedStats.lineName = name;
         tracks.SetTrackColor(c);
         train.SetTrainTheme(c);
-        train.SetCoasterName(name);
+        train.SetLineName(name);
     }
-    void AddMesses() {
-        ParkMess v1;
-        v1.pos = {4.5f, 12.0f};
-        v1.isVomit = true;
-        messes.push_back(v1);
+    void AddStationMesses() {
+        StationMess m1;
+        m1.pos = {4.5f, 12.0f};
+        m1.isSpill = true;
+        messes.push_back(m1);
 
-        ParkMess c1;
-        c1.pos = {5.2f, 12.2f};
-        c1.isVomit = false;
-        messes.push_back(c1);
+        StationMess m2;
+        m2.pos = {5.2f, 12.2f};
+        m2.isSpill = false;
+        messes.push_back(m2);
     }
-    void PositionStaff() {
+    void PositionCrew() {
         if (!staff.empty()) {
             staff[0].pos = {4.2f, 12.0f};
             staff[0].targetPos = {4.5f, 12.0f};
@@ -65,45 +68,56 @@ int main() {
 
     const int screenWidth = 1280;
     const int screenHeight = 720;
-    InitWindow(screenWidth, screenHeight, "COASTER GRID - Iteration Capture");
+    InitWindow(screenWidth, screenHeight, "METRO GRID - Inspection Capture");
     SetTargetFPS(60);
 
-    // 1. Twilight / Night lighting with glowing lampposts and train headlamp
-    {
-        TestGame game;
-        game.AddMesses();
-        game.PositionStaff();
-        for (int i = 0; i < 150; ++i) game.Step(0.033f);
-        game.SetWeekTimer(52.0f); // 52s = Night twilight phase
-        game.Render();
-        TakeScreenshot("test_night_lighting.png");
-        std::cout << "Captured test_night_lighting.png\n";
-    }
+    TestGame game;
+    game.AddStationMesses();
+    game.PositionCrew();
 
-    // 2. Coaster Repainted to Emerald Viper with Palette window open
-    {
-        TestGame game;
-        game.RepaintCoaster(Color{16, 185, 129, 255}, "The Emerald Viper");
-        game.OpenStatsWindow(true);
-        for (int i = 0; i < 100; ++i) game.Step(0.033f);
-        game.Render();
-        TakeScreenshot("test_repainted_coaster_emerald.png");
-        std::cout << "Captured test_repainted_coaster_emerald.png\n";
-    }
+    // 1. Central Hub Island Platform with EMU Train, PSDs, PIDS, Commuters with shape badges
+    game.SetCamera({680.0f, -80.0f}, 1.0f);
+    for (int i = 0; i < 40; ++i) game.Step(0.033f);
+    game.Render();
+    TakeScreenshot("test_metro_hub_island_platform.png");
+    std::cout << "Captured test_metro_hub_island_platform.png\n";
 
-    // 3. Peep Inspector with Balloon and Handyman at work
-    {
-        TestGame game;
-        game.AddMesses();
-        game.PositionStaff();
-        game.SetCamera({600.0f, 20.0f}, 1.25f);
-        for (int i = 0; i < 120; ++i) game.Step(0.033f);
-        game.SelectPeep(0);
-        game.PositionStaff();
-        game.Render();
-        TakeScreenshot("test_peep_balloon_inspector.png");
-        std::cout << "Captured test_peep_balloon_inspector.png\n";
-    }
+    // 2. Elevated SkyTrain Concrete Viaduct & Wayside 3-Aspect Signaling Mast over Canal
+    for (int i = 0; i < 180; ++i) game.Step(0.033f);
+    game.SetCamera({560.0f, -140.0f}, 1.25f);
+    game.Render();
+    TakeScreenshot("test_metro_viaduct_signaling.png");
+    std::cout << "Captured test_metro_viaduct_signaling.png\n";
+
+    // 3. Operations Control Center (OCC) Dashboard with Line Operations & Commuter Inspector
+    game.OpenStatsWindow(true);
+    game.SelectCommuter(0);
+    game.SetCamera({680.0f, -80.0f}, 1.0f);
+    game.Render();
+    TakeScreenshot("test_metro_occ_dashboard.png");
+    std::cout << "Captured test_metro_occ_dashboard.png\n";
+
+    // 4. Passenger Concourse, Subway Entrance Stairwell, Smartcard Gates & Newsstand
+    game.OpenStatsWindow(false);
+    game.SelectCommuter(-1);
+    game.SetCamera({720.0f, -80.0f}, 1.35f);
+    for (int i = 0; i < 30; ++i) game.Step(0.033f);
+    game.Render();
+    TakeScreenshot("test_metro_concourse_turnstiles.png");
+    std::cout << "Captured test_metro_concourse_turnstiles.png\n";
+
+    // 5. Transit Crew & Station Maintenance Window
+    game.OpenStaffWindow(true);
+    game.Render();
+    TakeScreenshot("test_metro_crew_management.png");
+    std::cout << "Captured test_metro_crew_management.png\n";
+
+    // 6. OCC Operations Manual & Dispatch Guide Overlay
+    game.OpenStaffWindow(false);
+    game.OpenManualOverlay(true);
+    game.Render();
+    TakeScreenshot("test_metro_operations_manual.png");
+    std::cout << "Captured test_metro_operations_manual.png\n";
 
     CloseWindow();
     return 0;

@@ -24,6 +24,7 @@ struct TrackNode {
     std::string stationName = "";
     SignalAspect signalAspect = SIGNAL_GREEN;
     float signalTimer = 0.0f;
+    float circuitDist = 0.0f;
 
     // Precomputed sub-spline points within this single tile in 3D grid space
     std::vector<Vector3> splinePoints;

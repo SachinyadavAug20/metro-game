@@ -250,6 +250,15 @@ void TrackSystem::RecalculateCircuit() {
             totalLength += Vector3Distance(masterPath[i - 1], masterPath[i]);
             pathDistances[i] = totalLength;
         }
+
+        // Precompute exact circuit distance along spline for each chain node
+        int curPtIdx = 0;
+        for (auto* node : chain) {
+            if (curPtIdx < (int)pathDistances.size()) {
+                const_cast<TrackNode*>(node)->circuitDist = pathDistances[curPtIdx];
+            }
+            curPtIdx += (int)node->splinePoints.size() - 1;
+        }
     }
 }
 
@@ -340,26 +349,27 @@ int TrackSystem::GetSignalCount() const {
 }
 
 void TrackSystem::UpdateSignals(float trainDistance) {
-    if (masterPath.empty()) return;
-
-    Vector3 trainPos = GetPointAtDistance(trainDistance);
-    int trainGx = (int)roundf(trainPos.x);
-    int trainGy = (int)roundf(trainPos.y);
+    if (masterPath.empty() || totalLength <= 0.001f) return;
 
     masterSignalAspect = SIGNAL_GREEN;
 
     for (auto& p : pieces) {
         if (p.type == TRACK_SIGNAL) {
-            float distToTrain = Vector2Distance(Vector2{(float)p.gx, (float)p.gy}, Vector2{(float)trainGx, (float)trainGy});
-            if (distToTrain < 1.6f) {
+            float forwardDist = trainDistance - p.circuitDist;
+            while (forwardDist < 0.0f) forwardDist += totalLength;
+            forwardDist = fmodf(forwardDist, totalLength);
+
+            // If train is in the block immediately past the signal (0 to 3.5 units ahead)
+            if (forwardDist >= 0.0f && forwardDist < 3.5f) {
                 p.signalAspect = SIGNAL_RED;
-                masterSignalAspect = SIGNAL_RED;
-            } else if (distToTrain < 4.5f) {
+            } else if (forwardDist >= 3.5f && forwardDist < 7.0f) {
                 p.signalAspect = SIGNAL_AMBER;
-                if (masterSignalAspect != SIGNAL_RED) masterSignalAspect = SIGNAL_AMBER;
             } else {
                 p.signalAspect = SIGNAL_GREEN;
             }
+
+            if (p.signalAspect == SIGNAL_RED) masterSignalAspect = SIGNAL_RED;
+            else if (p.signalAspect == SIGNAL_AMBER && masterSignalAspect != SIGNAL_RED) masterSignalAspect = SIGNAL_AMBER;
         }
     }
 }

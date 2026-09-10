@@ -17,21 +17,31 @@ void MetroTrain::SetCarriageCount(int count) {
 }
 
 void MetroTrain::Reset(const TrackSystem& tracks) {
-    (void)tracks;
-    state = TRAIN_STOPPED_IN_STATION;
-    distance = 0.0f;
+    state = TRAIN_BOARDING;
+    distance = 0.5f; // Center of Central Hub Station
     velocity = 0.0f;
-    stationTimer = 3.0f;
+    stationTimer = 3.5f;
     doorsOpen = true;
     doorProgress = 1.0f;
-    lastStationGx = -1;
-    lastStationGy = -1;
+    lastStationGx = 7;
+    lastStationGy = 12;
 
-    for (auto& car : cars) {
-        car.passengerCount = 0;
-        car.targetShapes.clear();
-        car.commuterShirtColors.clear();
-        car.doorOpenProgress = 1.0f;
+    float circuitLen = tracks.GetTotalCircuitLength();
+    float carSpacing = 0.85f;
+    for (size_t i = 0; i < cars.size(); ++i) {
+        cars[i].passengerCount = 0;
+        cars[i].targetShapes.clear();
+        cars[i].commuterShirtColors.clear();
+        cars[i].doorOpenProgress = 1.0f;
+
+        float carDist = distance - (float)i * carSpacing;
+        if (circuitLen > 0.0f) {
+            while (carDist < 0.0f) carDist += circuitLen;
+            carDist = fmodf(carDist, circuitLen);
+        }
+        Vector3 carTangent;
+        cars[i].pos = tracks.GetPointAtDistance(carDist, &carTangent);
+        cars[i].forward = carTangent;
     }
 }
 
@@ -129,7 +139,6 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
                     particles.SpawnConfetti(headPos, 12);
                 }
             }
-            return;
         }
     }
 
@@ -151,46 +160,39 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
             for (auto& c : cars) c.doorOpenProgress = 0.0f;
             AudioManager::Play(SFX_VVVF_MOTOR, 0.7f);
             velocity = 2.0f;
+        } else {
+            velocity = 0.0f;
         }
-        return;
-    }
-
-    // Clear lastStationGx once far enough away from previous station
-    if (lastStationGx != -1) {
-        float distToLast = Vector2Distance(Vector2{(float)curGx, (float)curGy}, Vector2{(float)lastStationGx, (float)lastStationGy});
-        if (distToLast > 1.8f) {
-            lastStationGx = -1;
-            lastStationGy = -1;
-        }
-    }
-
-    // 3. Signaling & Speed Control
-    SignalAspect activeAspect = tracks.GetActiveSignalAspect();
-    float maxAllowedVelocity = 14.5f; // ~70 km/h cruising speed
-
-    if (activeAspect == SIGNAL_RED) {
-        maxAllowedVelocity = 0.0f;
-        state = TRAIN_SIGNAL_STOP;
-    } else if (activeAspect == SIGNAL_AMBER) {
-        maxAllowedVelocity = 7.5f; // ~36 km/h caution speed
-        state = TRAIN_APPROACHING_STATION;
     } else {
+        // Clear lastStationGx once far enough away from previous station
+        if (lastStationGx != -1) {
+            float distToLast = Vector2Distance(Vector2{(float)curGx, (float)curGy}, Vector2{(float)lastStationGx, (float)lastStationGy});
+            if (distToLast > 1.8f) {
+                lastStationGx = -1;
+                lastStationGy = -1;
+            }
+        }
+    }
+
+    // 3. Traction Speed Control & Cruising
+    if (state != TRAIN_BOARDING) {
+        float maxAllowedVelocity = 14.5f; // ~70 km/h cruising speed
         state = TRAIN_CRUISING;
-    }
 
-    // Smooth electric traction acceleration / braking
-    if (velocity < maxAllowedVelocity) {
-        velocity = std::min(maxAllowedVelocity, velocity + 6.0f * dt);
-    } else if (velocity > maxAllowedVelocity) {
-        velocity = std::max(maxAllowedVelocity, velocity - 8.5f * dt);
-    }
+        // Smooth electric traction acceleration / braking
+        if (velocity < maxAllowedVelocity) {
+            velocity = std::min(maxAllowedVelocity, velocity + 6.0f * dt);
+        } else if (velocity > maxAllowedVelocity) {
+            velocity = std::max(maxAllowedVelocity, velocity - 8.5f * dt);
+        }
 
-    // VVVF Inverter sound timing during acceleration
-    if (velocity > 3.0f && velocity < 12.0f) {
-        vvvfSoundTimer -= dt;
-        if (vvvfSoundTimer <= 0.0f) {
-            AudioManager::Play(SFX_VVVF_MOTOR, 0.35f);
-            vvvfSoundTimer = 3.5f;
+        // VVVF Inverter sound timing during acceleration
+        if (velocity > 3.0f && velocity < 12.0f) {
+            vvvfSoundTimer -= dt;
+            if (vvvfSoundTimer <= 0.0f) {
+                AudioManager::Play(SFX_VVVF_MOTOR, 0.35f);
+                vvvfSoundTimer = 3.5f;
+            }
         }
     }
 
@@ -201,7 +203,7 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
     }
 
     // 5. Update car positions & forward tangents
-    float carSpacing = 0.85f;
+    float carSpacing = 1.05f;
     for (size_t i = 0; i < cars.size(); ++i) {
         float carDist = distance - (float)i * carSpacing;
         if (carDist < 0.0f) carDist += circuitLen;
@@ -218,20 +220,20 @@ void MetroTrain::Draw(Vector2 camOffset, float zoom) const {
     // Draw from rear car to front car for correct isometric painter's order
     for (int i = (int)cars.size() - 1; i >= 0; --i) {
         const auto& car = cars[i];
-        Vector2 sPos = Iso::GridToScreen(car.pos.x, car.pos.y, car.pos.z, camOffset, zoom);
-        Vector2 sFwd = Iso::GridToScreen(car.pos.x + car.forward.x * 0.4f, car.pos.y + car.forward.y * 0.4f, car.pos.z + car.forward.z * 0.4f, camOffset, zoom);
+        Vector2 sPos = Iso::GridToScreen(car.pos.x, car.pos.y, car.pos.z + 0.32f, camOffset, zoom);
+        Vector2 sFwd = Iso::GridToScreen(car.pos.x + car.forward.x * 0.4f, car.pos.y + car.forward.y * 0.4f, car.pos.z + 0.32f + car.forward.z * 0.4f, camOffset, zoom);
 
         float angle = atan2f(sFwd.y - sPos.y, sFwd.x - sPos.x) * RAD2DEG;
-        float carLen = 17.0f * zoom;
-        float carWid = 10.0f * zoom;
+        float carLen = 32.0f * zoom;
+        float carWid = 16.0f * zoom;
 
         // 1. Soft Shadow on track / ground
-        Iso::DrawShadow(car.pos.x, car.pos.y, 8.0f, camOffset, zoom);
+        Iso::DrawShadow(car.pos.x, car.pos.y, 12.0f, camOffset, zoom);
 
         // 2. Dark Undercarriage & Wheel Bogies
         DrawRectanglePro(
-            Rectangle{sPos.x, sPos.y, carLen + 2.0f * zoom, carWid + 1.5f * zoom},
-            Vector2{(carLen + 2.0f * zoom) * 0.5f, (carWid + 1.5f * zoom) * 0.5f},
+            Rectangle{sPos.x, sPos.y, carLen + 2.0f * zoom, carWid + 2.0f * zoom},
+            Vector2{(carLen + 2.0f * zoom) * 0.5f, (carWid + 2.0f * zoom) * 0.5f},
             angle,
             Color{30, 41, 59, 255}
         );
@@ -246,35 +248,35 @@ void MetroTrain::Draw(Vector2 camOffset, float zoom) const {
 
         // 4. Line Color Livery Band along Car Flanks
         DrawRectanglePro(
-            Rectangle{sPos.x, sPos.y, carLen, 3.2f * zoom},
-            Vector2{carLen * 0.5f, 1.6f * zoom},
+            Rectangle{sPos.x, sPos.y, carLen, 5.0f * zoom},
+            Vector2{carLen * 0.5f, 2.5f * zoom},
             angle,
             themeColor
         );
 
-        // 5. Passenger Windows with Interior Lighting & Commuter Silhouettes
-        float winW = 3.5f * zoom;
-        float winH = 2.2f * zoom;
+        // 5. Passenger Windows with Interior Lighting & Warm Glow
+        float winW = 6.0f * zoom;
+        float winH = 3.6f * zoom;
         Vector2 perp = Vector2Normalize({-(sFwd.y - sPos.y), sFwd.x - sPos.x});
         Vector2 fwdNorm = Vector2Normalize({sFwd.x - sPos.x, sFwd.y - sPos.y});
 
         for (int w = -1; w <= 1; ++w) {
             Vector2 winCenter = {
-                sPos.x + fwdNorm.x * (float)w * 4.5f * zoom,
-                sPos.y + fwdNorm.y * (float)w * 4.5f * zoom - 2.5f * zoom
+                sPos.x + fwdNorm.x * (float)w * 8.5f * zoom,
+                sPos.y + fwdNorm.y * (float)w * 8.5f * zoom - 3.5f * zoom
             };
             DrawRectanglePro(
                 Rectangle{winCenter.x, winCenter.y, winW, winH},
                 Vector2{winW * 0.5f, winH * 0.5f},
                 angle,
-                Color{254, 240, 138, 220} // Warm interior passenger cabin glow
+                Color{254, 240, 138, 230} // Warm interior passenger cabin glow
             );
         }
 
         // 6. Sliding Plug Doors (Bi-parting doors open indicator)
         if (car.doorOpenProgress > 0.1f) {
             Vector2 doorPos = { sPos.x + perp.x * (carWid * 0.45f), sPos.y + perp.y * (carWid * 0.45f) };
-            DrawCircle((int)doorPos.x, (int)doorPos.y, 2.5f * zoom, Color{34, 197, 94, 255}); // Green boarding light
+            DrawCircle((int)doorPos.x, (int)doorPos.y, 3.5f * zoom, Color{34, 197, 94, 255}); // Green boarding light
         }
 
         // 7. Lead Locomotive Cab & Front Headlamps
@@ -283,47 +285,47 @@ void MetroTrain::Draw(Vector2 camOffset, float zoom) const {
 
             // Front Windshield (Dark Tinted Glass)
             DrawRectanglePro(
-                Rectangle{headLensPos.x, headLensPos.y, 3.5f * zoom, carWid * 0.8f},
-                Vector2{1.75f * zoom, (carWid * 0.8f) * 0.5f},
+                Rectangle{headLensPos.x, headLensPos.y, 5.0f * zoom, carWid * 0.8f},
+                Vector2{2.5f * zoom, (carWid * 0.8f) * 0.5f},
                 angle,
                 Color{15, 23, 42, 255}
             );
 
             // LED Destination Matrix Rollsign ("L1 DOWNTOWN")
             DrawRectanglePro(
-                Rectangle{headLensPos.x, headLensPos.y - 2.0f * zoom, 2.0f * zoom, 6.0f * zoom},
-                Vector2{1.0f * zoom, 3.0f * zoom},
+                Rectangle{headLensPos.x, headLensPos.y - 3.0f * zoom, 3.0f * zoom, 8.0f * zoom},
+                Vector2{1.5f * zoom, 4.0f * zoom},
                 angle,
                 Color{245, 158, 11, 255}
             );
 
             // Twin High-Beam Dual LED Headlights
-            Vector2 hl1 = { headLensPos.x + perp.x * 2.8f * zoom, headLensPos.y + perp.y * 2.8f * zoom };
-            Vector2 hl2 = { headLensPos.x - perp.x * 2.8f * zoom, headLensPos.y - perp.y * 2.8f * zoom };
-            DrawCircle((int)hl1.x, (int)hl1.y, 2.2f * zoom, WHITE);
-            DrawCircle((int)hl2.x, (int)hl2.y, 2.2f * zoom, WHITE);
+            Vector2 hl1 = { headLensPos.x + perp.x * 4.5f * zoom, headLensPos.y + perp.y * 4.5f * zoom };
+            Vector2 hl2 = { headLensPos.x - perp.x * 4.5f * zoom, headLensPos.y - perp.y * 4.5f * zoom };
+            DrawCircle((int)hl1.x, (int)hl1.y, 3.0f * zoom, WHITE);
+            DrawCircle((int)hl2.x, (int)hl2.y, 3.0f * zoom, WHITE);
 
             // Forward Light Illumination Cones on Rails
-            Vector2 beamEnd1 = { hl1.x + fwdNorm.x * 32.0f * zoom + perp.x * 14.0f * zoom, hl1.y + fwdNorm.y * 32.0f * zoom + perp.y * 14.0f * zoom };
-            Vector2 beamEnd2 = { hl2.x + fwdNorm.x * 32.0f * zoom - perp.x * 14.0f * zoom, hl2.y + fwdNorm.y * 32.0f * zoom - perp.y * 14.0f * zoom };
-            DrawTriangle(headLensPos, beamEnd1, beamEnd2, Color{254, 240, 138, 45});
+            Vector2 beamEnd1 = { hl1.x + fwdNorm.x * 45.0f * zoom + perp.x * 18.0f * zoom, hl1.y + fwdNorm.y * 45.0f * zoom + perp.y * 18.0f * zoom };
+            Vector2 beamEnd2 = { hl2.x + fwdNorm.x * 45.0f * zoom - perp.x * 18.0f * zoom, hl2.y + fwdNorm.y * 45.0f * zoom - perp.y * 18.0f * zoom };
+            DrawTriangle(headLensPos, beamEnd1, beamEnd2, Color{254, 240, 138, 55});
         }
 
         // 8. Trailing Rear Car Red Taillights
         if (i == (int)cars.size() - 1) {
             Vector2 tailPos = { sPos.x - fwdNorm.x * (carLen * 0.5f), sPos.y - fwdNorm.y * (carLen * 0.5f) };
-            Vector2 tl1 = { tailPos.x + perp.x * 2.8f * zoom, tailPos.y + perp.y * 2.8f * zoom };
-            Vector2 tl2 = { tailPos.x - perp.x * 2.8f * zoom, tailPos.y - perp.y * 2.8f * zoom };
-            DrawCircle((int)tl1.x, (int)tl1.y, 1.8f * zoom, Color{239, 68, 68, 255});
-            DrawCircle((int)tl2.x, (int)tl2.y, 1.8f * zoom, Color{239, 68, 68, 255});
+            Vector2 tl1 = { tailPos.x + perp.x * 4.5f * zoom, tailPos.y + perp.y * 4.5f * zoom };
+            Vector2 tl2 = { tailPos.x - perp.x * 4.5f * zoom, tailPos.y - perp.y * 4.5f * zoom };
+            DrawCircle((int)tl1.x, (int)tl1.y, 2.5f * zoom, Color{239, 68, 68, 255});
+            DrawCircle((int)tl2.x, (int)tl2.y, 2.5f * zoom, Color{239, 68, 68, 255});
         }
 
         // 9. Articulated Gangway Bellow between cars
         if (i < (int)cars.size() - 1) {
             Vector2 bellowPos = { sPos.x - fwdNorm.x * (carLen * 0.55f), sPos.y - fwdNorm.y * (carLen * 0.55f) };
             DrawRectanglePro(
-                Rectangle{bellowPos.x, bellowPos.y, 3.5f * zoom, carWid * 0.7f},
-                Vector2{1.75f * zoom, (carWid * 0.7f) * 0.5f},
+                Rectangle{bellowPos.x, bellowPos.y, 5.0f * zoom, carWid * 0.75f},
+                Vector2{2.5f * zoom, (carWid * 0.75f) * 0.5f},
                 angle,
                 Color{51, 65, 85, 255}
             );

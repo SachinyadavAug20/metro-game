@@ -65,7 +65,7 @@ void Game::Init() {
     engineer.targetPos = {7.0f, 13.0f};
     staff.push_back(engineer);
 
-    ShowToast("🚇 Welcome to METRO GRID! Line 1 Service Active | Press [H] for Manual", Color{56, 189, 248, 255}, 4.5f);
+    ShowToast("[METRO] Welcome to METRO GRID! Line 1 Service Active | Press [H] for Manual", Color{56, 189, 248, 255}, 4.5f);
 }
 
 void Game::ShowToast(const std::string& text, Color color, float duration) {
@@ -226,7 +226,7 @@ void Game::HandleInput() {
     // Hotkeys
     if (IsKeyPressed(KEY_F)) {
         rideCamActive = !rideCamActive;
-        ShowToast(rideCamActive ? "🎥 Driver's Cab Cam Active (Tracking Lead EMU)" : "Free OCC Camera Mode", Color{56, 189, 248, 255}, 2.0f);
+        ShowToast(rideCamActive ? "[CAB CAM] Driver's Cab Cam Active (Tracking Lead EMU)" : "Free OCC Camera Mode", Color{56, 189, 248, 255}, 2.0f);
         AudioManager::Play(SFX_BUTTON_CLICK, 0.7f);
     }
     if (IsKeyPressed(KEY_T)) {
@@ -562,7 +562,7 @@ void Game::HandleInput() {
                             particles.SpawnSparks(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 8);
 
                             if (!wasClosed && tracks.IsCircuitClosed()) {
-                                ShowToast("🚇 Transit Loop Closed! Regular EMU Schedule Active!", Color{34, 197, 94, 255}, 4.0f);
+                                ShowToast("[CIRCUIT] Transit Loop Closed! Regular EMU Schedule Active!", Color{34, 197, 94, 255}, 4.0f);
                                 AudioManager::Play(SFX_UPGRADE_FANFARE, 0.8f);
                             }
 
@@ -775,7 +775,7 @@ void Game::Update(float dt) {
 
     if (angry > 0) {
         angryLeaves += angry;
-        ShowToast("⚠️ Platform Overcrowding! Commuters left in frustration!", Color{239, 68, 68, 255}, 3.0f);
+        ShowToast("[ALERT] Platform Overcrowding! Commuters left in frustration!", Color{239, 68, 68, 255}, 3.0f);
         if (parkRating <= 0.0f) {
             state = STATE_GAME_OVER;
             AudioManager::Play(SFX_QUEUE_ALARM, 0.9f);

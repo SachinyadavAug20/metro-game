@@ -230,6 +230,7 @@ void Cleanup() {
     for (auto& pair : sounds) {
         UnloadSound(pair.second);
     }
+    sounds.clear();
     if (IsAudioDeviceReady()) {
         CloseAudioDevice();
     }
