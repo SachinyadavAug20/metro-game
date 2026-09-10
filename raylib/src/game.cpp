@@ -269,10 +269,9 @@ void Game::HandleInput() {
         AudioManager::Play(SFX_BUTTON_CLICK, 0.5f);
     }
 
-    // Rotation control
+    // Rotation / Heading control
     if (IsKeyPressed(KEY_R)) {
-        currentInDir = (Direction)((currentInDir + 1) % 4);
-        currentOutDir = (Direction)((currentOutDir + 1) % 4);
+        buildHeading = (Direction)((buildHeading + 1) % 4);
         AudioManager::Play(SFX_BUTTON_CLICK, 0.5f);
     }
 
@@ -509,8 +508,7 @@ void Game::HandleInput() {
         if (ui.CheckToolbarAuxClick(mousePos, zDelta, doRotate)) {
             if (zDelta != 0) currentZ = std::max(0, std::min(5, currentZ + zDelta));
             if (doRotate) {
-                currentInDir = (Direction)((currentInDir + 1) % 4);
-                currentOutDir = (Direction)((currentOutDir + 1) % 4);
+                buildHeading = (Direction)((buildHeading + 1) % 4);
             }
             AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
             return;
@@ -556,7 +554,9 @@ void Game::HandleInput() {
                 if (activeTab == CAT_TRACK) {
                     if (economy.balance >= 40.0f) {
                         bool wasClosed = tracks.IsCircuitClosed();
-                        if (tracks.AddPiece(hoveredGx, hoveredGy, currentZ, currentTrack, currentInDir, currentOutDir)) {
+                        Direction inDir, outDir;
+                        GetTrackPieceDirs(currentTrack, buildHeading, inDir, outDir);
+                        if (tracks.AddPiece(hoveredGx, hoveredGy, currentZ, currentTrack, inDir, outDir)) {
                             economy.balance -= 40.0f;
                             AudioManager::Play(SFX_CONSTRUCTION, 0.8f);
                             particles.SpawnSparks(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 8);
@@ -566,10 +566,11 @@ void Game::HandleInput() {
                                 AudioManager::Play(SFX_UPGRADE_FANFARE, 0.8f);
                             }
 
-                            // Auto-advance cursor forward along track direction
-                            Vector2 fwd = GetDirectionOffset(currentOutDir);
+                            // Auto-advance cursor forward along track exit direction and sync build heading!
+                            Vector2 fwd = GetDirectionOffset(outDir);
                             hoveredGx += (int)fwd.x;
                             hoveredGy += (int)fwd.y;
+                            buildHeading = outDir; // Auto-align next track piece
                             if (currentTrack == TRACK_VIADUCT_ELEVATED) currentZ++;
                             if (currentTrack == TRACK_VIADUCT_SLOPE) currentZ = std::max(0, currentZ - 1);
                         }
@@ -846,7 +847,9 @@ void Game::Draw() {
             Iso::DrawCursor(hoveredGx, hoveredGy, currentZ, cameraPos, zoom, Color{239, 68, 68, 220});
         } else {
             if (activeTab == CAT_TRACK) {
-                tracks.DrawGhostPiece(hoveredGx, hoveredGy, currentZ, currentTrack, currentInDir, currentOutDir, cameraPos, zoom, true);
+                Direction inDir, outDir;
+                GetTrackPieceDirs(currentTrack, buildHeading, inDir, outDir);
+                tracks.DrawGhostPiece(hoveredGx, hoveredGy, currentZ, currentTrack, inDir, outDir, cameraPos, zoom, true);
             } else if (activeTab == CAT_INFRA) {
                 Iso::DrawCursor(hoveredGx, hoveredGy, 0, cameraPos, zoom, Color{56, 189, 248, 200});
             } else if (activeTab == CAT_SCENERY) {
@@ -896,6 +899,23 @@ void Game::Draw() {
         helpOverlayOpen
     );
 
+    // 12b. Draw Contextual Quick Tip Banner
+    std::string quickTip;
+    if (isBulldozing) {
+        quickTip = "[BULLDOZE ACTIVE] Click any rail, platform, or prop to demolish and recover funds (Press X or 1-8 to switch tools)";
+    } else if (activeTab == CAT_TRACK) {
+        if (tracks.IsCircuitClosed()) {
+            quickTip = "[TRANSIT LOOP ACTIVE] EMU running! Add Stations [7] & Signals [8] to regulate passenger throughput";
+        } else {
+            quickTip = "[BUILD RAILS] 1=Straight, 2=L-Turn Left, 3=R-Turn Right | R=Heading | Left Click to Lay";
+        }
+    } else if (activeTab == CAT_INFRA) {
+        quickTip = "[CONCOURSE] 1=Sidewalk, 2=Tactile Queue, 3=Plaza Stone | Pave passenger paths to platforms";
+    } else if (activeTab == CAT_SCENERY) {
+        quickTip = "[STATION AMENITIES] 1=Stairs Entrance, 2=Fare Gates, 3=Map Board, 7=LED Lamps | Place to boost comfort";
+    }
+    ui.DrawQuickTipBanner(quickTip);
+
     // 13. Draw Categorized Toolbar
     ui.DrawToolbar(
         activeTab,
@@ -903,7 +923,7 @@ void Game::Draw() {
         currentScenery,
         currentGround,
         currentZ,
-        currentOutDir,
+        buildHeading,
         isBulldozing
     );
 

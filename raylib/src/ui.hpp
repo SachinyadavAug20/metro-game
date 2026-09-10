@@ -50,6 +50,7 @@ public:
     void DrawTransitCrewWindow(const std::vector<StaffMember>& staff, float cleanliness, float balance);
     void DrawCommuterInspector(const Commuter* commuter);
     void DrawToast(const ToastMessage& toast);
+    void DrawQuickTipBanner(const std::string& tip);
     void DrawTransitOperationsManual();
     void DrawWeeklyModal(const std::vector<UpgradeChoice>& choices, int hoveredChoice);
     void DrawGameOver(int finalRidership);

@@ -54,6 +54,16 @@ public:
             staff[1].workTimer = 1.2f;
         }
     }
+    void SetHoveredGrid(int gx, int gy) {
+        hoveredGx = gx;
+        hoveredGy = gy;
+    }
+    void SetBuildTool(TrackType t, Direction heading) {
+        activeTab = CAT_TRACK;
+        currentTrack = t;
+        buildHeading = heading;
+        isBulldozing = false;
+    }
     void Step(float dt) {
         Update(dt);
     }
@@ -112,12 +122,28 @@ int main() {
     TakeScreenshot("test_metro_crew_management.png");
     std::cout << "Captured test_metro_crew_management.png\n";
 
-    // 6. OCC Operations Manual & Dispatch Guide Overlay
+    // 6. OCC Operations Manual (Overhauled 3-Step Clear Guide)
     game.OpenStaffWindow(false);
     game.OpenManualOverlay(true);
     game.Render();
     TakeScreenshot("test_metro_operations_manual.png");
     std::cout << "Captured test_metro_operations_manual.png\n";
+
+    // 7. L-Turn Rail Construction Ghost with Directional Arrow
+    game.OpenManualOverlay(false);
+    game.SetCamera({660.0f, -80.0f}, 1.35f);
+    game.SetBuildTool(TRACK_CURVE_LEFT, DIR_EAST);
+    game.SetHoveredGrid(10, 11);
+    game.Render();
+    TakeScreenshot("test_metro_lturn_placement.png");
+    std::cout << "Captured test_metro_lturn_placement.png\n";
+
+    // 8. In-Game HUD Quick Tip Banner & Streamlined Toolbar Labels
+    game.SetBuildTool(TRACK_STRAIGHT, DIR_EAST);
+    game.SetHoveredGrid(5, 12);
+    game.Render();
+    TakeScreenshot("test_metro_simple_instructions.png");
+    std::cout << "Captured test_metro_simple_instructions.png\n";
 
     CloseWindow();
     return 0;

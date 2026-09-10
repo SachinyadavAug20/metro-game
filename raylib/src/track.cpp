@@ -651,4 +651,22 @@ void TrackSystem::DrawGhostPiece(int gx, int gy, int gz, TrackType type, Directi
 
     Iso::DrawCursor(gx, gy, gz, camOffset, zoom, ghost.color);
     DrawSinglePiece(ghost, camOffset, zoom);
+
+    // Directional flow arrow indicating train travel path
+    if (ghost.splinePoints.size() >= 2) {
+        size_t midIdx = ghost.splinePoints.size() / 2;
+        Vector3 pA = ghost.splinePoints[midIdx - 1];
+        Vector3 pB = ghost.splinePoints[midIdx];
+        Vector2 sA = Iso::GridToScreen(pA.x, pA.y, pA.z + 0.35f, camOffset, zoom);
+        Vector2 sB = Iso::GridToScreen(pB.x, pB.y, pB.z + 0.35f, camOffset, zoom);
+        Vector2 fwd = Vector2Normalize({sB.x - sA.x, sB.y - sA.y});
+        Vector2 norm = {-fwd.y, fwd.x};
+
+        Vector2 tip = {sB.x + fwd.x * 7.0f * zoom, sB.y + fwd.y * 7.0f * zoom};
+        Vector2 leftWing = {sB.x - fwd.x * 5.0f * zoom + norm.x * 5.0f * zoom, sB.y - fwd.y * 5.0f * zoom + norm.y * 5.0f * zoom};
+        Vector2 rightWing = {sB.x - fwd.x * 5.0f * zoom - norm.x * 5.0f * zoom, sB.y - fwd.y * 5.0f * zoom - norm.y * 5.0f * zoom};
+
+        DrawTriangle(tip, leftWing, rightWing, Color{255, 214, 0, 240});
+        DrawCircle((int)tip.x, (int)tip.y, 2.5f * zoom, Color{255, 255, 255, 220});
+    }
 }

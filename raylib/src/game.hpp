@@ -50,12 +50,22 @@ protected:
     TrackType currentTrack = TRACK_STRAIGHT;
     SceneryType currentScenery = SCENERY_PINE_TREE;
     GroundType currentGround = GROUND_PATH;
-    Direction currentInDir = DIR_WEST;
-    Direction currentOutDir = DIR_EAST;
+    Direction buildHeading = DIR_EAST;
     int currentZ = 0;
     bool isBulldozing = false;
     int hoveredGx = -1;
     int hoveredGy = -1;
+
+    void GetTrackPieceDirs(TrackType type, Direction heading, Direction& outInDir, Direction& outOutDir) const {
+        outInDir = GetOppositeDir(heading);
+        if (type == TRACK_CURVE_LEFT) {
+            outOutDir = (Direction)((heading + 3) % 4); // 90 deg counter-clockwise (L-turn)
+        } else if (type == TRACK_CURVE_RIGHT) {
+            outOutDir = (Direction)((heading + 1) % 4); // 90 deg clockwise (R-turn)
+        } else {
+            outOutDir = heading; // Straight ahead
+        }
+    }
 
     // UI Panels & Inspection
     bool statsWindowOpen = false;
