@@ -64,15 +64,15 @@ protected:
     int selectedPeepIdx = -1;
     ToastMessage activeToast;
 
-    // Staff & Park Maintenance
+    // Staff & Station Maintenance
     std::vector<StaffMember> staff;
-    std::vector<ParkMess> messes;
+    std::vector<StationMess> messes;
     float parkCleanliness = 100.0f;
     float staffWageTimer = 0.0f;
 
-    // Park Stats, Economy & Progression
-    ParkEconomy economy;
-    CoasterStats cachedStats;
+    // Transit Stats, Economy & Progression
+    TransitEconomy economy;
+    MetroLineStats cachedStats;
     float parkRating = 85.0f;
     int angryLeaves = 0;
     int week = 1;

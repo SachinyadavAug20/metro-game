@@ -5,12 +5,15 @@ LIBS = $(shell pkg-config --libs raylib 2>/dev/null || echo "-lraylib -lm -lpthr
 
 SRCS = $(wildcard src/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
-TARGET = coaster_grid
+TARGET = metro_grid
 
-all: $(TARGET)
+all: $(TARGET) coaster_grid
 
 $(TARGET): $(OBJS)
 	$(CXX) $(OBJS) -o $(TARGET) $(LIBS)
+
+coaster_grid: $(TARGET)
+	ln -sf $(TARGET) coaster_grid
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@

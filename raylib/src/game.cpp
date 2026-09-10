@@ -18,21 +18,21 @@ void Game::Init() {
     if (screenH <= 0) screenH = 720;
 
     zoom = 1.0f;
-    // Center camera on the coaster circuit and station
-    cameraPos = {(float)screenW / 2.0f + 96.0f * zoom, ((float)screenH / 2.0f - 20.0f) - 400.0f * zoom};
+    // Center camera on the metropolitan transit circuit and Central Hub
+    cameraPos = {(float)screenW / 2.0f + 40.0f * zoom, ((float)screenH / 2.0f - 20.0f) - 420.0f * zoom};
 
     SetupInitialPark();
     tracks.InitDefaultCircuit();
     train.Reset(tracks);
-    peeps.Init({2.0f, 12.0f}, {7.0f, 13.0f}, {8.0f, 14.0f});
+    peeps.Init({2.0f, 12.0f}, {7.0f, 13.0f}, {6.0f, 14.0f});
     particles.Clear();
 
-    economy.balance = 1500.0f;
-    economy.admissionPrice = 5.0f;
+    economy.balance = 2500.0f;
+    economy.baseFare = 2.50f;
     economy.totalDelivered = 0;
-    cachedStats.ticketPrice = 5.0f;
+    cachedStats.ticketFare = 2.50f;
 
-    parkRating = 85.0f;
+    parkRating = 90.0f;
     angryLeaves = 0;
     week = 1;
     weekTimer = 0.0f;
@@ -51,21 +51,21 @@ void Game::Init() {
     parkCleanliness = 100.0f;
     staffWageTimer = 0.0f;
 
-    StaffMember handyman;
-    handyman.name = "Bob (Handyman)";
-    handyman.type = STAFF_HANDYMAN;
-    handyman.pos = {3.0f, 12.0f};
-    handyman.targetPos = {3.0f, 12.0f};
-    staff.push_back(handyman);
+    StaffMember custodian;
+    custodian.name = "Kenji (Custodian)";
+    custodian.type = STAFF_CUSTODIAN;
+    custodian.pos = {3.0f, 12.0f};
+    custodian.targetPos = {3.0f, 12.0f};
+    staff.push_back(custodian);
 
-    StaffMember mechanic;
-    mechanic.name = "Hank (Mechanic)";
-    mechanic.type = STAFF_MECHANIC;
-    mechanic.pos = {8.0f, 13.0f};
-    mechanic.targetPos = {8.0f, 13.0f};
-    staff.push_back(mechanic);
+    StaffMember engineer;
+    engineer.name = "Sato (Signal Engineer)";
+    engineer.type = STAFF_ENGINEER;
+    engineer.pos = {7.0f, 13.0f};
+    engineer.targetPos = {7.0f, 13.0f};
+    staff.push_back(engineer);
 
-    ShowToast("Welcome to COASTER GRID! Press [H] for Help | [P] Staff", Color{56, 189, 248, 255}, 4.5f);
+    ShowToast("🚇 Welcome to METRO GRID! Line 1 Service Active | Press [H] for Manual", Color{56, 189, 248, 255}, 4.5f);
 }
 
 void Game::ShowToast(const std::string& text, Color color, float duration) {
@@ -83,48 +83,65 @@ void Game::SetupInitialPark() {
         }
     }
 
-    // East river canal
-    for (int y = 0; y < GRID_SIZE; ++y) {
-        terrain[20][y] = GROUND_WATER;
-        terrain[21][y] = GROUND_WATER;
+    // Urban River Canal under elevated Marina Viaduct
+    for (int y = 9; y <= 18; ++y) {
+        terrain[11][y] = GROUND_WATER;
+        terrain[12][y] = GROUND_WATER;
     }
 
-    // Main entrance path to Station at (8, 12)
-    for (int x = 0; x <= 8; ++x) {
+    // Pedestrian sidewalks connecting subway entrance to Central Hub
+    for (int x = 0; x <= 5; ++x) {
         terrain[x][12] = GROUND_PATH;
     }
+
+    // Granite Transit Plaza at Central Hub
+    for (int x = 5; x <= 8; ++x) {
+        for (int y = 11; y <= 13; ++y) {
+            terrain[x][y] = GROUND_PLAZA;
+        }
+    }
+
+    // Tactile safety platform edge queue zones
     terrain[7][13] = GROUND_QUEUE;
     terrain[8][13] = GROUND_QUEUE;
+
+    // Concourse path connecting to transfer station
     terrain[8][14] = GROUND_PATH;
     terrain[7][14] = GROUND_PATH;
     terrain[6][14] = GROUND_PATH;
     terrain[6][13] = GROUND_PATH;
 
-    // Scenic Landscaping
-    scenery[3][5] = SCENERY_PINE_TREE;
-    scenery[6][4] = SCENERY_PINE_TREE;
-    scenery[18][8] = SCENERY_PINE_TREE;
-    scenery[18][14] = SCENERY_PINE_TREE;
-    scenery[19][18] = SCENERY_PINE_TREE;
-    scenery[4][18] = SCENERY_PINE_TREE;
-    scenery[11][21] = SCENERY_PINE_TREE;
-    scenery[16][20] = SCENERY_PINE_TREE;
+    // Concourse towards University Med Center
+    terrain[8][15] = GROUND_PATH;
+    terrain[9][15] = GROUND_PATH;
 
-    scenery[2][10] = SCENERY_OAK_TREE;
-    scenery[4][14] = SCENERY_OAK_TREE;
-    scenery[1][14] = SCENERY_OAK_TREE;
-    scenery[11][18] = SCENERY_OAK_TREE;
+    // Urban Transit Station Amenities & Scenery
+    scenery[2][12] = SCENERY_METRO_ENTRANCE; // Subway stairs with illuminated "M" roundel totem
+    scenery[4][12] = SCENERY_TURNSTILE_GATE; // Contactless fare gates & TVM ticket machine
+    scenery[3][11] = SCENERY_MAP_KIOSK;      // Harry Beck style schematic transit map board
+    scenery[6][11] = SCENERY_NEWSSTAND;      // Platform coffee & newspaper kiosk
+    scenery[1][13] = SCENERY_BIKE_RACK;      // Metro bike share docking rack
 
-    // Park Amenities & Landscaping
+    // Platform Benches
     scenery[5][11] = SCENERY_BENCH;
     scenery[7][11] = SCENERY_BENCH;
-    scenery[4][10] = SCENERY_FOUNTAIN;
-    scenery[3][11] = SCENERY_FLOWER_BED;
-    scenery[4][11] = SCENERY_FLOWER_BED;
-    scenery[6][15] = SCENERY_DRINK_STALL;
-    scenery[1][11] = SCENERY_BALLOON_STALL;
+
+    // High-Efficiency Municipal LED Streetlamps
     scenery[3][13] = SCENERY_LAMP_POST;
-    scenery[8][15] = SCENERY_LAMP_POST;
+    scenery[8][11] = SCENERY_LAMP_POST;
+    scenery[6][15] = SCENERY_LAMP_POST;
+
+    // Manicured Urban Ginkgo / Street Trees with sidewalk iron grates
+    scenery[2][10] = SCENERY_STREET_TREE;
+    scenery[4][10] = SCENERY_STREET_TREE;
+    scenery[1][15] = SCENERY_STREET_TREE;
+    scenery[5][14] = SCENERY_STREET_TREE;
+
+    // Metropolitan Park Pine Trees across the canal
+    scenery[15][8]  = SCENERY_PINE_TREE;
+    scenery[16][12] = SCENERY_PINE_TREE;
+    scenery[17][15] = SCENERY_PINE_TREE;
+    scenery[15][18] = SCENERY_PINE_TREE;
 }
 
 void Game::ResetPark() {
@@ -133,38 +150,40 @@ void Game::ResetPark() {
 
 void Game::GenerateWeeklyUpgrades() {
     activeUpgrades.clear();
+
     UpgradeChoice c1;
-    c1.title = "Add Extra Carriage";
-    c1.description = "Increases train capacity by 2 seats to clear queues faster.";
-    c1.perkTag = "+2 SEATS / DISPATCH";
-    c1.accentColor = Color{59, 130, 246, 255}; // Blue
+    c1.title = "4-Car EMU Trainset";
+    c1.description = "Extends rolling stock formation to 4 cars, adding +4 commuter capacity.";
+    c1.perkTag = "+4 SEATS / TRAIN";
+    c1.accentColor = Color{56, 189, 248, 255}; // Sky Blue
     activeUpgrades.push_back(c1);
 
     UpgradeChoice c2;
-    c2.title = "Magnetic Boosters";
-    c2.description = "Boosts lift hill chain speed by 30% for faster circuit turnaround.";
-    c2.perkTag = "FAST DISPATCH";
-    c2.accentColor = Color{234, 88, 12, 255}; // Orange
+    c2.title = "CBTC Signaling & Boost";
+    c2.description = "Upgrades track signaling to Communications-Based Train Control, raising cruising speed to 75 km/h.";
+    c2.perkTag = "HIGH-SPEED CBTC";
+    c2.accentColor = Color{220, 38, 38, 255}; // Red
     activeUpgrades.push_back(c2);
 
     UpgradeChoice c3;
-    c3.title = "Express Queue Pass";
-    c3.description = "Doubles queue tolerance time before overcrowding clocks trigger.";
-    c3.perkTag = "ANTI-OVERCROWD";
+    c3.title = "Transit Subsidy & Pass";
+    c3.description = "Receives $1,200 municipal transit subsidy and boosts commuter satisfaction by +15%.";
+    c3.perkTag = "+$1,200 CASH & 15% SAT";
     c3.accentColor = Color{16, 185, 129, 255}; // Green
     activeUpgrades.push_back(c3);
 }
 
 void Game::ApplyUpgrade(int choiceIdx) {
     if (choiceIdx == 0) {
-        train.SetCarriageCount(train.GetMaxCapacity() / 2 + 1);
-        ShowToast("Upgrade Applied: Extra Carriage added!", Color{59, 130, 246, 255});
+        train.SetCarriageCount(4);
+        ShowToast("Upgrade Applied: 4-Car EMU Trainset deployed!", Color{56, 189, 248, 255});
     } else if (choiceIdx == 1) {
-        peeps.SetSpawnInterval(1.8f);
-        ShowToast("Upgrade Applied: Fast Dispatch Boost activated!", Color{234, 88, 12, 255});
+        peeps.SetSpawnInterval(1.6f);
+        ShowToast("Upgrade Applied: CBTC Signaling & rapid dispatches active!", Color{220, 38, 38, 255});
     } else if (choiceIdx == 2) {
+        economy.balance += 1200.0f;
         parkRating = std::min(100.0f, parkRating + 15.0f);
-        ShowToast("Upgrade Applied: Express Pass & +15% Rating!", Color{16, 185, 129, 255});
+        ShowToast("Upgrade Applied: +$1,200 Subsidy & Commuter Satisfaction boosted!", Color{16, 185, 129, 255});
     }
     state = STATE_PLAYING;
     AudioManager::Play(SFX_UPGRADE_FANFARE, 0.9f);
@@ -173,7 +192,7 @@ void Game::ApplyUpgrade(int choiceIdx) {
 void Game::HandleInput() {
     Vector2 mousePos = GetMousePosition();
 
-    // 1. Camera Panning with WASD / Keys
+    // 1. Camera Panning with WASD / Arrow Keys
     float panSpeed = 480.0f * GetFrameTime();
     bool manualPan = false;
     if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))    { cameraPos.y += panSpeed; manualPan = true; }
@@ -207,7 +226,7 @@ void Game::HandleInput() {
     // Hotkeys
     if (IsKeyPressed(KEY_F)) {
         rideCamActive = !rideCamActive;
-        ShowToast(rideCamActive ? "🎥 Ride Cam Active (Following Coaster)" : "Free Camera Mode", Color{56, 189, 248, 255}, 2.0f);
+        ShowToast(rideCamActive ? "🎥 Driver's Cab Cam Active (Tracking Lead EMU)" : "Free OCC Camera Mode", Color{56, 189, 248, 255}, 2.0f);
         AudioManager::Play(SFX_BUTTON_CLICK, 0.7f);
     }
     if (IsKeyPressed(KEY_T)) {
@@ -230,8 +249,8 @@ void Game::HandleInput() {
         AudioManager::SetMute(!AudioManager::IsMuted());
     }
     if (IsKeyPressed(KEY_C)) {
-        train.RecoverFromCrash(tracks);
-        ShowToast("Coaster Train Recovered to Station", Color{255, 214, 0, 255}, 2.5f);
+        train.Reset(tracks);
+        ShowToast("Train Calibrated to Central Hub Station", Color{255, 214, 0, 255}, 2.5f);
         AudioManager::Play(SFX_BUTTON_CLICK, 0.8f);
     }
     if (IsKeyPressed(KEY_TAB)) {
@@ -257,7 +276,7 @@ void Game::HandleInput() {
         AudioManager::Play(SFX_BUTTON_CLICK, 0.5f);
     }
 
-    // Quick Tool Selection Keys
+    // Quick Tool Selection Keys (1-8 & X)
     if (IsKeyPressed(KEY_X)) {
         isBulldozing = !isBulldozing;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
@@ -265,50 +284,51 @@ void Game::HandleInput() {
     if (IsKeyPressed(KEY_ONE)) {
         if (activeTab == CAT_TRACK) currentTrack = TRACK_STRAIGHT;
         else if (activeTab == CAT_INFRA) currentGround = GROUND_PATH;
-        else currentScenery = SCENERY_PINE_TREE;
+        else currentScenery = SCENERY_METRO_ENTRANCE;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_TWO)) {
         if (activeTab == CAT_TRACK) currentTrack = TRACK_CURVE_LEFT;
         else if (activeTab == CAT_INFRA) currentGround = GROUND_QUEUE;
-        else currentScenery = SCENERY_OAK_TREE;
+        else currentScenery = SCENERY_TURNSTILE_GATE;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_THREE)) {
         if (activeTab == CAT_TRACK) currentTrack = TRACK_CURVE_RIGHT;
-        else currentScenery = SCENERY_BENCH;
+        else if (activeTab == CAT_INFRA) currentGround = GROUND_PLAZA;
+        else currentScenery = SCENERY_MAP_KIOSK;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_FOUR)) {
-        if (activeTab == CAT_TRACK) currentTrack = TRACK_LIFT_HILL;
-        else currentScenery = SCENERY_FOUNTAIN;
+        if (activeTab == CAT_TRACK) currentTrack = TRACK_VIADUCT_ELEVATED;
+        else currentScenery = SCENERY_STREET_TREE;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_FIVE)) {
-        if (activeTab == CAT_TRACK) currentTrack = TRACK_DROP;
-        else currentScenery = SCENERY_FLOWER_BED;
+        if (activeTab == CAT_TRACK) currentTrack = TRACK_VIADUCT_SLOPE;
+        else currentScenery = SCENERY_PINE_TREE;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_SIX)) {
-        if (activeTab == CAT_TRACK) currentTrack = TRACK_LOOP;
-        else currentScenery = SCENERY_DRINK_STALL;
+        if (activeTab == CAT_TRACK) currentTrack = TRACK_TUNNEL_PORTAL;
+        else currentScenery = SCENERY_BENCH;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_SEVEN)) {
-        if (activeTab == CAT_TRACK) currentTrack = TRACK_BRAKES;
-        else currentScenery = SCENERY_BALLOON_STALL;
+        if (activeTab == CAT_TRACK) currentTrack = TRACK_STATION;
+        else currentScenery = SCENERY_LAMP_POST;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_EIGHT)) {
-        if (activeTab == CAT_TRACK) currentTrack = TRACK_STATION;
-        else currentScenery = SCENERY_LAMP_POST;
+        if (activeTab == CAT_TRACK) currentTrack = TRACK_SIGNAL;
+        else currentScenery = SCENERY_NEWSSTAND;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
@@ -359,33 +379,37 @@ void Game::HandleInput() {
             return;
         }
 
-        // Stats Window Click
+        // Line Operations Window Click
         if (statsWindowOpen) {
-            float deltaPrice = 0.0f;
+            float deltaFare = 0.0f;
             int colorChoice = -1;
             bool closeStats = false;
-            if (ui.CheckStatsWindowClick(mousePos, deltaPrice, colorChoice, closeStats)) {
+            if (ui.CheckStatsWindowClick(mousePos, deltaFare, colorChoice, closeStats)) {
                 if (closeStats) statsWindowOpen = false;
-                if (deltaPrice != 0.0f) {
-                    cachedStats.ticketPrice = std::max(1.0f, std::min(20.0f, cachedStats.ticketPrice + deltaPrice));
+                if (deltaFare != 0.0f) {
+                    cachedStats.ticketFare = std::max(0.50f, std::min(10.0f, cachedStats.ticketFare + deltaFare));
                 }
                 if (colorChoice != -1) {
-                    Color themes[] = {
-                        Color{229, 57, 53, 255}, // Red
-                        Color{37, 99, 235, 255}, // Blue
-                        Color{16, 185, 129, 255}, // Green
-                        Color{147, 51, 234, 255}, // Purple
-                        Color{245, 158, 11, 255}  // Amber
+                    Color liveries[] = {
+                        Color{229, 57, 53, 255},  // Tokyo Red (Marunouchi)
+                        Color{37, 99, 235, 255},  // London Blue (Piccadilly)
+                        Color{16, 185, 129, 255}, // Paris Green (Line 6)
+                        Color{147, 51, 234, 255}, // MTR Purple (Tseung Kwan O)
+                        Color{245, 158, 11, 255}  // Chicago Amber (Brown Line)
                     };
                     const char* names[] = {
-                        "The Red Falcon", "The Blue Comet", "The Emerald Viper", "The Mystic Phantom", "The Golden Dragon"
+                        "Line 1 - Marunouchi Red",
+                        "Line 2 - Piccadilly Blue",
+                        "Line 3 - Paris Emerald",
+                        "Line 4 - Victoria Purple",
+                        "Line 5 - Chicago Amber"
                     };
-                    cachedStats.themeColor = themes[colorChoice];
-                    cachedStats.coasterName = names[colorChoice];
-                    tracks.SetTrackColor(themes[colorChoice]);
-                    train.SetTrainTheme(themes[colorChoice]);
-                    train.SetCoasterName(names[colorChoice]);
-                    ShowToast(TextFormat("Coaster repainted: %s!", names[colorChoice]), themes[colorChoice], 3.0f);
+                    cachedStats.themeColor = liveries[colorChoice];
+                    cachedStats.lineName = names[colorChoice];
+                    tracks.SetTrackColor(liveries[colorChoice]);
+                    train.SetTrainTheme(liveries[colorChoice]);
+                    train.SetLineName(names[colorChoice]);
+                    ShowToast(TextFormat("Route Livery Updated: %s!", names[colorChoice]), liveries[colorChoice], 3.0f);
                     AudioManager::Play(SFX_UPGRADE_FANFARE, 0.7f);
                 }
                 AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
@@ -393,41 +417,41 @@ void Game::HandleInput() {
             }
         }
 
-        // Staff Window Click
+        // Transit Crew Window Click
         if (staffWindowOpen) {
-            bool hireHandyman = false;
-            bool hireMechanic = false;
-            bool closeStaff = false;
-            if (ui.CheckStaffWindowClick(mousePos, hireHandyman, hireMechanic, closeStaff)) {
-                if (closeStaff) staffWindowOpen = false;
-                if (hireHandyman) {
+            bool hireCustodian = false;
+            bool hireTechnician = false;
+            bool closeCrew = false;
+            if (ui.CheckStaffWindowClick(mousePos, hireCustodian, hireTechnician, closeCrew)) {
+                if (closeCrew) staffWindowOpen = false;
+                if (hireCustodian) {
                     if (economy.balance >= 80.0f) {
                         economy.balance -= 80.0f;
-                        StaffMember h;
-                        h.name = TextFormat("Handyman #%d", (int)staff.size() + 1);
-                        h.type = STAFF_HANDYMAN;
-                        h.pos = {2.0f, 12.0f};
-                        h.targetPos = {2.0f, 12.0f};
-                        staff.push_back(h);
-                        ShowToast("Hired Handyman! Park paths will be kept sparkling.", Color{59, 130, 246, 255}, 3.0f);
-                        AudioManager::Play(SFX_CASH_REGISTER, 0.7f);
+                        StaffMember c;
+                        c.name = TextFormat("Custodian #%d", (int)staff.size() + 1);
+                        c.type = STAFF_CUSTODIAN;
+                        c.pos = {2.0f, 12.0f};
+                        c.targetPos = {2.0f, 12.0f};
+                        staff.push_back(c);
+                        ShowToast("Hired Station Custodian! Platforms kept sparkling clean.", Color{59, 130, 246, 255}, 3.0f);
+                        AudioManager::Play(SFX_SMARTCARD_BEEP, 0.7f);
                     } else {
-                        ShowToast("Insufficient funds to hire Handyman ($80 required)", Color{239, 68, 68, 255}, 2.5f);
+                        ShowToast("Insufficient funds to hire Custodian ($80 required)", Color{239, 68, 68, 255}, 2.5f);
                     }
                 }
-                if (hireMechanic) {
+                if (hireTechnician) {
                     if (economy.balance >= 100.0f) {
                         economy.balance -= 100.0f;
-                        StaffMember m;
-                        m.name = TextFormat("Mechanic #%d", (int)staff.size() + 1);
-                        m.type = STAFF_MECHANIC;
-                        m.pos = {8.0f, 13.0f};
-                        m.targetPos = {8.0f, 13.0f};
-                        staff.push_back(m);
-                        ShowToast("Hired Mechanic! Coaster safety and speed ensured.", Color{245, 158, 11, 255}, 3.0f);
-                        AudioManager::Play(SFX_CASH_REGISTER, 0.7f);
+                        StaffMember t;
+                        t.name = TextFormat("Technician #%d", (int)staff.size() + 1);
+                        t.type = STAFF_ENGINEER;
+                        t.pos = {7.0f, 13.0f};
+                        t.targetPos = {7.0f, 13.0f};
+                        staff.push_back(t);
+                        ShowToast("Hired Signal Technician! Track switches and signals inspected.", Color{245, 158, 11, 255}, 3.0f);
+                        AudioManager::Play(SFX_SMARTCARD_BEEP, 0.7f);
                     } else {
-                        ShowToast("Insufficient funds to hire Mechanic ($100 required)", Color{239, 68, 68, 255}, 2.5f);
+                        ShowToast("Insufficient funds to hire Technician ($100 required)", Color{239, 68, 68, 255}, 2.5f);
                     }
                 }
                 AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
@@ -457,20 +481,20 @@ void Game::HandleInput() {
             if (activeTab == CAT_TRACK) {
                 TrackType tTypes[] = {
                     TRACK_STRAIGHT, TRACK_CURVE_LEFT, TRACK_CURVE_RIGHT,
-                    TRACK_LIFT_HILL, TRACK_DROP, TRACK_LOOP, TRACK_BRAKES,
-                    TRACK_STATION, TRACK_NONE
+                    TRACK_VIADUCT_ELEVATED, TRACK_VIADUCT_SLOPE, TRACK_TUNNEL_PORTAL,
+                    TRACK_STATION, TRACK_SIGNAL, TRACK_NONE
                 };
                 if (itemIdx == 8) isBulldozing = true;
                 else { isBulldozing = false; currentTrack = tTypes[itemIdx]; }
             } else if (activeTab == CAT_INFRA) {
-                if (itemIdx == 0) { isBulldozing = false; currentGround = GROUND_PATH; }
-                else if (itemIdx == 1) { isBulldozing = false; currentGround = GROUND_QUEUE; }
-                else isBulldozing = true;
+                GroundType gTypes[] = { GROUND_PATH, GROUND_QUEUE, GROUND_PLAZA, GROUND_GRASS };
+                if (itemIdx == 3) isBulldozing = true;
+                else { isBulldozing = false; currentGround = gTypes[itemIdx]; }
             } else if (activeTab == CAT_SCENERY) {
                 SceneryType sTypes[] = {
-                    SCENERY_PINE_TREE, SCENERY_OAK_TREE, SCENERY_BENCH,
-                    SCENERY_FOUNTAIN, SCENERY_FLOWER_BED,
-                    SCENERY_DRINK_STALL, SCENERY_BALLOON_STALL, SCENERY_LAMP_POST, SCENERY_NONE
+                    SCENERY_METRO_ENTRANCE, SCENERY_TURNSTILE_GATE, SCENERY_MAP_KIOSK,
+                    SCENERY_STREET_TREE, SCENERY_PINE_TREE,
+                    SCENERY_BENCH, SCENERY_LAMP_POST, SCENERY_NEWSSTAND, SCENERY_NONE
                 };
                 if (itemIdx == 8) isBulldozing = true;
                 else { isBulldozing = false; currentScenery = sTypes[itemIdx]; }
@@ -499,10 +523,10 @@ void Game::HandleInput() {
     hoveredGy = (int)floorf(gridPos.y);
     bool insideGrid = (hoveredGx >= 0 && hoveredGx < GRID_SIZE && hoveredGy >= 0 && hoveredGy < GRID_SIZE);
 
-    // 3. Peep Inspection or Placement
+    // 3. Commuter Inspection or Placement
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && mousePos.y > 60 && mousePos.y < GetScreenHeight() - 90) {
-        // First check if clicking on a peep
-        int peepUnderMouse = peeps.FindPeepAtScreenPos(mousePos, cameraPos, zoom);
+        // Check if clicking on a commuter
+        int peepUnderMouse = peeps.FindCommuterAtScreenPos(mousePos, cameraPos, zoom);
         if (peepUnderMouse != -1) {
             selectedPeepIdx = peepUnderMouse;
             AudioManager::Play(SFX_BUTTON_CLICK, 0.7f);
@@ -519,7 +543,7 @@ void Game::HandleInput() {
                     particles.SpawnSmoke(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 10);
                 } else if (tracks.HasPiece(hoveredGx, hoveredGy)) {
                     tracks.RemovePiece(hoveredGx, hoveredGy);
-                    economy.balance += 20.0f;
+                    economy.balance += 25.0f;
                     AudioManager::Play(SFX_BULLDOZE, 0.8f);
                     particles.SpawnSmoke(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 12);
                 } else if (terrain[hoveredGx][hoveredGy] != GROUND_GRASS && terrain[hoveredGx][hoveredGy] != GROUND_WATER) {
@@ -530,54 +554,54 @@ void Game::HandleInput() {
             } else {
                 // Active placement based on Tab
                 if (activeTab == CAT_TRACK) {
-                    if (economy.balance >= 35.0f) {
+                    if (economy.balance >= 40.0f) {
                         bool wasClosed = tracks.IsCircuitClosed();
                         if (tracks.AddPiece(hoveredGx, hoveredGy, currentZ, currentTrack, currentInDir, currentOutDir)) {
-                            economy.balance -= 35.0f;
+                            economy.balance -= 40.0f;
                             AudioManager::Play(SFX_CONSTRUCTION, 0.8f);
                             particles.SpawnSparks(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 8);
 
                             if (!wasClosed && tracks.IsCircuitClosed()) {
-                                ShowToast("🎢 Circuit Completed! Coaster is now Operational!", Color{34, 197, 94, 255}, 4.0f);
+                                ShowToast("🚇 Transit Loop Closed! Regular EMU Schedule Active!", Color{34, 197, 94, 255}, 4.0f);
                                 AudioManager::Play(SFX_UPGRADE_FANFARE, 0.8f);
                             }
 
-                            // Auto-advance cursor
+                            // Auto-advance cursor forward along track direction
                             Vector2 fwd = GetDirectionOffset(currentOutDir);
                             hoveredGx += (int)fwd.x;
                             hoveredGy += (int)fwd.y;
-                            if (currentTrack == TRACK_LIFT_HILL) currentZ++;
-                            if (currentTrack == TRACK_DROP) currentZ = std::max(0, currentZ - 1);
+                            if (currentTrack == TRACK_VIADUCT_ELEVATED) currentZ++;
+                            if (currentTrack == TRACK_VIADUCT_SLOPE) currentZ = std::max(0, currentZ - 1);
                         }
                     } else {
-                        ShowToast("Insufficient funds to build track ($35 required)", Color{239, 68, 68, 255}, 2.0f);
+                        ShowToast("Insufficient funds to lay track ($40 required)", Color{239, 68, 68, 255}, 2.0f);
                     }
                 } else if (activeTab == CAT_INFRA) {
-                    if (economy.balance >= 10.0f) {
+                    if (economy.balance >= 15.0f) {
                         terrain[hoveredGx][hoveredGy] = currentGround;
-                        economy.balance -= 10.0f;
+                        economy.balance -= 15.0f;
                         AudioManager::Play(SFX_CONSTRUCTION, 0.7f);
                     } else {
-                        ShowToast("Insufficient funds for path ($10 required)", Color{239, 68, 68, 255}, 2.0f);
+                        ShowToast("Insufficient funds for concourse paving ($15 required)", Color{239, 68, 68, 255}, 2.0f);
                     }
                 } else if (activeTab == CAT_SCENERY) {
-                    int scnCost = 30;
+                    int scnCost = 35;
                     float boost = 1.5f;
-                    if (currentScenery == SCENERY_FOUNTAIN) { scnCost = 180; boost = 5.0f; }
-                    else if (currentScenery == SCENERY_DRINK_STALL) { scnCost = 150; boost = 3.0f; }
-                    else if (currentScenery == SCENERY_BALLOON_STALL) { scnCost = 120; boost = 3.0f; }
-                    else if (currentScenery == SCENERY_OAK_TREE) { scnCost = 45; boost = 1.5f; }
+                    if (currentScenery == SCENERY_METRO_ENTRANCE) { scnCost = 120; boost = 4.0f; }
+                    else if (currentScenery == SCENERY_TURNSTILE_GATE) { scnCost = 90; boost = 3.0f; }
+                    else if (currentScenery == SCENERY_NEWSSTAND) { scnCost = 150; boost = 4.0f; }
+                    else if (currentScenery == SCENERY_MAP_KIOSK) { scnCost = 40; boost = 1.5f; }
+                    else if (currentScenery == SCENERY_STREET_TREE) { scnCost = 35; boost = 1.2f; }
                     else if (currentScenery == SCENERY_PINE_TREE) { scnCost = 30; boost = 1.0f; }
                     else if (currentScenery == SCENERY_LAMP_POST) { scnCost = 25; boost = 1.0f; }
                     else if (currentScenery == SCENERY_BENCH) { scnCost = 20; boost = 0.8f; }
-                    else if (currentScenery == SCENERY_FLOWER_BED) { scnCost = 15; boost = 1.0f; }
 
                     if (economy.balance >= (float)scnCost) {
                         scenery[hoveredGx][hoveredGy] = currentScenery;
                         economy.balance -= (float)scnCost;
-                        parkRating = std::min(100.0f, parkRating + boost); // Scenery boosts park satisfaction!
+                        parkRating = std::min(100.0f, parkRating + boost);
                         AudioManager::Play(SFX_CONSTRUCTION, 0.8f);
-                        particles.SpawnConfetti(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, 0.5f}, 12);
+                        particles.SpawnConfetti(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, 0.5f}, 10);
                     } else {
                         ShowToast(TextFormat("Insufficient funds for scenery ($%d required)", scnCost), Color{239, 68, 68, 255}, 2.0f);
                     }
@@ -599,7 +623,7 @@ void Game::Update(float dt) {
 
     float simDt = dt * (float)gameSpeed;
 
-    // 1. Ride Cam Smooth Tracking
+    // 1. Cab Cam Smooth Tracking (Driver's point of view)
     if (rideCamActive) {
         Vector3 locoPos = train.GetLocomotivePos();
         Vector2 targetScreen = Iso::GridToScreen(locoPos.x, locoPos.y, locoPos.z, {0, 0}, zoom);
@@ -608,17 +632,9 @@ void Game::Update(float dt) {
         Vector2 desiredCam = { (float)screenW / 2.0f - targetScreen.x, (float)screenH / 2.0f - targetScreen.y };
 
         cameraPos = Vector2Lerp(cameraPos, desiredCam, simDt * 5.0f);
-
-        // Dynamic camera shake on high-speed plunges
-        float spd = train.GetSpeedKmh();
-        if (spd > 35.0f) {
-            float rumble = (spd - 35.0f) * 0.05f;
-            cameraPos.x += (((float)rand() / RAND_MAX) - 0.5f) * rumble;
-            cameraPos.y += (((float)rand() / RAND_MAX) - 0.5f) * rumble;
-        }
     }
 
-    // 2. Weekly Calendar Progression
+    // 2. Weekly Calendar Progression & Mini Metro Rhythm
     weekTimer += simDt;
     if (weekTimer >= WEEK_DURATION) {
         weekTimer = 0.0f;
@@ -632,25 +648,15 @@ void Game::Update(float dt) {
     // 3. Update Particles
     particles.Update(simDt);
 
-    // 4. Update Coaster Train Physics
+    // 4. Update Metro Train Operations & Physics
     int delivered = 0;
-    bool wasDerailed = train.IsDerailed();
-    train.Update(simDt, tracks, particles, delivered);
-
-    if (!wasDerailed && train.IsDerailed()) {
-        ShowToast("💥 DERAILMENT! Sharp turn taken too fast! Press 'C' to reset.", Color{239, 68, 68, 255}, 4.5f);
-    }
+    float fareRevenue = 0.0f;
+    train.Update(simDt, tracks, particles, delivered, fareRevenue);
 
     if (delivered > 0) {
         economy.totalDelivered += delivered;
-        float ticketRev = (float)delivered * cachedStats.ticketPrice;
-        economy.balance += ticketRev;
-        parkRating = std::min(100.0f, parkRating + (float)delivered * 0.8f);
-        AudioManager::Play(SFX_CASH_REGISTER, 0.7f);
-
-        if (rand() % 2 == 0) {
-            AudioManager::Play(SFX_PEEP_CHEER, 0.6f);
-        }
+        economy.balance += fareRevenue;
+        parkRating = std::min(100.0f, parkRating + (float)delivered * 0.6f);
 
         if (economy.totalDelivered >= 500) {
             state = STATE_VICTORY;
@@ -658,35 +664,38 @@ void Game::Update(float dt) {
         }
     }
 
-    // 5. Update Peeps & Scenery Interactions
+    // Dynamic Wayside Signaling Update
+    tracks.UpdateSignals(train.GetTrainDistance());
+
+    // 5. Update Commuter Flow & Overcrowding Triage
     int angry = 0;
     peeps.Update(simDt, train, particles, parkRating, angry, messes);
     peeps.CheckSceneryInteractions(scenery, particles, economy.balance, messes);
 
-    // Park Cleanliness calculation
+    // Platform Cleanliness calculation
     parkCleanliness = std::max(0.0f, 100.0f - (float)messes.size() * 3.5f);
     if (parkCleanliness < 50.0f) {
-        parkRating = std::max(0.0f, parkRating - simDt * 0.4f);
+        parkRating = std::max(0.0f, parkRating - simDt * 0.3f);
     }
 
-    // 6. Update Staff (Handymen sweep vomit & litter; Mechanics inspect station)
+    // 6. Update Transit Crew (Custodians clean spills, Technicians inspect signals)
     for (auto& s : staff) {
         s.walkTimer += simDt;
-        if (s.type == STAFF_HANDYMAN) {
+        if (s.type == STAFF_CUSTODIAN) {
             if (s.isWorking) {
                 s.workTimer += simDt;
                 if (fmodf(s.workTimer, 0.4f) < simDt) {
                     particles.SpawnSmoke(Vector3{s.pos.x, s.pos.y, 0.05f}, 2);
                 }
-                if (s.workTimer >= 1.6f) {
+                if (s.workTimer >= 1.5f) {
                     s.isWorking = false;
                     s.workTimer = 0.0f;
-                    // Remove closest mess within range
+                    // Remove closest mess within cleaning range
                     for (auto it = messes.begin(); it != messes.end();) {
                         if (Vector2Distance(s.pos, it->pos) < 0.7f) {
-                            particles.SpawnSparks(Vector3{it->pos.x, it->pos.y, 0.1f}, 6);
+                            particles.SpawnSparks(Vector3{it->pos.x, it->pos.y, 0.1f}, 5);
                             it = messes.erase(it);
-                            parkRating = std::min(100.0f, parkRating + 1.2f);
+                            parkRating = std::min(100.0f, parkRating + 1.5f);
                             break;
                         } else {
                             ++it;
@@ -694,7 +703,7 @@ void Game::Update(float dt) {
                     }
                 }
             } else if (!messes.empty()) {
-                // Find closest mess
+                // Seek nearest litter / spill
                 float minDist = 999.0f;
                 int bestIdx = -1;
                 for (size_t mi = 0; mi < messes.size(); ++mi) {
@@ -718,7 +727,7 @@ void Game::Update(float dt) {
                     }
                 }
             } else {
-                // Patrol main path
+                // Patrol concourse
                 Vector2 dir = Vector2Subtract(s.targetPos, s.pos);
                 if (Vector2Length(dir) < 0.2f) {
                     float rx = 1.0f + (float)(rand() % 8);
@@ -729,16 +738,16 @@ void Game::Update(float dt) {
                     s.pos.y += dir.y * 1.0f * simDt;
                 }
             }
-        } else if (s.type == STAFF_MECHANIC) {
-            // Mechanic patrols station area & inspects ride mechanics
+        } else if (s.type == STAFF_ENGINEER) {
+            // Signal Engineer patrols tracks & signals
             Vector2 dir = Vector2Subtract(s.targetPos, s.pos);
             if (Vector2Length(dir) < 0.25f) {
                 if (s.isWorking) {
                     s.workTimer += simDt;
-                    if (s.workTimer >= 3.0f) {
+                    if (s.workTimer >= 2.5f) {
                         s.isWorking = false;
                         s.workTimer = 0.0f;
-                        s.targetPos = {7.0f + (float)(rand() % 3), 12.0f + (float)(rand() % 3)};
+                        s.targetPos = {6.0f + (float)(rand() % 4), 12.0f + (float)(rand() % 3)};
                     }
                 } else {
                     s.isWorking = true;
@@ -752,34 +761,34 @@ void Game::Update(float dt) {
         }
     }
 
-    // Weekly staff wages
+    // Weekly staff payroll
     staffWageTimer += simDt;
     if (staffWageTimer >= WEEK_DURATION) {
         staffWageTimer = 0.0f;
         float wages = 0.0f;
-        for (const auto& s : staff) wages += (s.type == STAFF_HANDYMAN ? 10.0f : 15.0f);
+        for (const auto& s : staff) wages += (s.type == STAFF_CUSTODIAN ? 10.0f : 15.0f);
         if (wages > 0.0f) {
             economy.balance = std::max(0.0f, economy.balance - wages);
-            ShowToast(TextFormat("Weekly staff payroll paid: $%.0f", wages), Color{148, 163, 184, 255}, 2.5f);
+            ShowToast(TextFormat("Weekly transit crew payroll disbursed: $%.0f", wages), Color{148, 163, 184, 255}, 2.5f);
         }
     }
 
     if (angry > 0) {
         angryLeaves += angry;
-        ShowToast("⚠️ Queue riot! Angry guests walked out!", Color{239, 68, 68, 255}, 3.0f);
+        ShowToast("⚠️ Platform Overcrowding! Commuters left in frustration!", Color{239, 68, 68, 255}, 3.0f);
         if (parkRating <= 0.0f) {
             state = STATE_GAME_OVER;
-            AudioManager::Play(SFX_CRASH, 0.9f);
+            AudioManager::Play(SFX_QUEUE_ALARM, 0.9f);
         }
     }
 
-    // 7. Refresh Coaster Statistics
+    // 7. Refresh Telemetry Statistics
     cachedStats = train.GetStats(tracks);
 }
 
 void Game::Draw() {
     BeginDrawing();
-    ClearBackground(Color{241, 245, 249, 255}); // Slate 100 soft canvas
+    ClearBackground(Color{241, 245, 249, 255}); // Slate 100 soft architectural canvas
 
     if (state == STATE_TITLE) {
         ui.DrawTitleScreen();
@@ -795,10 +804,10 @@ void Game::Draw() {
         }
     }
 
-    // 2. Draw Park Entrance Grand Arch
-    Iso::DrawEntranceArch({0.0f, 12.0f}, cameraPos, zoom);
+    // 2. Draw Transit Portal Arch Marquee at entrance (0, 12)
+    Iso::DrawTransitPortalArch({0.0f, 12.0f}, cameraPos, zoom);
 
-    // 3. Draw Scenery Items (Layered with correct depth)
+    // 3. Draw Scenery Items (Layered with correct isometric depth)
     for (int y = 0; y < GRID_SIZE; ++y) {
         for (int x = 0; x < GRID_SIZE; ++x) {
             if (scenery[x][y] != SCENERY_NONE) {
@@ -807,29 +816,29 @@ void Game::Draw() {
         }
     }
 
-    // 4. Draw Park Messes (Vomit puddles & discarded soda cups)
+    // 4. Draw Station Litter / Messes
     for (const auto& m : messes) {
         Iso::DrawMess(m, cameraPos, zoom);
     }
 
-    // 5. Draw Peeps on Walkways
+    // 5. Draw Commuters with Shape Badges
     peeps.Draw(cameraPos, zoom);
 
-    // 6. Draw Park Staff (Handymen with brooms, Mechanics with wrenches)
+    // 6. Draw Transit Crew (Custodians & Signal Technicians)
     for (const auto& s : staff) {
         Iso::DrawStaff(s, cameraPos, zoom);
     }
 
-    // 7. Draw Track Pillars and Rails
+    // 7. Draw Track Ballast, Concrete Sleepers, 3rd Rail, Island Platforms, Signals
     tracks.DrawAllTracks(cameraPos, zoom);
 
-    // 8. Draw Coaster Train & Passengers
+    // 8. Draw Metro EMU Rolling Stock & Commuter Passengers
     train.Draw(cameraPos, zoom);
 
-    // 9. Draw Particles (Sparks, Smoke, Confetti, Vomit)
+    // 9. Draw Particles (Sparks, Smoke, Confetti, Door Chime rings)
     particles.Draw(cameraPos, zoom);
 
-    // 10. Draw Building Ghost Preview
+    // 10. Draw Ghost Placement Preview
     Vector2 mousePos = GetMousePosition();
     bool overUI = (mousePos.y <= 56 || mousePos.y >= GetScreenHeight() - 86);
     if (!overUI && hoveredGx >= 0 && hoveredGx < GRID_SIZE && hoveredGy >= 0 && hoveredGy < GRID_SIZE) {
@@ -847,35 +856,36 @@ void Game::Draw() {
         }
     }
 
-    // 11. Atmospheric Day / Sunset / Night Lighting (Mini Metro Weekly Rhythm)
+    // 11. Atmospheric Day / Sunset / Night Rush Hour Lighting
     float weekPhase = fmodf(weekTimer, WEEK_DURATION);
     if (weekPhase >= 36.0f && weekPhase < 48.0f) {
         // Sunset golden hour
         float alpha = (weekPhase - 36.0f) / 12.0f;
-        DrawRectangle(0, 52, GetScreenWidth(), GetScreenHeight() - 52, Color{255, 140, 0, (unsigned char)(alpha * 38.0f)});
+        DrawRectangle(0, 54, GetScreenWidth(), GetScreenHeight() - 54, Color{255, 140, 0, (unsigned char)(alpha * 35.0f)});
     } else if (weekPhase >= 48.0f) {
-        // Twilight night rush hour
+        // Twilight evening rush hour
         float alpha = (weekPhase - 48.0f) / 12.0f;
-        DrawRectangle(0, 52, GetScreenWidth(), GetScreenHeight() - 52, Color{15, 23, 42, (unsigned char)(50.0f + alpha * 65.0f)});
+        DrawRectangle(0, 54, GetScreenWidth(), GetScreenHeight() - 54, Color{15, 23, 42, (unsigned char)(45.0f + alpha * 65.0f)});
 
-        // Lamppost glowing light pools on walkways
+        // Streetlamp glowing illumination pools on platforms
         for (int y = 0; y < GRID_SIZE; ++y) {
             for (int x = 0; x < GRID_SIZE; ++x) {
                 if (scenery[x][y] == SCENERY_LAMP_POST) {
                     Vector2 sPos = Iso::GridToScreen((float)x, (float)y, 0.0f, cameraPos, zoom);
-                    DrawCircleGradient(sPos, 38.0f * zoom, Color{255, 238, 88, 120}, Color{255, 238, 88, 0});
+                    DrawCircleGradient(sPos, 40.0f * zoom, Color{255, 238, 88, 120}, Color{255, 238, 88, 0});
                 }
             }
         }
     }
 
-    // 12. Draw Main HUD and Categorized Toolbar
+    // 12. Draw Operations Control Center (OCC) Main HUD
     ui.DrawHUD(
         economy.totalDelivered,
         parkRating,
         week,
         weekTimer,
         train.GetSpeedKmh(),
+        tracks.GetActiveSignalAspect(),
         tracks.IsCircuitClosed(),
         gameSpeed,
         AudioManager::IsMuted(),
@@ -886,6 +896,7 @@ void Game::Draw() {
         helpOverlayOpen
     );
 
+    // 13. Draw Categorized Toolbar
     ui.DrawToolbar(
         activeTab,
         currentTrack,
@@ -896,35 +907,35 @@ void Game::Draw() {
         isBulldozing
     );
 
-    // 12. Draw Coaster Information Window
+    // 14. Draw Line Operations Window
     if (statsWindowOpen) {
-        ui.DrawCoasterStats(cachedStats);
+        ui.DrawLineOperations(cachedStats);
     }
 
-    // 13. Draw Staff Management Window
+    // 15. Draw Transit Crew Window
     if (staffWindowOpen) {
-        ui.DrawStaffWindow(staff, parkCleanliness, economy.balance);
+        ui.DrawTransitCrewWindow(staff, parkCleanliness, economy.balance);
     }
 
-    // 14. Draw Peep Inspector Card
+    // 16. Draw Commuter Inspector
     if (selectedPeepIdx != -1) {
-        const Peep* p = peeps.GetPeep(selectedPeepIdx);
+        const Commuter* p = peeps.GetCommuter(selectedPeepIdx);
         if (p) {
-            ui.DrawPeepInspector(p);
+            ui.DrawCommuterInspector(p);
         } else {
             selectedPeepIdx = -1;
         }
     }
 
-    // 15. Draw Toast Notifications
+    // 17. Draw Toast Notifications
     ui.DrawToast(activeToast);
 
-    // 16. Draw Help & Controls Overlay
+    // 18. Draw Operations Manual
     if (helpOverlayOpen) {
-        ui.DrawHelpOverlay();
+        ui.DrawTransitOperationsManual();
     }
 
-    // 17. Draw Modals (Upgrades, Game Over, Victory)
+    // 19. Draw Modals (Weekly Grant, Game Over, Victory)
     if (state == STATE_WEEKLY_UPGRADE) {
         int ch = ui.CheckUpgradeModalClick(GetMousePosition());
         ui.DrawWeeklyModal(activeUpgrades, ch);

@@ -16,24 +16,25 @@ public:
 
     void Update(Vector2 mousePos, bool mouseClicked);
 
-    // Main HUD
+    // Operations Control Center Main HUD
     void DrawHUD(
-        int score,
-        float parkRating,
+        int ridership,
+        float satisfaction,
         int week,
         float weekTimer,
         float speedKmh,
+        SignalAspect signalAspect,
         bool circuitClosed,
         int gameSpeed,
         bool muted,
         float balance,
-        bool statsOpen,
-        bool staffOpen,
-        bool rideCamActive,
+        bool lineOpsOpen,
+        bool crewOpen,
+        bool cabCamActive,
         bool helpOpen
     );
 
-    // Categorized Toolbar
+    // Categorized Toolbar (Track, Concourse, Scenery)
     void DrawToolbar(
         ToolCategory activeTab,
         TrackType currentTrack,
@@ -44,16 +45,24 @@ public:
         bool isBulldozing
     );
 
-    // Modals & Panels
-    void DrawCoasterStats(const CoasterStats& stats);
-    void DrawStaffWindow(const std::vector<StaffMember>& staff, float cleanliness, float balance);
-    void DrawPeepInspector(const Peep* peep);
+    // OCC Panels & Modals
+    void DrawLineOperations(const MetroLineStats& stats);
+    void DrawTransitCrewWindow(const std::vector<StaffMember>& staff, float cleanliness, float balance);
+    void DrawCommuterInspector(const Commuter* commuter);
     void DrawToast(const ToastMessage& toast);
-    void DrawHelpOverlay();
+    void DrawTransitOperationsManual();
     void DrawWeeklyModal(const std::vector<UpgradeChoice>& choices, int hoveredChoice);
-    void DrawGameOver(int finalScore);
-    void DrawVictory(int finalScore);
+    void DrawGameOver(int finalRidership);
+    void DrawVictory(int finalRidership);
     void DrawTitleScreen();
+
+    // Compatibility aliases
+    void DrawCoasterStats(const MetroLineStats& stats) { DrawLineOperations(stats); }
+    void DrawStaffWindow(const std::vector<StaffMember>& staff, float cleanliness, float balance) {
+        DrawTransitCrewWindow(staff, cleanliness, balance);
+    }
+    void DrawPeepInspector(const Commuter* commuter) { DrawCommuterInspector(commuter); }
+    void DrawHelpOverlay() { DrawTransitOperationsManual(); }
 
     // Interaction checks
     int CheckToolbarTabClick(Vector2 mousePos) const;
@@ -80,3 +89,4 @@ public:
 private:
     float pulseAnim = 0.0f;
 };
+

@@ -9,7 +9,7 @@ int main() {
     const int screenWidth = 1280;
     const int screenHeight = 720;
 
-    InitWindow(screenWidth, screenHeight, "COASTER GRID - 2.5D Isometric Coaster Tycoon");
+    InitWindow(screenWidth, screenHeight, "METRO GRID - 2.5D Urban Transit Simulator");
     SetTargetFPS(60);
 
     Game game;

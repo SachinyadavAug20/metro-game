@@ -39,6 +39,7 @@ public:
     Color GetTrainTheme() const { return themeColor; }
     void SetLineName(const std::string& name) { lineName = name; }
     const std::string& GetLineName() const { return lineName; }
+    float GetTrainDistance() const { return distance; }
 
     // Compatibility aliases
     void SetCoasterName(const std::string& name) { SetLineName(name); }
