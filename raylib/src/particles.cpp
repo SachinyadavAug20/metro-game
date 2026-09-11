@@ -88,6 +88,17 @@ void ParticleSystem::SpawnVomit(Vector3 gridPos, int count) {
     }
 }
 
+void ParticleSystem::SpawnFloatingText(Vector3 gridPos, const std::string& text, Color color) {
+    FloatingText ft;
+    ft.pos = gridPos;
+    ft.text = text;
+    ft.color = color;
+    ft.maxLife = 1.4f;
+    ft.life = ft.maxLife;
+    ft.rise = 0.0f;
+    floatingTexts.push_back(ft);
+}
+
 void ParticleSystem::Update(float dt) {
     for (size_t i = 0; i < particles.size();) {
         auto& p = particles[i];
@@ -122,6 +133,19 @@ void ParticleSystem::Update(float dt) {
 
         ++i;
     }
+
+    // Update floating texts
+    for (size_t i = 0; i < floatingTexts.size();) {
+        auto& ft = floatingTexts[i];
+        ft.life -= dt;
+        if (ft.life <= 0.0f) {
+            floatingTexts[i] = floatingTexts.back();
+            floatingTexts.pop_back();
+            continue;
+        }
+        ft.rise += dt * 1.2f;
+        ++i;
+    }
 }
 
 void ParticleSystem::Draw(Vector2 camOffset, float zoom) {
@@ -140,8 +164,27 @@ void ParticleSystem::Draw(Vector2 camOffset, float zoom) {
             DrawCircle((int)screenPos.x, (int)screenPos.y, std::max(1.5f, s), p.color);
         }
     }
+
+    // Draw floating texts with drop shadow (RCT style)
+    for (const auto& ft : floatingTexts) {
+        Vector2 sPos = Iso::GridToScreen(ft.pos.x, ft.pos.y, ft.pos.z + ft.rise, camOffset, zoom);
+        float alpha = std::min(1.0f, ft.life / 0.4f);
+        Color col = ft.color;
+        col.a = (unsigned char)(255.0f * alpha);
+        Color shadow = Color{0, 0, 0, (unsigned char)(180.0f * alpha)};
+        int fontSize = (int)std::max(12.0f, 15.0f * zoom);
+        int textW = MeasureText(ft.text.c_str(), fontSize);
+        int tx = (int)(sPos.x - textW / 2.0f);
+        int ty = (int)sPos.y;
+
+        // Shadow outline
+        DrawText(ft.text.c_str(), tx + 1, ty + 1, fontSize, shadow);
+        DrawText(ft.text.c_str(), tx - 1, ty + 1, fontSize, shadow);
+        DrawText(ft.text.c_str(), tx, ty, fontSize, col);
+    }
 }
 
 void ParticleSystem::Clear() {
     particles.clear();
+    floatingTexts.clear();
 }

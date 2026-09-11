@@ -88,6 +88,7 @@ protected:
     int week = 1;
     float weekTimer = 0.0f;
     const float WEEK_DURATION = 60.0f;
+    int lastMilestoneAwarded = 0;
 
     // Audio roar / chain click timers
     float chainSoundTimer = 0.0f;

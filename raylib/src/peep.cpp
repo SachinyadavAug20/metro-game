@@ -84,6 +84,28 @@ void CommuterManager::SpawnCommuter() {
     commuters.push_back(c);
 }
 
+void CommuterManager::AlightPassengers(int count, Vector2 stationPos) {
+    int leftToAlight = count;
+    for (auto& c : commuters) {
+        if (leftToAlight <= 0) break;
+        if (c.state == COMMUTER_RIDING) {
+            c.state = COMMUTER_ALIGHTING;
+            c.pos = stationPos;
+            c.targetPos = exitPos;
+            c.happiness = std::min(100.0f, c.happiness + 20.0f);
+            static const char* thoughts[] = {
+                "Smooth and rapid transit! Love Line 1!",
+                "Stunning view of the river from the viaduct!",
+                "Quick and comfortable commute!",
+                "Metro Grid is running like clockwork!",
+                "Great value for money, arrived right on time!"
+            };
+            c.thought = thoughts[rand() % 5];
+            leftToAlight--;
+        }
+    }
+}
+
 float CommuterManager::GetQueueOvercrowdRatio() const {
     return (float)queueCommuters.size() / (float)maxQueueCap;
 }
@@ -113,7 +135,7 @@ void CommuterManager::Update(float dt, MetroTrain& train, ParticleSystem& partic
         if (overcrowdTimer <= 0.0f) {
             overcrowdActive = false;
             overcrowdTimer = MAX_OVERCROWD_TIME;
-            outSatisfaction = std::max(0.0f, outSatisfaction - 12.0f); // Heavy penalty!
+            outSatisfaction = std::max(0.0f, outSatisfaction - 10.0f);
 
             for (size_t idx : queueCommuters) {
                 commuters[idx].state = COMMUTER_LEAVING_ANGRY;
@@ -130,12 +152,13 @@ void CommuterManager::Update(float dt, MetroTrain& train, ParticleSystem& partic
     }
 
     // 3. Boarding Train from Platform Queue
-    if (train.CanBoard() && !queueCommuters.empty()) {
+    if (train.CanBoard() && train.GetOperatingMode() == LINE_OPEN && !queueCommuters.empty()) {
         size_t cIdx = queueCommuters.front();
         if (train.BoardCommuter(commuters[cIdx].targetShape, commuters[cIdx].shirtColor)) {
             commuters[cIdx].state = COMMUTER_RIDING;
             commuters[cIdx].thought = "Boarded Line 1 EMU!";
             queueCommuters.erase(queueCommuters.begin());
+            AudioManager::Play(SFX_SMARTCARD_BEEP, 0.4f);
             particles.SpawnSparks(Vector3{commuters[cIdx].pos.x, commuters[cIdx].pos.y, 0.2f}, 4);
         }
     }
@@ -296,36 +319,54 @@ void CommuterManager::Draw(Vector2 camOffset, float zoom) const {
             DrawRectangle((int)bagPos.x, (int)bagPos.y, (int)(3.5f * zoom), (int)(2.8f * zoom), Color{120, 53, 15, 255}); // Leather briefcase
         }
 
-        // Mini Metro Floating Shape Badge above Head
-        Vector2 badgePos = { sPos.x, sPos.y - bodyH - 10.0f * zoom + bob };
+        // Floating Thought & Destination Shape Speech Bubble
+        float floatY = sinf(c.walkTimer * 2.0f) * 1.5f * zoom;
+        Vector2 badgePos = { sPos.x, sPos.y - bodyH - 12.0f * zoom + bob + floatY };
         Color badgeColor = GetShapeColor(c.targetShape);
 
-        DrawCircle((int)badgePos.x, (int)badgePos.y, 4.2f * zoom, Color{15, 23, 42, 230});
-        DrawCircle((int)badgePos.x, (int)badgePos.y, 3.0f * zoom, badgeColor);
+        // Speech bubble pointer tail
+        Vector2 tailTip = { sPos.x, sPos.y - bodyH - 6.0f * zoom + bob };
+        Vector2 b1 = { sPos.x - 2.5f * zoom, sPos.y - bodyH - 9.0f * zoom + bob };
+        Vector2 b2 = { sPos.x + 2.5f * zoom, sPos.y - bodyH - 9.0f * zoom + bob };
+        DrawTriangle(tailTip, b2, b1, Color{15, 23, 42, 235});
 
+        // Speech bubble circular body
+        float bRad = 5.2f * zoom;
+        DrawCircle((int)badgePos.x, (int)badgePos.y, bRad, Color{15, 23, 42, 245});
+        DrawCircleLines((int)badgePos.x, (int)badgePos.y, bRad, badgeColor);
+        DrawCircle((int)badgePos.x, (int)badgePos.y, bRad - 1.2f * zoom, badgeColor);
+
+        // Crisp White Shape Glyph
         if (c.targetShape == SHAPE_SQUARE) {
             DrawRectangle((int)(badgePos.x - 1.8f * zoom), (int)(badgePos.y - 1.8f * zoom), (int)(3.6f * zoom), (int)(3.6f * zoom), WHITE);
         } else if (c.targetShape == SHAPE_TRIANGLE) {
-            DrawTriangle({badgePos.x, badgePos.y - 2.2f * zoom}, {badgePos.x - 2.2f * zoom, badgePos.y + 2.2f * zoom}, {badgePos.x + 2.2f * zoom, badgePos.y + 2.2f * zoom}, WHITE);
+            DrawTriangle({badgePos.x, badgePos.y - 2.4f * zoom}, {badgePos.x - 2.2f * zoom, badgePos.y + 2.2f * zoom}, {badgePos.x + 2.2f * zoom, badgePos.y + 2.2f * zoom}, WHITE);
         } else if (c.targetShape == SHAPE_CROSS) {
             DrawRectangle((int)(badgePos.x - 0.8f * zoom), (int)(badgePos.y - 2.2f * zoom), (int)(1.6f * zoom), (int)(4.4f * zoom), WHITE);
             DrawRectangle((int)(badgePos.x - 2.2f * zoom), (int)(badgePos.y - 0.8f * zoom), (int)(4.4f * zoom), (int)(1.6f * zoom), WHITE);
+        } else if (c.targetShape == SHAPE_CIRCLE) {
+            DrawCircle((int)badgePos.x, (int)badgePos.y, 2.2f * zoom, WHITE);
+            DrawCircle((int)badgePos.x, (int)badgePos.y, 1.2f * zoom, badgeColor);
         }
     }
 
     // Mini Metro Radial Overcrowding Triage Clock above station
     if (overcrowdActive) {
-        Vector2 clockPos = Iso::GridToScreen(queueStartPos.x, queueStartPos.y, 1.4f, camOffset, zoom);
-        float radius = 17.0f * zoom;
+        Vector2 clockPos = Iso::GridToScreen(queueStartPos.x, queueStartPos.y, 1.5f, camOffset, zoom);
+        float radius = 18.0f * zoom;
 
-        DrawCircle((int)clockPos.x, (int)clockPos.y, radius, Color{15, 23, 42, 235});
-        DrawCircleLines((int)clockPos.x, (int)clockPos.y, radius, Color{255, 255, 255, 200});
+        // Glowing red alert halo
+        DrawCircleGradient(clockPos, radius * 1.8f, Color{239, 68, 68, 160}, Color{239, 68, 68, 0});
+
+        DrawCircle((int)clockPos.x, (int)clockPos.y, radius, Color{15, 23, 42, 245});
+        DrawCircleLines((int)clockPos.x, (int)clockPos.y, radius, WHITE);
 
         float pct = 1.0f - (overcrowdTimer / MAX_OVERCROWD_TIME);
         float endAngle = -90.0f + pct * 360.0f;
-        DrawCircleSector(clockPos, radius - 2.0f * zoom, -90.0f, endAngle, 24, Color{239, 68, 68, 235});
+        DrawCircleSector(clockPos, radius - 2.0f * zoom, -90.0f, endAngle, 32, Color{239, 68, 68, 240});
 
-        DrawText("!", (int)(clockPos.x - 3.0f * zoom), (int)(clockPos.y - 6.0f * zoom), (int)(13.0f * zoom), WHITE);
+        int secsLeft = (int)ceilf(overcrowdTimer);
+        DrawText(TextFormat("%d", secsLeft), (int)(clockPos.x - 3.5f * zoom), (int)(clockPos.y - 5.0f * zoom), (int)(11.0f * zoom), WHITE);
     }
 }
 

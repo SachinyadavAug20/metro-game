@@ -50,6 +50,7 @@ public:
 
     void SpawnCommuter();
     void SetSpawnInterval(float seconds) { spawnInterval = seconds; }
+    void AlightPassengers(int count, Vector2 stationPos);
 
     // Compatibility aliases
     int GetTotalPeepsInPark() const { return GetTotalCommuters(); }

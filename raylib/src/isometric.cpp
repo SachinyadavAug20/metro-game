@@ -30,34 +30,34 @@ void DrawTile(int gx, int gy, int gz, GroundType type, Vector2 camOffset, float 
 
     switch (type) {
         case GROUND_GRASS:
-            topColor = (gx % 2 == gy % 2) ? Color{52, 168, 83, 255} : Color{46, 125, 50, 255}; // Vibrant city park turf
-            leftColor = Color{30, 86, 35, 255};
-            rightColor = Color{38, 105, 44, 255};
+            topColor = (gx % 2 == gy % 2) ? Color{60, 185, 95, 255} : Color{50, 165, 82, 255}; // Rich emerald lawn
+            leftColor = Color{32, 100, 42, 255};
+            rightColor = Color{40, 120, 52, 255};
             break;
         case GROUND_DIRT:
-            topColor = Color{120, 90, 70, 255};
-            leftColor = Color{90, 65, 50, 255};
-            rightColor = Color{105, 75, 60, 255};
+            topColor = Color{140, 100, 75, 255};
+            leftColor = Color{95, 68, 52, 255};
+            rightColor = Color{112, 80, 62, 255};
             break;
         case GROUND_WATER:
-            topColor = Color{14, 165, 233, 215}; // Urban canal azure
-            leftColor = Color{2, 132, 199, 235};
-            rightColor = Color{3, 105, 161, 235};
+            topColor = Color{14, 165, 233, 220}; // Deep sparkling turquoise canal
+            leftColor = Color{2, 132, 199, 240};
+            rightColor = Color{3, 105, 161, 240};
             break;
         case GROUND_PATH:
-            topColor = Color{241, 245, 249, 255}; // Crisp architectural concrete sidewalk
-            leftColor = Color{203, 213, 225, 255};
-            rightColor = Color{148, 163, 184, 255};
+            topColor = Color{248, 250, 252, 255}; // Bright architectural concrete
+            leftColor = Color{210, 218, 228, 255};
+            rightColor = Color{165, 178, 196, 255};
             break;
         case GROUND_QUEUE:
-            topColor = Color{254, 240, 138, 255}; // Yellow tactile platform floor
+            topColor = Color{253, 224, 71, 255}; // High-vis tactile platform safety yellow
             leftColor = Color{234, 179, 8, 255};
             rightColor = Color{202, 138, 4, 255};
             break;
         case GROUND_PLAZA:
-            topColor = (gx % 2 == gy % 2) ? Color{226, 232, 240, 255} : Color{203, 213, 225, 255}; // Granite plaza
-            leftColor = Color{148, 163, 184, 255};
-            rightColor = Color{100, 116, 139, 255};
+            topColor = (gx % 2 == gy % 2) ? Color{241, 245, 249, 255} : Color{226, 232, 240, 255}; // Granite plaza pavers
+            leftColor = Color{155, 168, 185, 255};
+            rightColor = Color{115, 130, 150, 255};
             break;
     }
 
@@ -81,37 +81,75 @@ void DrawTile(int gx, int gy, int gz, GroundType type, Vector2 camOffset, float 
     DrawTriangle(bottom, centerBottom, rightBottom, rightColor);
     DrawTriangle(bottom, rightBottom, right, rightColor);
 
+    // Draw geological earth strata lines on cliff sides
+    if (cliffH > 6.0f) {
+        float strataY1 = 5.0f * zoom;
+        float strataY2 = 11.0f * zoom;
+        DrawLineEx({left.x, left.y + strataY1}, {bottom.x, bottom.y + strataY1}, 1.2f * zoom, Color{20, 60, 28, 200});
+        DrawLineEx({bottom.x, bottom.y + strataY1}, {right.x, right.y + strataY1}, 1.2f * zoom, Color{25, 75, 34, 200});
+        DrawLineEx({left.x, left.y + strataY2}, {bottom.x, bottom.y + strataY2}, 1.0f * zoom, Color{80, 55, 40, 180});
+        DrawLineEx({bottom.x, bottom.y + strataY2}, {right.x, right.y + strataY2}, 1.0f * zoom, Color{95, 65, 48, 180});
+    }
+
     // Draw top diamond face
     DrawTriangle(top, left, bottom, topColor);
     DrawTriangle(top, bottom, right, topColor);
 
-    // Sidewalk curb lines
-    if (type == GROUND_PATH || type == GROUND_PLAZA) {
-        DrawLineV(top, bottom, Color{203, 213, 225, 140});
-        DrawLineV(left, right, Color{203, 213, 225, 140});
-    }
-
-    // Yellow tactile safety blocks on platform queue
-    if (type == GROUND_QUEUE) {
-        DrawLineEx(top, right, 2.0f * zoom, Color{234, 179, 8, 240});
-        DrawLineEx(bottom, left, 2.0f * zoom, Color{234, 179, 8, 240});
-    }
-
-    // Water gentle canal ripples
-    if (type == GROUND_WATER) {
-        float shimmer = sinf((float)gx * 1.8f + (float)gy * 2.3f + (float)GetTime() * 4.0f);
-        if (shimmer > 0.1f) {
-            Vector2 mid1 = { (top.x + left.x) * 0.5f, (top.y + left.y) * 0.5f };
-            Vector2 mid2 = { (bottom.x + right.x) * 0.5f, (bottom.y + right.y) * 0.5f };
-            DrawLineEx(mid1, mid2, 1.5f * zoom, Color{255, 255, 255, (unsigned char)(shimmer * 130)});
+    // Grass micro-blades texture on selective tiles
+    if (type == GROUND_GRASS) {
+        unsigned int h = ((unsigned int)gx * 73856093u) ^ ((unsigned int)gy * 19349663u);
+        if ((h % 4) == 0) {
+            Vector2 c = { (top.x + bottom.x) * 0.5f, (top.y + bottom.y) * 0.5f };
+            DrawLineEx(c, {c.x - 1.5f * zoom, c.y - 3.5f * zoom}, 1.1f * zoom, Color{90, 220, 120, 190});
+            DrawLineEx(c, {c.x + 1.8f * zoom, c.y - 3.0f * zoom}, 1.1f * zoom, Color{110, 235, 140, 190});
         }
     }
 
-    // Edge outline
-    DrawLineV(top, right, Color{0, 0, 0, 25});
-    DrawLineV(right, bottom, Color{0, 0, 0, 35});
-    DrawLineV(bottom, left, Color{0, 0, 0, 35});
-    DrawLineV(left, top, Color{0, 0, 0, 25});
+    // Sidewalk & Plaza modular paver stone grid pattern
+    if (type == GROUND_PATH || type == GROUND_PLAZA) {
+        Vector2 midTopLeft = { (top.x + left.x) * 0.5f, (top.y + left.y) * 0.5f };
+        Vector2 midBotRight = { (bottom.x + right.x) * 0.5f, (bottom.y + right.y) * 0.5f };
+        Vector2 midTopRight = { (top.x + right.x) * 0.5f, (top.y + right.y) * 0.5f };
+        Vector2 midBotLeft = { (bottom.x + left.x) * 0.5f, (bottom.y + left.y) * 0.5f };
+
+        DrawLineEx(midTopLeft, midBotRight, 1.0f, Color{148, 163, 184, 110});
+        DrawLineEx(midTopRight, midBotLeft, 1.0f, Color{148, 163, 184, 110});
+    }
+
+    // High-vis yellow tactile safety bumps on platform queue floor
+    if (type == GROUND_QUEUE) {
+        Vector2 mid = { (top.x + bottom.x) * 0.5f, (top.y + bottom.y) * 0.5f };
+        for (int qx = -1; qx <= 1; ++qx) {
+            for (int qy = -1; qy <= 1; ++qy) {
+                Vector2 stud = { mid.x + (float)(qx - qy) * 4.5f * zoom, mid.y + (float)(qx + qy) * 2.2f * zoom };
+                DrawCircle((int)stud.x, (int)stud.y, 1.3f * zoom, Color{202, 138, 4, 255});
+                DrawCircle((int)stud.x, (int)(stud.y - 0.5f * zoom), 0.8f * zoom, Color{254, 240, 138, 255});
+            }
+        }
+    }
+
+    // Water multi-wave animated caustics & sunlit glints
+    if (type == GROUND_WATER) {
+        float t = (float)GetTime();
+        float w1 = sinf((float)gx * 1.6f + (float)gy * 2.1f + t * 3.5f);
+        float w2 = cosf((float)gx * 2.4f - (float)gy * 1.8f + t * 2.8f);
+        float shimmer = (w1 + w2) * 0.5f;
+
+        Vector2 mid = { (top.x + bottom.x) * 0.5f, (top.y + bottom.y) * 0.5f };
+        Vector2 wStart = { mid.x - 7.0f * zoom, mid.y - 2.0f * zoom + shimmer * 1.5f * zoom };
+        Vector2 wEnd   = { mid.x + 7.0f * zoom, mid.y + 2.0f * zoom + shimmer * 1.5f * zoom };
+        DrawLineEx(wStart, wEnd, 1.8f * zoom, Color{255, 255, 255, (unsigned char)(110 + shimmer * 60)});
+
+        if (shimmer > 0.35f) {
+            DrawCircle((int)(mid.x + 3.0f * zoom), (int)(mid.y - 1.0f * zoom), 1.6f * zoom, Color{255, 255, 255, 220});
+        }
+    }
+
+    // Subtle edge bevel outline
+    DrawLineEx(top, right, 1.0f, Color{0, 0, 0, 30});
+    DrawLineEx(right, bottom, 1.0f, Color{0, 0, 0, 45});
+    DrawLineEx(bottom, left, 1.0f, Color{0, 0, 0, 45});
+    DrawLineEx(left, top, 1.0f, Color{0, 0, 0, 30});
 }
 
 void DrawPillar(int gx, int gy, int groundZ, int trackZ, Vector2 camOffset, float zoom) {
@@ -331,6 +369,57 @@ void DrawScenery(int gx, int gy, int gz, SceneryType type, Vector2 camOffset, fl
                 float bx = center.x - 8.0f * zoom + (float)b * 8.0f * zoom;
                 DrawLineEx({bx, center.y - 3.0f * zoom}, {bx, center.y - 9.0f * zoom}, 1.5f * zoom, Color{34, 197, 94, 255}); // Green city bikes
                 DrawCircle((int)bx, (int)(center.y - 9.0f * zoom), 1.8f * zoom, Color{15, 23, 42, 255}); // Handlebars
+            }
+            break;
+        }
+
+        case SCENERY_FOUNTAIN: {
+            // Splashing Park Water Fountain (RCT Style)
+            DrawEllipse((int)center.x, (int)center.y, 16.0f * zoom, 8.0f * zoom, Color{0, 0, 0, 60});
+            // Outer stone basin
+            DrawEllipse((int)center.x, (int)(center.y - 3.0f * zoom), 15.0f * zoom, 7.5f * zoom, Color{148, 163, 184, 255});
+            // Water pool
+            DrawEllipse((int)center.x, (int)(center.y - 4.0f * zoom), 13.0f * zoom, 6.0f * zoom, Color{14, 165, 233, 230});
+
+            // Center pedestal
+            DrawRectangle((int)(center.x - 3.0f * zoom), (int)(center.y - 14.0f * zoom), (int)(6.0f * zoom), (int)(10.0f * zoom), Color{203, 213, 225, 255});
+            // Upper basin tier
+            DrawEllipse((int)center.x, (int)(center.y - 14.0f * zoom), 8.0f * zoom, 4.0f * zoom, Color{148, 163, 184, 255});
+            DrawEllipse((int)center.x, (int)(center.y - 15.0f * zoom), 6.5f * zoom, 3.2f * zoom, Color{56, 189, 248, 240});
+
+            // Animated water sprays
+            float fTime = (float)GetTime() * 5.0f;
+            for (int j = 0; j < 4; ++j) {
+                float angle = (float)j * (PI / 2.0f) + fTime * 0.2f;
+                float sprayH = 6.0f + 2.0f * sinf(fTime + (float)j);
+                Vector2 sTip = { center.x + cosf(angle) * 7.0f * zoom, center.y - 15.0f * zoom - sprayH * zoom };
+                DrawLineEx({center.x, center.y - 15.0f * zoom}, sTip, 1.2f * zoom, Color{224, 242, 254, 220});
+                DrawCircle((int)sTip.x, (int)sTip.y, 1.5f * zoom, WHITE);
+            }
+            break;
+        }
+
+        case SCENERY_FLOWER_BED: {
+            // Vibrant Multi-Color Botanical Blossoms
+            DrawEllipse((int)center.x, (int)center.y, 12.0f * zoom, 6.0f * zoom, Color{0, 0, 0, 50});
+            // Low stone border
+            DrawEllipse((int)center.x, (int)(center.y - 1.5f * zoom), 11.0f * zoom, 5.5f * zoom, Color{100, 116, 139, 255});
+            // Rich soil
+            DrawEllipse((int)center.x, (int)(center.y - 2.5f * zoom), 9.5f * zoom, 4.5f * zoom, Color{74, 45, 30, 255});
+
+            // Colorful flower clusters
+            Color fColors[] = {
+                Color{239, 68, 68, 255},  // Red poppy
+                Color{245, 158, 11, 255}, // Marigold
+                Color{168, 85, 247, 255}, // Lavender
+                Color{236, 72, 153, 255}, // Rose pink
+                Color{250, 204, 21, 255}  // Buttercup
+            };
+            for (int f = 0; f < 6; ++f) {
+                float fx = center.x + (float)((f * 3) % 7 - 3) * 2.2f * zoom;
+                float fy = center.y - 4.5f * zoom + (float)((f * 5) % 5 - 2) * 1.2f * zoom;
+                DrawCircle((int)fx, (int)fy, 1.8f * zoom, fColors[f % 5]);
+                DrawCircle((int)fx, (int)fy, 0.7f * zoom, Color{254, 240, 138, 255});
             }
             break;
         }

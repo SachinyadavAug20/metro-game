@@ -80,12 +80,13 @@ public:
         bool& outToggleHelp
     ) const;
 
-    bool CheckStatsWindowClick(Vector2 mousePos, float& outTicketPriceDelta, int& outColorChoice, bool& outClose) const;
+    bool CheckStatsWindowClick(Vector2 mousePos, float& outTicketPriceDelta, int& outColorChoice, int& outModeChange, int& outCarDelta, bool& outClose) const;
     bool CheckStaffWindowClick(Vector2 mousePos, bool& outHireHandyman, bool& outHireMechanic, bool& outClose) const;
     bool CheckPeepInspectorCloseClick(Vector2 mousePos) const;
     bool CheckHelpOverlayClick(Vector2 mousePos) const;
     int CheckUpgradeModalClick(Vector2 mousePos) const;
     bool CheckRestartClick(Vector2 mousePos) const;
+    bool CheckTitleStartClick(Vector2 mousePos) const;
 
 private:
     float pulseAnim = 0.0f;

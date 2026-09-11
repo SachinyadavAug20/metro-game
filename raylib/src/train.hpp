@@ -41,6 +41,13 @@ public:
     const std::string& GetLineName() const { return lineName; }
     float GetTrainDistance() const { return distance; }
 
+    void SetOperatingMode(LineOperatingMode mode) { operatingMode = mode; }
+    LineOperatingMode GetOperatingMode() const { return operatingMode; }
+    int GetCarriageCount() const { return (int)cars.size(); }
+    void SetTicketFare(float fare) { ticketFare = fare; }
+    float GetTicketFare() const { return ticketFare; }
+    float GetTotalRevenue() const { return totalRevenueEarned; }
+
     // Compatibility aliases
     void SetCoasterName(const std::string& name) { SetLineName(name); }
     const std::string& GetCoasterName() const { return GetLineName(); }
@@ -51,6 +58,7 @@ private:
     std::vector<MetroCar> cars;
     Color themeColor = Color{229, 57, 53, 255}; // Line 1 Tokyo Red
     std::string lineName = "Line 1 - Central Loop";
+    LineOperatingMode operatingMode = LINE_OPEN;
     TrainState state = TRAIN_STOPPED_IN_STATION;
     float distance = 0.0f;
     float velocity = 0.0f;
@@ -59,10 +67,13 @@ private:
     float vvvfSoundTimer = 0.0f;
     float recordSpeedKmh = 0.0f;
     int totalTransported = 0;
+    float totalRevenueEarned = 0.0f;
+    float ticketFare = 2.50f;
     bool doorsOpen = false;
     float doorProgress = 0.0f;
     int lastStationGx = -1;
     int lastStationGy = -1;
+    float lastDepartedStationDist = -999.0f;
 };
 
 // Typedef for seamless drop-in replacement

@@ -1,9 +1,22 @@
 #include <raylib.h>
 #include "game.hpp"
 
+#if defined(PLATFORM_WEB)
+    #include <emscripten/emscripten.h>
+    static Game* g_game = nullptr;
+    static void UpdateDrawFrame() {
+        g_game->HandleInput();
+        g_game->Update(GetFrameTime());
+        g_game->Draw();
+    }
+#endif
+
 int main() {
-    // Enable MSAA 4X for smooth anti-aliased isometric rails and lines
+#if defined(PLATFORM_WEB)
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
+#else
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_WINDOW_RESIZABLE);
+#endif
     SetTraceLogLevel(LOG_WARNING);
 
     const int screenWidth = 1280;
@@ -14,11 +27,16 @@ int main() {
 
     Game game;
 
+#if defined(PLATFORM_WEB)
+    g_game = &game;
+    emscripten_set_main_loop(UpdateDrawFrame, 0, 1);
+#else
     while (!game.ShouldClose()) {
         game.HandleInput();
         game.Update(GetFrameTime());
         game.Draw();
     }
+#endif
 
     CloseWindow();
     return 0;

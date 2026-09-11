@@ -19,6 +19,15 @@ struct Particle {
     ParticleType type;
 };
 
+struct FloatingText {
+    Vector3 pos;
+    std::string text;
+    Color color;
+    float life;
+    float maxLife;
+    float rise;
+};
+
 class ParticleSystem {
 public:
     ParticleSystem() = default;
@@ -27,6 +36,7 @@ public:
     void SpawnConfetti(Vector3 gridPos, int count = 40);
     void SpawnSmoke(Vector3 gridPos, int count = 6);
     void SpawnVomit(Vector3 gridPos, int count = 15);
+    void SpawnFloatingText(Vector3 gridPos, const std::string& text, Color color = Color{34, 197, 94, 255});
 
     void Update(float dt);
     void Draw(Vector2 camOffset, float zoom);
@@ -34,4 +44,5 @@ public:
 
 private:
     std::vector<Particle> particles;
+    std::vector<FloatingText> floatingTexts;
 };

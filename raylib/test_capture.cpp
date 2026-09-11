@@ -17,6 +17,9 @@ public:
     void OpenManualOverlay(bool open) {
         helpOverlayOpen = open;
     }
+    void StartGame() {
+        state = STATE_PLAYING;
+    }
     void SelectCommuter(int idx) {
         selectedPeepIdx = idx;
     }
@@ -85,65 +88,62 @@ int main() {
     game.AddStationMesses();
     game.PositionCrew();
 
-    // 1. Central Hub Island Platform with EMU Train, PSDs, PIDS, Commuters with shape badges
-    game.SetCamera({680.0f, -80.0f}, 1.0f);
-    for (int i = 0; i < 40; ++i) game.Step(0.033f);
+    // 0. Start Menu & Instructions Screen (STATE_TITLE)
+    game.Render();
+    TakeScreenshot("test_metro_start_menu.png");
+    std::cout << "Captured test_metro_start_menu.png\n";
+
+    // Start playing
+    game.StartGame();
+
+    // 1. Initial State at Central Hub: Entrance, Plaza, Fountain, Central Hub Platform
+    game.SetCamera({660.0f, -30.0f}, 1.0f);
     game.Render();
     TakeScreenshot("test_metro_hub_island_platform.png");
     std::cout << "Captured test_metro_hub_island_platform.png\n";
 
-    // 2. Elevated SkyTrain Concrete Viaduct & Wayside 3-Aspect Signaling Mast over Canal
-    for (int i = 0; i < 180; ++i) game.Step(0.033f);
-    game.SetCamera({560.0f, -140.0f}, 1.25f);
+    // 2. Simulate 120 steps: Train boards commuters at Central Hub, collects fares with floating text
+    for (int i = 0; i < 120; ++i) game.Step(0.033f);
+    game.Render();
+    TakeScreenshot("test_metro_boarding_simulation.png");
+    std::cout << "Captured test_metro_boarding_simulation.png\n";
+
+    // 3. Elevated SkyTrain Viaduct over Canal
+    game.SetCamera({540.0f, -120.0f}, 1.15f);
+    for (int i = 0; i < 150; ++i) game.Step(0.033f);
     game.Render();
     TakeScreenshot("test_metro_viaduct_signaling.png");
     std::cout << "Captured test_metro_viaduct_signaling.png\n";
 
-    // 3. Operations Control Center (OCC) Dashboard with Line Operations & Commuter Inspector
+    // 4. Line Operations Window: RCT-Style Mode (Open/Test/Closed), Fleet Formation, Fare Pricing
+    game.SetCamera({660.0f, -30.0f}, 1.0f);
     game.OpenStatsWindow(true);
     game.SelectCommuter(0);
-    game.SetCamera({680.0f, -80.0f}, 1.0f);
     game.Render();
     TakeScreenshot("test_metro_occ_dashboard.png");
     std::cout << "Captured test_metro_occ_dashboard.png\n";
 
-    // 4. Passenger Concourse, Subway Entrance Stairwell, Smartcard Gates & Newsstand
+    // 5. Transit Crew & Station Maintenance Window
     game.OpenStatsWindow(false);
     game.SelectCommuter(-1);
-    game.SetCamera({720.0f, -80.0f}, 1.35f);
-    for (int i = 0; i < 30; ++i) game.Step(0.033f);
-    game.Render();
-    TakeScreenshot("test_metro_concourse_turnstiles.png");
-    std::cout << "Captured test_metro_concourse_turnstiles.png\n";
-
-    // 5. Transit Crew & Station Maintenance Window
     game.OpenStaffWindow(true);
     game.Render();
     TakeScreenshot("test_metro_crew_management.png");
     std::cout << "Captured test_metro_crew_management.png\n";
 
-    // 6. OCC Operations Manual (Overhauled 3-Step Clear Guide)
+    // 6. OCC Operations Manual
     game.OpenStaffWindow(false);
     game.OpenManualOverlay(true);
     game.Render();
     TakeScreenshot("test_metro_operations_manual.png");
     std::cout << "Captured test_metro_operations_manual.png\n";
 
-    // 7. L-Turn Rail Construction Ghost with Directional Arrow
+    // 7. Long Simulation Loop Test: Run 600 steps to verify infinite loop without stall
     game.OpenManualOverlay(false);
-    game.SetCamera({660.0f, -80.0f}, 1.35f);
-    game.SetBuildTool(TRACK_CURVE_LEFT, DIR_EAST);
-    game.SetHoveredGrid(10, 11);
+    for (int i = 0; i < 600; ++i) game.Step(0.033f);
     game.Render();
-    TakeScreenshot("test_metro_lturn_placement.png");
-    std::cout << "Captured test_metro_lturn_placement.png\n";
-
-    // 8. In-Game HUD Quick Tip Banner & Streamlined Toolbar Labels
-    game.SetBuildTool(TRACK_STRAIGHT, DIR_EAST);
-    game.SetHoveredGrid(5, 12);
-    game.Render();
-    TakeScreenshot("test_metro_simple_instructions.png");
-    std::cout << "Captured test_metro_simple_instructions.png\n";
+    TakeScreenshot("test_metro_infinite_loop_proof.png");
+    std::cout << "Captured test_metro_infinite_loop_proof.png\n";
 
     CloseWindow();
     return 0;

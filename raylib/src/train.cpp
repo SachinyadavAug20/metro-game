@@ -71,7 +71,7 @@ int MetroTrain::AlightCommutersAtStation(StationShape stationShape) {
     int alighted = 0;
     for (auto& c : cars) {
         for (size_t i = 0; i < c.targetShapes.size();) {
-            if (c.targetShapes[i] == stationShape) {
+            if (stationShape == SHAPE_NONE || c.targetShapes[i] == stationShape) {
                 c.targetShapes.erase(c.targetShapes.begin() + i);
                 c.commuterShirtColors.erase(c.commuterShirtColors.begin() + i);
                 c.passengerCount--;
@@ -88,6 +88,7 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
     if (!tracks.IsCircuitClosed()) {
         state = TRAIN_STOPPED_IN_STATION;
         velocity = 0.0f;
+        doorsOpen = true;
         return;
     }
 
@@ -99,110 +100,140 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
         recordSpeedKmh = curSpeed;
     }
 
-    // 1. Identify track element under locomotive
-    Vector3 tangent;
-    Vector3 headPos = tracks.GetPointAtDistance(distance, &tangent);
-    int curGx = (int)roundf(headPos.x);
-    int curGy = (int)roundf(headPos.y);
-    const TrackNode* currentTile = tracks.GetPiece(curGx, curGy);
-
     // Update live signaling aspects based on current train position
     tracks.UpdateSignals(distance);
 
-    // 2. Station Boarding / Dwell Cycle
-    if (currentTile && currentTile->type == TRACK_STATION && curGx != lastStationGx) {
-        if (state == TRAIN_CRUISING || state == TRAIN_APPROACHING_STATION || state == TRAIN_BRAKING) {
-            // Decelerate smoothly into platform
-            if (velocity > 1.8f) {
-                state = TRAIN_BRAKING;
-                velocity = std::max(0.0f, velocity - 10.0f * dt);
-            } else {
-                // Halts at platform center
-                state = TRAIN_BOARDING;
-                velocity = 0.0f;
-                stationTimer = 3.8f; // Boarding window
-                doorsOpen = true;
-                doorProgress = 0.0f;
-                lastStationGx = curGx;
-                lastStationGy = curGy;
-
-                AudioManager::Play(SFX_AIR_BRAKE, 0.7f);
-                particles.SpawnSmoke(headPos, 3);
-
-                // Passengers alight if current station matches their target shape!
-                int alighted = AlightCommutersAtStation(currentTile->stationShape);
-                if (alighted > 0) {
-                    outDeliveredCommuters += alighted;
-                    totalTransported += alighted;
-                    outFareRevenue += (float)alighted * 2.50f;
-                    AudioManager::Play(SFX_DELIVERY_CHIME, 0.9f);
-                    particles.SpawnConfetti(headPos, 12);
-                }
-            }
-        }
-    }
-
-    // While stopped in station
-    if (state == TRAIN_BOARDING) {
+    if (operatingMode == LINE_CLOSED) {
+        // Line is closed - train halts
+        state = TRAIN_STOPPED_IN_STATION;
+        velocity = std::max(0.0f, velocity - 10.0f * dt);
+        doorsOpen = false;
+        doorProgress = std::max(0.0f, doorProgress - dt * 3.0f);
+        for (auto& c : cars) c.doorOpenProgress = doorProgress;
+    } else if (state == TRAIN_BOARDING) {
+        // Stopped at station platform: boarding & alighting
+        velocity = 0.0f;
         stationTimer -= dt;
         doorProgress = std::min(1.0f, doorProgress + dt * 3.5f);
         for (auto& c : cars) c.doorOpenProgress = doorProgress;
 
-        // Departure warning chime before doors close
-        if (stationTimer <= 1.2f && doorsOpen && stationTimer > 0.0f) {
+        // Departure warning chime before doors slide closed
+        if (stationTimer <= 1.0f && doorsOpen) {
             doorsOpen = false;
-            AudioManager::Play(SFX_DOOR_CHIME, 0.85f);
+            AudioManager::Play(SFX_DOOR_CHIME, 0.75f);
         }
 
         if (stationTimer <= 0.0f) {
             state = TRAIN_ACCELERATING;
             doorProgress = 0.0f;
             for (auto& c : cars) c.doorOpenProgress = 0.0f;
-            AudioManager::Play(SFX_VVVF_MOTOR, 0.7f);
-            velocity = 2.0f;
-        } else {
-            velocity = 0.0f;
+            AudioManager::Play(SFX_VVVF_MOTOR, 0.65f);
+            velocity = 2.5f;
+            distance += 0.35f; // Nudge past platform stop threshold
+            if (distance >= circuitLen) distance = fmodf(distance, circuitLen);
         }
     } else {
-        // Clear lastStationGx once far enough away from previous station
-        if (lastStationGx != -1) {
-            float distToLast = Vector2Distance(Vector2{(float)curGx, (float)curGy}, Vector2{(float)lastStationGx, (float)lastStationGy});
-            if (distToLast > 1.8f) {
-                lastStationGx = -1;
-                lastStationGy = -1;
+        // Train is in motion
+        StationInfo nextStation;
+        float distToStation = 999.0f;
+        bool hasStation = tracks.GetNextStationAhead(distance, distToStation, nextStation);
+
+        // Smooth station deceleration and exact center stop
+        if (hasStation && distToStation <= 2.6f && distToStation > 0.09f) {
+            state = TRAIN_BRAKING;
+            float targetV = std::max(1.4f, targetVelocity * (distToStation / 2.6f));
+            if (velocity > targetV) {
+                velocity = std::max(targetV, velocity - 12.0f * dt);
+            }
+        } else if (hasStation && distToStation <= 0.09f) {
+            // Arrived squarely at the station platform!
+            distance = nextStation.circuitDist;
+            velocity = 0.0f;
+            state = TRAIN_BOARDING;
+            stationTimer = 3.2f;
+            doorsOpen = true;
+            doorProgress = 0.0f;
+
+            AudioManager::Play(SFX_AIR_BRAKE, 0.6f);
+            AudioManager::Play(SFX_STATION_BELL, 0.7f);
+
+            Vector3 headPos = tracks.GetPointAtDistance(distance);
+            particles.SpawnSmoke(headPos, 3);
+
+            if (operatingMode == LINE_OPEN) {
+                // Alight passengers matching station shape or round-trip riders
+                int alighted = AlightCommutersAtStation(nextStation.shape);
+                if (alighted == 0 && GetTotalPassengers() > 0 && (rand() % 100 < 60)) {
+                    alighted = AlightCommutersAtStation(SHAPE_NONE); // round-trip scenic commuters alight
+                }
+                if (alighted > 0) {
+                    outDeliveredCommuters += alighted;
+                    totalTransported += alighted;
+
+                    bool leveledUp = false;
+                    int newLevel = 1;
+                    tracks.RecordStationAlight(nextStation.gx, nextStation.gy, alighted, leveledUp, newLevel);
+
+                    float lvlBonus = (nextStation.stationLevel == 3) ? 1.50f : ((nextStation.stationLevel == 2) ? 1.25f : 1.0f);
+                    float rev = (float)alighted * ticketFare * lvlBonus;
+                    outFareRevenue += rev;
+                    totalRevenueEarned += rev;
+
+                    AudioManager::Play(SFX_CASH_REGISTER, 0.85f);
+                    particles.SpawnConfetti(headPos, 14);
+
+                    if (leveledUp) {
+                        AudioManager::Play(SFX_UPGRADE_FANFARE, 0.95f);
+                        particles.SpawnConfetti(headPos, 28);
+                        particles.SpawnFloatingText(
+                            Vector3{headPos.x, headPos.y, headPos.z + 1.4f},
+                            TextFormat("★ STATION LEVEL %d! ★", newLevel),
+                            Color{255, 215, 0, 255}
+                        );
+                    } else if (lvlBonus > 1.0f) {
+                        particles.SpawnFloatingText(
+                            Vector3{headPos.x, headPos.y, headPos.z + 0.9f},
+                            TextFormat("+$%.2f (LV %d BONUS)", rev, nextStation.stationLevel),
+                            Color{52, 211, 153, 255}
+                        );
+                    } else {
+                        particles.SpawnFloatingText(
+                            Vector3{headPos.x, headPos.y, headPos.z + 0.9f},
+                            TextFormat("+$%.2f", rev),
+                            Color{34, 197, 94, 255}
+                        );
+                    }
+                }
+            }
+        } else {
+            // Normal cruising / acceleration
+            state = TRAIN_CRUISING;
+            if (velocity < targetVelocity) {
+                velocity = std::min(targetVelocity, velocity + 6.0f * dt);
+            } else if (velocity > targetVelocity) {
+                velocity = std::max(targetVelocity, velocity - 8.0f * dt);
+            }
+
+            // Periodic electric motor hum while accelerating
+            if (velocity > 3.0f && velocity < 12.0f) {
+                vvvfSoundTimer -= dt;
+                if (vvvfSoundTimer <= 0.0f) {
+                    AudioManager::Play(SFX_VVVF_MOTOR, 0.35f);
+                    vvvfSoundTimer = 3.5f;
+                }
             }
         }
     }
 
-    // 3. Traction Speed Control & Cruising
-    if (state != TRAIN_BOARDING) {
-        float maxAllowedVelocity = 14.5f; // ~70 km/h cruising speed
-        state = TRAIN_CRUISING;
-
-        // Smooth electric traction acceleration / braking
-        if (velocity < maxAllowedVelocity) {
-            velocity = std::min(maxAllowedVelocity, velocity + 6.0f * dt);
-        } else if (velocity > maxAllowedVelocity) {
-            velocity = std::max(maxAllowedVelocity, velocity - 8.5f * dt);
-        }
-
-        // VVVF Inverter sound timing during acceleration
-        if (velocity > 3.0f && velocity < 12.0f) {
-            vvvfSoundTimer -= dt;
-            if (vvvfSoundTimer <= 0.0f) {
-                AudioManager::Play(SFX_VVVF_MOTOR, 0.35f);
-                vvvfSoundTimer = 3.5f;
-            }
+    // Advance train along track spline
+    if (velocity > 0.0f) {
+        distance += velocity * dt;
+        if (distance >= circuitLen) {
+            distance = fmodf(distance, circuitLen);
         }
     }
 
-    // 4. Advance train along master spline
-    distance += velocity * dt;
-    if (distance >= circuitLen) {
-        distance = fmodf(distance, circuitLen);
-    }
-
-    // 5. Update car positions & forward tangents
+    // Update car positions & forward tangents
     float carSpacing = 1.05f;
     for (size_t i = 0; i < cars.size(); ++i) {
         float carDist = distance - (float)i * carSpacing;
@@ -279,6 +310,21 @@ void MetroTrain::Draw(Vector2 camOffset, float zoom) const {
             DrawCircle((int)doorPos.x, (int)doorPos.y, 3.5f * zoom, Color{34, 197, 94, 255}); // Green boarding light
         }
 
+        // 6b. Rooftop Aerodynamic HVAC Pods
+        DrawRectanglePro(
+            Rectangle{sPos.x, sPos.y - 4.5f * zoom, 12.0f * zoom, 3.8f * zoom},
+            Vector2{6.0f * zoom, 1.9f * zoom},
+            angle,
+            Color{148, 163, 184, 255}
+        );
+
+        // Single-arm pantograph on 2nd car
+        if (i == 1 && cars.size() > 1) {
+            Vector2 pantoBase = { sPos.x, sPos.y - 6.0f * zoom };
+            DrawLineEx(pantoBase, {pantoBase.x, pantoBase.y - 7.0f * zoom}, 1.5f * zoom, Color{239, 68, 68, 255});
+            DrawLineEx({pantoBase.x - 4.0f * zoom, pantoBase.y - 7.0f * zoom}, {pantoBase.x + 4.0f * zoom, pantoBase.y - 7.0f * zoom}, 2.0f * zoom, Color{30, 41, 59, 255});
+        }
+
         // 7. Lead Locomotive Cab & Front Headlamps
         if (i == 0) {
             Vector2 headLensPos = { sPos.x + fwdNorm.x * (carLen * 0.52f), sPos.y + fwdNorm.y * (carLen * 0.52f) };
@@ -347,13 +393,15 @@ MetroLineStats MetroTrain::GetStats(const TrackSystem& tracks) const {
     MetroLineStats stats;
     stats.lineName = lineName;
     stats.themeColor = themeColor;
+    stats.mode = operatingMode;
     stats.currentSpeedKmh = GetSpeedKmh();
     stats.maxSpeedKmh = std::max(stats.currentSpeedKmh, recordSpeedKmh);
     stats.trackLengthM = tracks.GetTrackLengthM();
     stats.stationCount = tracks.GetStationCount();
     stats.fleetCars = (int)cars.size();
     stats.totalRiders = totalTransported;
-    stats.ticketFare = 2.50f;
+    stats.totalRevenue = totalRevenueEarned;
+    stats.ticketFare = ticketFare;
     stats.currentSignal = tracks.GetActiveSignalAspect();
 
     // High performance punctuality based on speed and station coverage

@@ -19,25 +19,27 @@ void Game::Init() {
 
     zoom = 1.0f;
     // Center camera on the metropolitan transit circuit and Central Hub
-    cameraPos = {(float)screenW / 2.0f + 40.0f * zoom, ((float)screenH / 2.0f - 20.0f) - 420.0f * zoom};
+    cameraPos = {(float)screenW / 2.0f + 20.0f * zoom, ((float)screenH / 2.0f) - 390.0f * zoom};
 
     SetupInitialPark();
     tracks.InitDefaultCircuit();
     train.Reset(tracks);
-    peeps.Init({2.0f, 12.0f}, {7.0f, 13.0f}, {6.0f, 14.0f});
+    peeps.Init({1.0f, 9.0f}, {7.0f, 8.0f}, {6.0f, 10.0f});
     particles.Clear();
 
     economy.balance = 2500.0f;
     economy.baseFare = 2.50f;
     economy.totalDelivered = 0;
     cachedStats.ticketFare = 2.50f;
+    train.SetTicketFare(2.50f);
 
-    parkRating = 90.0f;
+    parkRating = 92.0f;
     angryLeaves = 0;
     week = 1;
     weekTimer = 0.0f;
     gameSpeed = 1;
-    state = STATE_PLAYING;
+    state = STATE_TITLE;
+    lastMilestoneAwarded = 0;
 
     statsWindowOpen = false;
     staffWindowOpen = false;
@@ -54,15 +56,15 @@ void Game::Init() {
     StaffMember custodian;
     custodian.name = "Kenji (Custodian)";
     custodian.type = STAFF_CUSTODIAN;
-    custodian.pos = {3.0f, 12.0f};
-    custodian.targetPos = {3.0f, 12.0f};
+    custodian.pos = {3.0f, 9.0f};
+    custodian.targetPos = {3.0f, 9.0f};
     staff.push_back(custodian);
 
     StaffMember engineer;
     engineer.name = "Sato (Signal Engineer)";
     engineer.type = STAFF_ENGINEER;
-    engineer.pos = {7.0f, 13.0f};
-    engineer.targetPos = {7.0f, 13.0f};
+    engineer.pos = {7.0f, 9.0f};
+    engineer.targetPos = {7.0f, 9.0f};
     staff.push_back(engineer);
 
     ShowToast("[METRO] Welcome to METRO GRID! Line 1 Service Active | Press [H] for Manual", Color{56, 189, 248, 255}, 4.5f);
@@ -84,63 +86,65 @@ void Game::SetupInitialPark() {
     }
 
     // Urban River Canal under elevated Marina Viaduct
-    for (int y = 9; y <= 18; ++y) {
-        terrain[11][y] = GROUND_WATER;
+    for (int y = 6; y <= 21; ++y) {
         terrain[12][y] = GROUND_WATER;
+        terrain[13][y] = GROUND_WATER;
     }
 
-    // Pedestrian sidewalks connecting subway entrance to Central Hub
+    // Pedestrian sidewalks connecting entrance plaza to Central Hub Station
     for (int x = 0; x <= 5; ++x) {
-        terrain[x][12] = GROUND_PATH;
+        terrain[x][9] = GROUND_PATH;
     }
 
     // Granite Transit Plaza at Central Hub
     for (int x = 5; x <= 8; ++x) {
-        for (int y = 11; y <= 13; ++y) {
+        for (int y = 7; y <= 11; ++y) {
             terrain[x][y] = GROUND_PLAZA;
         }
     }
 
     // Tactile safety platform edge queue zones
-    terrain[7][13] = GROUND_QUEUE;
-    terrain[8][13] = GROUND_QUEUE;
+    terrain[7][8] = GROUND_QUEUE;
+    terrain[7][10] = GROUND_PATH;
 
-    // Concourse path connecting to transfer station
-    terrain[8][14] = GROUND_PATH;
-    terrain[7][14] = GROUND_PATH;
-    terrain[6][14] = GROUND_PATH;
-    terrain[6][13] = GROUND_PATH;
+    // Concourse paths connecting to Suburban Terminal
+    for (int y = 10; y <= 15; ++y) {
+        terrain[5][y] = GROUND_PATH;
+    }
 
-    // Concourse towards University Med Center
-    terrain[8][15] = GROUND_PATH;
-    terrain[9][15] = GROUND_PATH;
+    // Concourse paths to University Med Center
+    for (int x = 5; x <= 10; ++x) {
+        terrain[x][17] = GROUND_PATH;
+    }
 
     // Urban Transit Station Amenities & Scenery
-    scenery[2][12] = SCENERY_METRO_ENTRANCE; // Subway stairs with illuminated "M" roundel totem
-    scenery[4][12] = SCENERY_TURNSTILE_GATE; // Contactless fare gates & TVM ticket machine
-    scenery[3][11] = SCENERY_MAP_KIOSK;      // Harry Beck style schematic transit map board
-    scenery[6][11] = SCENERY_NEWSSTAND;      // Platform coffee & newspaper kiosk
-    scenery[1][13] = SCENERY_BIKE_RACK;      // Metro bike share docking rack
+    scenery[0][9] = SCENERY_METRO_ENTRANCE; // Grand subway portal entrance
+    scenery[2][9] = SCENERY_TURNSTILE_GATE; // Contactless fare gates & TVM ticket machine
+    scenery[3][8] = SCENERY_MAP_KIOSK;      // Harry Beck style schematic transit map board
+    scenery[5][7] = SCENERY_NEWSSTAND;      // Platform Metro Cafe & refreshments
+    scenery[1][10] = SCENERY_BIKE_RACK;     // Metro bike share docking rack
+    scenery[4][7] = SCENERY_FOUNTAIN;       // Splashing park water fountain
 
     // Platform Benches
-    scenery[5][11] = SCENERY_BENCH;
-    scenery[7][11] = SCENERY_BENCH;
+    scenery[6][8] = SCENERY_BENCH;
+    scenery[8][8] = SCENERY_BENCH;
 
     // High-Efficiency Municipal LED Streetlamps
-    scenery[3][13] = SCENERY_LAMP_POST;
-    scenery[8][11] = SCENERY_LAMP_POST;
-    scenery[6][15] = SCENERY_LAMP_POST;
+    scenery[3][8] = SCENERY_LAMP_POST;
+    scenery[8][10] = SCENERY_LAMP_POST;
+    scenery[5][12] = SCENERY_LAMP_POST;
 
-    // Manicured Urban Ginkgo / Street Trees with sidewalk iron grates
-    scenery[2][10] = SCENERY_STREET_TREE;
-    scenery[4][10] = SCENERY_STREET_TREE;
-    scenery[1][15] = SCENERY_STREET_TREE;
-    scenery[5][14] = SCENERY_STREET_TREE;
+    // Manicured Trees & Botanical Flower Beds
+    scenery[1][8] = SCENERY_STREET_TREE;
+    scenery[3][10] = SCENERY_STREET_TREE;
+    scenery[5][10] = SCENERY_STREET_TREE;
+    scenery[4][10] = SCENERY_FLOWER_BED;
+    scenery[6][7]  = SCENERY_FLOWER_BED;
 
     // Metropolitan Park Pine Trees across the canal
-    scenery[15][8]  = SCENERY_PINE_TREE;
-    scenery[16][12] = SCENERY_PINE_TREE;
-    scenery[17][15] = SCENERY_PINE_TREE;
+    scenery[17][8]  = SCENERY_PINE_TREE;
+    scenery[17][12] = SCENERY_PINE_TREE;
+    scenery[17][16] = SCENERY_PINE_TREE;
     scenery[15][18] = SCENERY_PINE_TREE;
 }
 
@@ -191,6 +195,17 @@ void Game::ApplyUpgrade(int choiceIdx) {
 
 void Game::HandleInput() {
     Vector2 mousePos = GetMousePosition();
+
+    // 0. Title & Start Menu Screen Input Handler
+    if (state == STATE_TITLE) {
+        if ((IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ui.CheckTitleStartClick(mousePos)) ||
+            IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) {
+            state = STATE_PLAYING;
+            AudioManager::Play(SFX_BUTTON_CLICK, 0.8f);
+            ShowToast("[METRO] Service Commenced! Train will board passengers at Station [7]", Color{56, 189, 248, 255}, 5.0f);
+        }
+        return;
+    }
 
     // 1. Camera Panning with WASD / Arrow Keys
     float panSpeed = 480.0f * GetFrameTime();
@@ -297,31 +312,31 @@ void Game::HandleInput() {
     if (IsKeyPressed(KEY_THREE)) {
         if (activeTab == CAT_TRACK) currentTrack = TRACK_CURVE_RIGHT;
         else if (activeTab == CAT_INFRA) currentGround = GROUND_PLAZA;
-        else currentScenery = SCENERY_MAP_KIOSK;
+        else currentScenery = SCENERY_STREET_TREE;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_FOUR)) {
         if (activeTab == CAT_TRACK) currentTrack = TRACK_VIADUCT_ELEVATED;
-        else currentScenery = SCENERY_STREET_TREE;
+        else currentScenery = SCENERY_PINE_TREE;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_FIVE)) {
         if (activeTab == CAT_TRACK) currentTrack = TRACK_VIADUCT_SLOPE;
-        else currentScenery = SCENERY_PINE_TREE;
+        else currentScenery = SCENERY_BENCH;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_SIX)) {
         if (activeTab == CAT_TRACK) currentTrack = TRACK_TUNNEL_PORTAL;
-        else currentScenery = SCENERY_BENCH;
+        else currentScenery = SCENERY_LAMP_POST;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_SEVEN)) {
         if (activeTab == CAT_TRACK) currentTrack = TRACK_STATION;
-        else currentScenery = SCENERY_LAMP_POST;
+        else currentScenery = SCENERY_FOUNTAIN;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
@@ -382,11 +397,31 @@ void Game::HandleInput() {
         if (statsWindowOpen) {
             float deltaFare = 0.0f;
             int colorChoice = -1;
+            int modeChange = -1;
+            int carDelta = 0;
             bool closeStats = false;
-            if (ui.CheckStatsWindowClick(mousePos, deltaFare, colorChoice, closeStats)) {
+            if (ui.CheckStatsWindowClick(mousePos, deltaFare, colorChoice, modeChange, carDelta, closeStats)) {
                 if (closeStats) statsWindowOpen = false;
+                if (modeChange != -1) {
+                    train.SetOperatingMode((LineOperatingMode)modeChange);
+                    const char* mNames[] = {"OPEN (Boarding Active)", "TEST RUN (No Boarding)", "CLOSED (Service Suspended)"};
+                    Color mCols[] = {Color{34, 197, 94, 255}, Color{234, 179, 8, 255}, Color{239, 68, 68, 255}};
+                    ShowToast(TextFormat("Line Status: %s", mNames[modeChange]), mCols[modeChange], 3.0f);
+                    AudioManager::Play(SFX_BUTTON_CLICK, 0.7f);
+                }
+                if (carDelta != 0) {
+                    int newCars = train.GetCarriageCount() + carDelta;
+                    train.SetCarriageCount(newCars);
+                    ShowToast(TextFormat("Rolling Stock: Formation updated to %d Cars", train.GetCarriageCount()), Color{56, 189, 248, 255}, 2.5f);
+                    AudioManager::Play(SFX_BUTTON_CLICK, 0.7f);
+                }
                 if (deltaFare != 0.0f) {
-                    cachedStats.ticketFare = std::max(0.50f, std::min(10.0f, cachedStats.ticketFare + deltaFare));
+                    float newFare = std::max(0.50f, std::min(10.0f, train.GetTicketFare() + deltaFare));
+                    train.SetTicketFare(newFare);
+                    economy.baseFare = newFare;
+                    cachedStats.ticketFare = newFare;
+                    ShowToast(TextFormat("Ticket Tariff Set to $%.2f", newFare), Color{34, 197, 94, 255}, 2.0f);
+                    AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
                 }
                 if (colorChoice != -1) {
                     Color liveries[] = {
@@ -394,14 +429,16 @@ void Game::HandleInput() {
                         Color{37, 99, 235, 255},  // London Blue (Piccadilly)
                         Color{16, 185, 129, 255}, // Paris Green (Line 6)
                         Color{147, 51, 234, 255}, // MTR Purple (Tseung Kwan O)
-                        Color{245, 158, 11, 255}  // Chicago Amber (Brown Line)
+                        Color{245, 158, 11, 255}, // Chicago Amber (Brown Line)
+                        Color{234, 88, 12, 255}   // Tokyo Ginza Orange
                     };
                     const char* names[] = {
                         "Line 1 - Marunouchi Red",
                         "Line 2 - Piccadilly Blue",
                         "Line 3 - Paris Emerald",
                         "Line 4 - Victoria Purple",
-                        "Line 5 - Chicago Amber"
+                        "Line 5 - Chicago Amber",
+                        "Line 6 - Ginza Orange"
                     };
                     cachedStats.themeColor = liveries[colorChoice];
                     cachedStats.lineName = names[colorChoice];
@@ -491,9 +528,9 @@ void Game::HandleInput() {
                 else { isBulldozing = false; currentGround = gTypes[itemIdx]; }
             } else if (activeTab == CAT_SCENERY) {
                 SceneryType sTypes[] = {
-                    SCENERY_METRO_ENTRANCE, SCENERY_TURNSTILE_GATE, SCENERY_MAP_KIOSK,
-                    SCENERY_STREET_TREE, SCENERY_PINE_TREE,
-                    SCENERY_BENCH, SCENERY_LAMP_POST, SCENERY_NEWSSTAND, SCENERY_NONE
+                    SCENERY_METRO_ENTRANCE, SCENERY_TURNSTILE_GATE, SCENERY_STREET_TREE,
+                    SCENERY_PINE_TREE, SCENERY_BENCH, SCENERY_LAMP_POST,
+                    SCENERY_FOUNTAIN, SCENERY_NEWSSTAND, SCENERY_NONE
                 };
                 if (itemIdx == 8) isBulldozing = true;
                 else { isBulldozing = false; currentScenery = sTypes[itemIdx]; }
@@ -539,15 +576,18 @@ void Game::HandleInput() {
                     economy.balance += 15.0f;
                     AudioManager::Play(SFX_BULLDOZE, 0.7f);
                     particles.SpawnSmoke(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 10);
+                    particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ + 0.5f}, "+$15", Color{34, 197, 94, 255});
                 } else if (tracks.HasPiece(hoveredGx, hoveredGy)) {
                     tracks.RemovePiece(hoveredGx, hoveredGy);
                     economy.balance += 25.0f;
                     AudioManager::Play(SFX_BULLDOZE, 0.8f);
                     particles.SpawnSmoke(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 12);
+                    particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ + 0.5f}, "+$25", Color{34, 197, 94, 255});
                 } else if (terrain[hoveredGx][hoveredGy] != GROUND_GRASS && terrain[hoveredGx][hoveredGy] != GROUND_WATER) {
                     terrain[hoveredGx][hoveredGy] = GROUND_GRASS;
                     economy.balance += 5.0f;
                     AudioManager::Play(SFX_BULLDOZE, 0.6f);
+                    particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, 0.5f}, "+$5", Color{34, 197, 94, 255});
                 }
             } else {
                 // Active placement based on Tab
@@ -560,6 +600,7 @@ void Game::HandleInput() {
                             economy.balance -= 40.0f;
                             AudioManager::Play(SFX_CONSTRUCTION, 0.8f);
                             particles.SpawnSparks(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 8);
+                            particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ + 0.6f}, "-$40", Color{239, 68, 68, 255});
 
                             if (!wasClosed && tracks.IsCircuitClosed()) {
                                 ShowToast("[CIRCUIT] Transit Loop Closed! Regular EMU Schedule Active!", Color{34, 197, 94, 255}, 4.0f);
@@ -582,6 +623,7 @@ void Game::HandleInput() {
                         terrain[hoveredGx][hoveredGy] = currentGround;
                         economy.balance -= 15.0f;
                         AudioManager::Play(SFX_CONSTRUCTION, 0.7f);
+                        particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, 0.6f}, "-$15", Color{239, 68, 68, 255});
                     } else {
                         ShowToast("Insufficient funds for concourse paving ($15 required)", Color{239, 68, 68, 255}, 2.0f);
                     }
@@ -596,6 +638,8 @@ void Game::HandleInput() {
                     else if (currentScenery == SCENERY_PINE_TREE) { scnCost = 30; boost = 1.0f; }
                     else if (currentScenery == SCENERY_LAMP_POST) { scnCost = 25; boost = 1.0f; }
                     else if (currentScenery == SCENERY_BENCH) { scnCost = 20; boost = 0.8f; }
+                    else if (currentScenery == SCENERY_FOUNTAIN) { scnCost = 120; boost = 5.0f; }
+                    else if (currentScenery == SCENERY_FLOWER_BED) { scnCost = 25; boost = 1.2f; }
 
                     if (economy.balance >= (float)scnCost) {
                         scenery[hoveredGx][hoveredGy] = currentScenery;
@@ -603,6 +647,7 @@ void Game::HandleInput() {
                         parkRating = std::min(100.0f, parkRating + boost);
                         AudioManager::Play(SFX_CONSTRUCTION, 0.8f);
                         particles.SpawnConfetti(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, 0.5f}, 10);
+                        particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, 0.8f}, TextFormat("-$%d", scnCost), Color{239, 68, 68, 255});
                     } else {
                         ShowToast(TextFormat("Insufficient funds for scenery ($%d required)", scnCost), Color{239, 68, 68, 255}, 2.0f);
                     }
@@ -658,6 +703,25 @@ void Game::Update(float dt) {
         economy.totalDelivered += delivered;
         economy.balance += fareRevenue;
         parkRating = std::min(100.0f, parkRating + (float)delivered * 0.6f);
+
+        // Alight passengers onto platform and concourse
+        Vector3 locoP = train.GetLocomotivePos();
+        peeps.AlightPassengers(delivered, Vector2{locoP.x, locoP.y});
+
+        // Milestone grants
+        int milestones[] = {25, 50, 100, 250, 500};
+        for (int m : milestones) {
+            if (economy.totalDelivered >= m && lastMilestoneAwarded < m) {
+                lastMilestoneAwarded = m;
+                float bonus = (float)m * 10.0f;
+                economy.balance += bonus;
+                particles.SpawnConfetti(locoP, 30);
+                particles.SpawnFloatingText(Vector3{locoP.x, locoP.y, locoP.z + 1.2f}, TextFormat("+$%.0f BONUS", bonus), Color{255, 215, 0, 255});
+                ShowToast(TextFormat("[MILESTONE] %d Commuters Served! Grant: +$%.0f", m, bonus), Color{34, 197, 94, 255}, 4.0f);
+                AudioManager::Play(SFX_UPGRADE_FANFARE, 0.9f);
+                break;
+            }
+        }
 
         if (economy.totalDelivered >= 500) {
             state = STATE_VICTORY;
@@ -805,8 +869,8 @@ void Game::Draw() {
         }
     }
 
-    // 2. Draw Transit Portal Arch Marquee at entrance (0, 12)
-    Iso::DrawTransitPortalArch({0.0f, 12.0f}, cameraPos, zoom);
+    // 2. Draw Transit Portal Arch Marquee at entrance (0, 9)
+    Iso::DrawTransitPortalArch({0.0f, 9.0f}, cameraPos, zoom);
 
     // 3. Draw Scenery Items (Layered with correct isometric depth)
     for (int y = 0; y < GRID_SIZE; ++y) {
@@ -902,17 +966,19 @@ void Game::Draw() {
     // 12b. Draw Contextual Quick Tip Banner
     std::string quickTip;
     if (isBulldozing) {
-        quickTip = "[BULLDOZE ACTIVE] Click any rail, platform, or prop to demolish and recover funds (Press X or 1-8 to switch tools)";
+        quickTip = "[DEMOLITION ACTIVE] Click any rail, platform, or prop to demolish and recover funds (Press X to exit)";
+    } else if (train.CanBoard() || train.GetState() == TRAIN_BOARDING || train.GetState() == TRAIN_STOPPED_IN_STATION) {
+        quickTip = "[BOARDING PASSENGERS] Train stopped at platform! Commuters boarding to reach matching shape stations";
     } else if (activeTab == CAT_TRACK) {
         if (tracks.IsCircuitClosed()) {
-            quickTip = "[TRANSIT LOOP ACTIVE] EMU running! Add Stations [7] & Signals [8] to regulate passenger throughput";
+            quickTip = "[LINE 1 SERVICE ACTIVE] Train cruising along track! Pave concourses [Tab 2] or lay amenities [Tab 3]";
         } else {
-            quickTip = "[BUILD RAILS] 1=Straight, 2=L-Turn Left, 3=R-Turn Right | R=Heading | Left Click to Lay";
+            quickTip = "[CIRCUIT BROKEN] Connect tracks into a complete continuous loop so EMU trains can circulate!";
         }
     } else if (activeTab == CAT_INFRA) {
-        quickTip = "[CONCOURSE] 1=Sidewalk, 2=Tactile Queue, 3=Plaza Stone | Pave passenger paths to platforms";
+        quickTip = "[CONCOURSE & PLAZA] 1=Sidewalk, 2=Tactile Queue, 3=Plaza Stone | Pave paths from entrance to stations";
     } else if (activeTab == CAT_SCENERY) {
-        quickTip = "[STATION AMENITIES] 1=Stairs Entrance, 2=Fare Gates, 3=Map Board, 7=LED Lamps | Place to boost comfort";
+        quickTip = "[STATION AMENITIES] 1=Stairs, 2=Fare Gates, 3=Trees, 5=Bench, 6=Lamp, 8=Cafe | Place to boost satisfaction";
     }
     ui.DrawQuickTipBanner(quickTip);
 

@@ -10,73 +10,100 @@ void TrackSystem::InitDefaultCircuit() {
     pieces.clear();
     Color lineCol = Color{229, 57, 53, 255}; // Line 1 Tokyo Red
 
-    // 16-Tile Metropolitan Transit Loop:
-    // Connecting all 4 destination station shapes (Square, Triangle, Cross, Circle)
-    // with Elevated Viaduct, Tunnel Portals, and Wayside Signals!
+    // 34-Tile Scenic Metropolitan Transit Circuit:
+    // Spacious, high-speed circuit connecting Central Hub, Marina Viaduct,
+    // University Med Center, and Suburban Terminal with elevated SkyTrain viaduct,
+    // concrete river bridge, tunnels, and block signaling!
 
-    // 1. Turn East
-    AddPiece(6, 12, 0, TRACK_CURVE_RIGHT, DIR_SOUTH, DIR_EAST, lineCol);
+    // 1. Turn East at (6, 9)
+    AddPiece(6, 9, 0, TRACK_CURVE_RIGHT, DIR_SOUTH, DIR_EAST, lineCol);
 
-    // 2. Central Station [Square - Financial CBD]
-    AddPiece(7, 12, 0, TRACK_STATION, DIR_WEST, DIR_EAST, lineCol);
-    if (TrackNode* n = GetPiece(7, 12)) {
+    // 2. Central Station Platform [Square - Financial CBD] at (7, 9)
+    AddPiece(7, 9, 0, TRACK_STATION, DIR_WEST, DIR_EAST, lineCol);
+    if (TrackNode* n = GetPiece(7, 9)) {
         n->stationShape = SHAPE_SQUARE;
         n->stationName = "Central Hub [Square]";
     }
 
-    // 3. Wayside Signal Mast Block
-    AddPiece(8, 12, 0, TRACK_SIGNAL, DIR_WEST, DIR_EAST, lineCol);
+    // 3. Straight acceleration stretch
+    AddPiece(8, 9, 0, TRACK_STRAIGHT, DIR_WEST, DIR_EAST, lineCol);
 
-    // 4. Viaduct Incline Ramp (Z=0 -> Z=1)
-    AddPiece(9, 12, 0, TRACK_VIADUCT_ELEVATED, DIR_WEST, DIR_EAST, lineCol);
+    // 4. Block Signal Mast
+    AddPiece(9, 9, 0, TRACK_SIGNAL, DIR_WEST, DIR_EAST, lineCol);
 
-    // 5. Elevated Viaduct Straight (Z=1)
-    AddPiece(10, 12, 1, TRACK_STRAIGHT, DIR_WEST, DIR_EAST, lineCol);
+    // 5. Viaduct Incline Ramp (Z=0 -> Z=1)
+    AddPiece(10, 9, 0, TRACK_VIADUCT_ELEVATED, DIR_WEST, DIR_EAST, lineCol);
 
-    // 6. Elevated Turn South (Z=1)
-    AddPiece(11, 12, 1, TRACK_CURVE_RIGHT, DIR_WEST, DIR_SOUTH, lineCol);
+    // 6. Elevated Viaduct Straight (Z=1)
+    AddPiece(11, 9, 1, TRACK_STRAIGHT, DIR_WEST, DIR_EAST, lineCol);
 
-    // 7. Marina Viaduct Station [Triangle - Commercial Hub] (Z=1 Elevated)
-    AddPiece(11, 13, 1, TRACK_STATION, DIR_NORTH, DIR_SOUTH, lineCol);
-    if (TrackNode* n = GetPiece(11, 13)) {
+    // 7. Elevated Bridge over Canal (Z=1)
+    AddPiece(12, 9, 1, TRACK_STRAIGHT, DIR_WEST, DIR_EAST, lineCol);
+    AddPiece(13, 9, 1, TRACK_STRAIGHT, DIR_WEST, DIR_EAST, lineCol);
+
+    // 8. Elevated Approach (Z=1)
+    AddPiece(14, 9, 1, TRACK_STRAIGHT, DIR_WEST, DIR_EAST, lineCol);
+
+    // 9. Marina Viaduct Station [Triangle - Commercial Waterfront] (Z=1 Elevated)
+    AddPiece(15, 9, 1, TRACK_STATION, DIR_WEST, DIR_EAST, lineCol);
+    if (TrackNode* n = GetPiece(15, 9)) {
         n->stationShape = SHAPE_TRIANGLE;
         n->stationName = "Marina Viaduct [Triangle]";
     }
 
-    // 8. Elevated Straight (Z=1)
-    AddPiece(11, 14, 1, TRACK_STRAIGHT, DIR_NORTH, DIR_SOUTH, lineCol);
+    // 10. Elevated Turn South (Z=1)
+    AddPiece(16, 9, 1, TRACK_CURVE_RIGHT, DIR_WEST, DIR_SOUTH, lineCol);
 
-    // 9. Elevated Turn West (Z=1)
-    AddPiece(11, 15, 1, TRACK_CURVE_RIGHT, DIR_NORTH, DIR_WEST, lineCol);
+    // 11. Eastern Elevated Run
+    AddPiece(16, 10, 1, TRACK_STRAIGHT, DIR_NORTH, DIR_SOUTH, lineCol);
+    AddPiece(16, 11, 1, TRACK_SIGNAL, DIR_NORTH, DIR_SOUTH, lineCol);
+    AddPiece(16, 12, 1, TRACK_STRAIGHT, DIR_NORTH, DIR_SOUTH, lineCol);
 
-    // 10. Viaduct Descent Ramp (Z=1 -> Z=0)
-    AddPiece(10, 15, 1, TRACK_VIADUCT_SLOPE, DIR_EAST, DIR_WEST, lineCol);
+    // 12. Viaduct Ramp Descent (Z=1 -> Z=0)
+    AddPiece(16, 13, 1, TRACK_VIADUCT_SLOPE, DIR_NORTH, DIR_SOUTH, lineCol);
 
-    // 11. Underground Tunnel Portal Entry
-    AddPiece(9, 15, 0, TRACK_TUNNEL_PORTAL, DIR_EAST, DIR_WEST, lineCol);
+    // 13. Ground Straight Run
+    AddPiece(16, 14, 0, TRACK_STRAIGHT, DIR_NORTH, DIR_SOUTH, lineCol);
+    AddPiece(16, 15, 0, TRACK_STRAIGHT, DIR_NORTH, DIR_SOUTH, lineCol);
 
-    // 12. University Med Center Station [Cross - Hospital & Campus]
-    AddPiece(8, 15, 0, TRACK_STATION, DIR_EAST, DIR_WEST, lineCol);
-    if (TrackNode* n = GetPiece(8, 15)) {
+    // 14. Turn West
+    AddPiece(16, 16, 0, TRACK_CURVE_RIGHT, DIR_NORTH, DIR_WEST, lineCol);
+
+    // 15. Southern Concourse Run
+    AddPiece(15, 16, 0, TRACK_STRAIGHT, DIR_EAST, DIR_WEST, lineCol);
+
+    // 16. Underground Subway Tunnel Entry
+    AddPiece(14, 16, 0, TRACK_TUNNEL_PORTAL, DIR_EAST, DIR_WEST, lineCol);
+    AddPiece(13, 16, 0, TRACK_STRAIGHT, DIR_EAST, DIR_WEST, lineCol);
+    AddPiece(12, 16, 0, TRACK_STRAIGHT, DIR_EAST, DIR_WEST, lineCol);
+    AddPiece(11, 16, 0, TRACK_TUNNEL_PORTAL, DIR_EAST, DIR_WEST, lineCol);
+
+    // 17. University Med Center Station [Cross - Hospital & Campus]
+    AddPiece(10, 16, 0, TRACK_STATION, DIR_EAST, DIR_WEST, lineCol);
+    if (TrackNode* n = GetPiece(10, 16)) {
         n->stationShape = SHAPE_CROSS;
         n->stationName = "University Med [Cross]";
     }
 
-    // 13. Underground Tunnel Portal Exit
-    AddPiece(7, 15, 0, TRACK_TUNNEL_PORTAL, DIR_EAST, DIR_WEST, lineCol);
+    // 18. Wayside Signal Mast
+    AddPiece(9, 16, 0, TRACK_SIGNAL, DIR_EAST, DIR_WEST, lineCol);
+    AddPiece(8, 16, 0, TRACK_STRAIGHT, DIR_EAST, DIR_WEST, lineCol);
+    AddPiece(7, 16, 0, TRACK_STRAIGHT, DIR_EAST, DIR_WEST, lineCol);
 
-    // 14. Turn North
-    AddPiece(6, 15, 0, TRACK_CURVE_RIGHT, DIR_EAST, DIR_NORTH, lineCol);
+    // 19. Turn North
+    AddPiece(6, 16, 0, TRACK_CURVE_RIGHT, DIR_EAST, DIR_NORTH, lineCol);
 
-    // 15. Suburban Heights Terminal [Circle - Residential Suburbs]
+    // 20. Western Parkside Run & Suburban Terminal [Circle - Residential Suburbs]
+    AddPiece(6, 15, 0, TRACK_STRAIGHT, DIR_SOUTH, DIR_NORTH, lineCol);
     AddPiece(6, 14, 0, TRACK_STATION, DIR_SOUTH, DIR_NORTH, lineCol);
     if (TrackNode* n = GetPiece(6, 14)) {
         n->stationShape = SHAPE_CIRCLE;
         n->stationName = "Suburban Heights [Circle]";
     }
-
-    // 16. Wayside Signal Mast Block
     AddPiece(6, 13, 0, TRACK_SIGNAL, DIR_SOUTH, DIR_NORTH, lineCol);
+    AddPiece(6, 12, 0, TRACK_STRAIGHT, DIR_SOUTH, DIR_NORTH, lineCol);
+    AddPiece(6, 11, 0, TRACK_STRAIGHT, DIR_SOUTH, DIR_NORTH, lineCol);
+    AddPiece(6, 10, 0, TRACK_STRAIGHT, DIR_SOUTH, DIR_NORTH, lineCol);
 
     RecalculateCircuit();
 }
@@ -314,10 +341,55 @@ std::vector<StationInfo> TrackSystem::GetAllStations() const {
             info.gz = p.gz;
             info.shape = p.stationShape;
             info.name = p.stationName.empty() ? GetShapeName(p.stationShape) : p.stationName;
+            info.stationLevel = p.stationLevel;
+            info.passengersServed = p.passengersServed;
+            info.circuitDist = p.circuitDist;
             stations.push_back(info);
         }
     }
     return stations;
+}
+
+void TrackSystem::RecordStationAlight(int gx, int gy, int count, bool& outLeveledUp, int& outNewLevel) {
+    outLeveledUp = false;
+    TrackNode* n = GetPiece(gx, gy);
+    if (!n || n->type != TRACK_STATION) return;
+
+    n->passengersServed += count;
+    int oldLevel = n->stationLevel;
+    if (n->passengersServed >= 35) n->stationLevel = 3;
+    else if (n->passengersServed >= 12) n->stationLevel = 2;
+    else n->stationLevel = 1;
+
+    if (n->stationLevel > oldLevel) {
+        outLeveledUp = true;
+        outNewLevel = n->stationLevel;
+    }
+}
+
+bool TrackSystem::GetNextStationAhead(float currentDist, float& outDistToStation, StationInfo& outStation) const {
+    std::vector<StationInfo> stations = GetAllStations();
+    if (stations.empty() || totalLength <= 0.001f) return false;
+
+    float bestDist = 999999.0f;
+    int bestIdx = -1;
+
+    for (size_t i = 0; i < stations.size(); ++i) {
+        float d = stations[i].circuitDist - currentDist;
+        while (d < 0.0f) d += totalLength;
+        d = fmodf(d, totalLength);
+        if (d < bestDist) {
+            bestDist = d;
+            bestIdx = (int)i;
+        }
+    }
+
+    if (bestIdx != -1) {
+        outDistToStation = bestDist;
+        outStation = stations[bestIdx];
+        return true;
+    }
+    return false;
 }
 
 int TrackSystem::GetStationCount() const {
@@ -444,62 +516,90 @@ void TrackSystem::DrawPlatformCanopy(const TrackNode& node, Vector2 camOffset, f
     Vector2 bottom = Iso::GridToScreen((float)(node.gx + 1), (float)(node.gy + 1), (float)node.gz, camOffset, zoom);
     Vector2 left = Iso::GridToScreen((float)node.gx, (float)(node.gy + 1), (float)node.gz, camOffset, zoom);
 
-    // Platform Slab Floor
-    DrawTriangle(top, left, bottom, Color{203, 213, 225, 255}); // Clean concrete
+    // 1. Polished Granite Platform Floor
+    Color floorTop = (node.stationLevel >= 3) ? Color{248, 250, 252, 255} : ((node.stationLevel == 2) ? Color{226, 232, 240, 255} : Color{203, 213, 225, 255});
+    DrawTriangle(top, left, bottom, floorTop);
     DrawTriangle(top, bottom, right, Color{148, 163, 184, 255});
 
-    // Yellow Tactile Safety Warning Edge
-    DrawLineEx(top, right, 2.5f * zoom, Color{250, 204, 21, 255});
-    DrawLineEx(bottom, left, 2.5f * zoom, Color{250, 204, 21, 255});
+    // 2. High-Vis Yellow Tactile Safety Warning Edge with Rubber Studs
+    DrawLineEx(top, right, 2.8f * zoom, Color{250, 204, 21, 255});
+    DrawLineEx(bottom, left, 2.8f * zoom, Color{250, 204, 21, 255});
 
-    // Glass Canopy Roof Structure
-    float roofH = 22.0f * zoom;
+    // 3. Modern Glass Canopy Roof Structure
+    float roofH = (node.stationLevel >= 3 ? 30.0f : (node.stationLevel == 2 ? 26.0f : 22.0f)) * zoom;
     Vector2 rTop = {top.x, top.y - roofH};
     Vector2 rRight = {right.x, right.y - roofH};
     Vector2 rBottom = {bottom.x, bottom.y - roofH};
     Vector2 rLeft = {left.x, left.y - roofH};
 
-    // Steel Pillars supporting canopy
-    DrawLineEx(left, rLeft, 2.0f * zoom, Color{71, 85, 105, 255});
-    DrawLineEx(right, rRight, 2.0f * zoom, Color{71, 85, 105, 255});
+    // Architectural Steel Columns supporting canopy
+    Color pillarC = (node.stationLevel >= 3) ? Color{245, 158, 11, 255} : Color{71, 85, 105, 255};
+    DrawLineEx(left, rLeft, 2.2f * zoom, pillarC);
+    DrawLineEx(right, rRight, 2.2f * zoom, pillarC);
 
-    // Glass canopy pane (tinted cyan glass)
-    DrawTriangle(rTop, rLeft, rBottom, Color{56, 189, 248, 80});
-    DrawTriangle(rTop, rBottom, rRight, Color{56, 189, 248, 80});
-    DrawLineEx(rTop, rRight, 1.5f * zoom, Color{224, 242, 254, 200});
-    DrawLineEx(rRight, rBottom, 1.5f * zoom, Color{224, 242, 254, 200});
-    DrawLineEx(rBottom, rLeft, 1.5f * zoom, Color{224, 242, 254, 200});
-    DrawLineEx(rLeft, rTop, 1.5f * zoom, Color{224, 242, 254, 200});
+    // Glass Canopy Pane (High-transparency tinted cyan glass)
+    DrawTriangle(rTop, rLeft, rBottom, Color{56, 189, 248, 85});
+    DrawTriangle(rTop, rBottom, rRight, Color{56, 189, 248, 85});
+    DrawLineEx(rTop, rRight, 1.8f * zoom, Color{224, 242, 254, 220});
+    DrawLineEx(rRight, rBottom, 1.8f * zoom, Color{224, 242, 254, 220});
+    DrawLineEx(rBottom, rLeft, 1.8f * zoom, Color{224, 242, 254, 220});
+    DrawLineEx(rLeft, rTop, 1.8f * zoom, Color{224, 242, 254, 220});
 
-    // Platform Screen Doors (PSDs) along platform edge
+    // 4. Platform Screen Doors (PSDs) along platform edge
     Vector2 midEdgeL = { (top.x + left.x) * 0.5f, (top.y + left.y) * 0.5f };
-    float psdH = 9.0f * zoom;
-    DrawRectangle((int)(midEdgeL.x - 4.0f * zoom), (int)(midEdgeL.y - psdH), (int)(8.0f * zoom), (int)psdH, Color{14, 165, 233, 160});
-    DrawCircle((int)midEdgeL.x, (int)(midEdgeL.y - psdH), 2.0f * zoom, Color{74, 222, 128, 255}); // Green indicator
+    float psdH = 9.5f * zoom;
+    DrawRectangle((int)(midEdgeL.x - 5.0f * zoom), (int)(midEdgeL.y - psdH), (int)(10.0f * zoom), (int)psdH, Color{14, 165, 233, 175});
+    DrawCircle((int)midEdgeL.x, (int)(midEdgeL.y - psdH), 2.2f * zoom, Color{74, 222, 128, 255}); // Green boarding indicator LED
 
-    // Dynamic LED Passenger Information Display (PIDS)
+    // 5. Dynamic LED Passenger Information Display (PIDS)
     Vector2 pidsCenter = { (rTop.x + rBottom.x) * 0.5f, (rTop.y + rBottom.y) * 0.5f + 4.0f * zoom };
     float pidsW = 46.0f * zoom;
     float pidsH = 10.0f * zoom;
-    DrawRectangleRounded(Rectangle{pidsCenter.x - pidsW * 0.5f, pidsCenter.y - pidsH * 0.5f, pidsW, pidsH}, 0.3f, 4, Color{15, 23, 42, 240});
-    DrawRectangleRoundedLines(Rectangle{pidsCenter.x - pidsW * 0.5f, pidsCenter.y - pidsH * 0.5f, pidsW, pidsH}, 0.3f, 4, Color{245, 158, 11, 255});
-    DrawText("L1: 2 MIN", (int)(pidsCenter.x - 17.0f * zoom), (int)(pidsCenter.y - 4.0f * zoom), (int)(7.0f * zoom), Color{251, 191, 36, 255});
+    DrawRectangleRounded(Rectangle{pidsCenter.x - pidsW * 0.5f, pidsCenter.y - pidsH * 0.5f, pidsW, pidsH}, 0.3f, 4, Color{15, 23, 42, 235});
+    DrawRectangleRoundedLines(Rectangle{pidsCenter.x - pidsW * 0.5f, pidsCenter.y - pidsH * 0.5f, pidsW, pidsH}, 0.3f, 4, Color{56, 189, 248, 190});
+    DrawCircle((int)(pidsCenter.x - 14.0f * zoom), (int)pidsCenter.y, 2.0f * zoom, Color{74, 222, 128, 255});
+    DrawText("METRO", (int)(pidsCenter.x - 9.0f * zoom), (int)(pidsCenter.y - 3.5f * zoom), (int)(7.0f * zoom), Color{241, 245, 249, 240});
 
-    // Station Shape Emblem Banner
+    // 6. Prominent Floating Holographic District Shape Roundel
     if (node.stationShape != SHAPE_NONE) {
         Color shapeCol = GetShapeColor(node.stationShape);
-        Vector2 bannerPos = { (top.x + right.x) * 0.5f, (top.y + right.y) * 0.5f - 8.0f * zoom };
-        DrawCircle((int)bannerPos.x, (int)bannerPos.y, 6.0f * zoom, Color{15, 23, 42, 250});
-        DrawCircle((int)bannerPos.x, (int)bannerPos.y, 4.0f * zoom, shapeCol);
+        Vector2 rCenter = { (rTop.x + rBottom.x) * 0.5f, rTop.y - 18.0f * zoom };
+        float badgeRadius = 12.0f * zoom;
 
+        // Radiant glow bloom
+        DrawCircleGradient(rCenter, badgeRadius * 2.2f, Color{shapeCol.r, shapeCol.g, shapeCol.b, 140}, Color{shapeCol.r, shapeCol.g, shapeCol.b, 0});
+        // Dark circular backdrop
+        DrawCircle((int)rCenter.x, (int)rCenter.y, badgeRadius, Color{15, 23, 42, 245});
+        DrawCircleLines((int)rCenter.x, (int)rCenter.y, badgeRadius, shapeCol);
+
+        // Crisp White Shape Glyph
         if (node.stationShape == SHAPE_SQUARE) {
-            DrawRectangle((int)(bannerPos.x - 2.5f * zoom), (int)(bannerPos.y - 2.5f * zoom), (int)(5.0f * zoom), (int)(5.0f * zoom), WHITE);
+            DrawRectangle((int)(rCenter.x - 4.2f * zoom), (int)(rCenter.y - 4.2f * zoom), (int)(8.4f * zoom), (int)(8.4f * zoom), WHITE);
         } else if (node.stationShape == SHAPE_TRIANGLE) {
-            DrawTriangle({bannerPos.x, bannerPos.y - 3.0f * zoom}, {bannerPos.x - 3.0f * zoom, bannerPos.y + 3.0f * zoom}, {bannerPos.x + 3.0f * zoom, bannerPos.y + 3.0f * zoom}, WHITE);
+            DrawTriangle({rCenter.x, rCenter.y - 5.5f * zoom}, {rCenter.x - 5.5f * zoom, rCenter.y + 4.5f * zoom}, {rCenter.x + 5.5f * zoom, rCenter.y + 4.5f * zoom}, WHITE);
         } else if (node.stationShape == SHAPE_CROSS) {
-            DrawRectangle((int)(bannerPos.x - 1.0f * zoom), (int)(bannerPos.y - 3.0f * zoom), (int)(2.0f * zoom), (int)(6.0f * zoom), WHITE);
-            DrawRectangle((int)(bannerPos.x - 3.0f * zoom), (int)(bannerPos.y - 1.0f * zoom), (int)(6.0f * zoom), (int)(2.0f * zoom), WHITE);
+            DrawRectangle((int)(rCenter.x - 2.0f * zoom), (int)(rCenter.y - 5.5f * zoom), (int)(4.0f * zoom), (int)(11.0f * zoom), WHITE);
+            DrawRectangle((int)(rCenter.x - 5.5f * zoom), (int)(rCenter.y - 2.0f * zoom), (int)(11.0f * zoom), (int)(4.0f * zoom), WHITE);
+        } else if (node.stationShape == SHAPE_CIRCLE) {
+            DrawCircle((int)rCenter.x, (int)rCenter.y, 4.8f * zoom, WHITE);
+            DrawCircle((int)rCenter.x, (int)rCenter.y, 2.6f * zoom, Color{15, 23, 42, 245});
         }
+
+        // Station District Name Banner & Level Stars
+        std::string label = node.stationName.empty() ? GetShapeName(node.stationShape) : node.stationName;
+        int textW = MeasureText(label.c_str(), 9);
+        float pillW = (float)textW + 14.0f * zoom;
+        float pillH = 14.0f * zoom;
+        Vector2 pillPos = { rCenter.x - pillW * 0.5f, rCenter.y + badgeRadius + 2.0f * zoom };
+
+        DrawRectangleRounded(Rectangle{pillPos.x, pillPos.y, pillW, pillH}, 0.35f, 4, Color{15, 23, 42, 240});
+        DrawRectangleRoundedLines(Rectangle{pillPos.x, pillPos.y, pillW, pillH}, 0.35f, 4, shapeCol);
+        DrawText(label.c_str(), (int)(pillPos.x + 7.0f * zoom), (int)(pillPos.y + 2.5f * zoom), (int)(8.5f * zoom), WHITE);
+
+        // Level Star Tag
+        const char* lvTag = (node.stationLevel >= 3) ? "★★★ LV 3" : ((node.stationLevel == 2) ? "★★ LV 2" : "★ LV 1");
+        Color starColor = (node.stationLevel >= 3) ? Color{250, 204, 21, 255} : ((node.stationLevel == 2) ? Color{56, 189, 248, 255} : Color{148, 163, 184, 255});
+        DrawText(lvTag, (int)(rCenter.x - 16.0f * zoom), (int)(rCenter.y - badgeRadius - 10.0f * zoom), (int)(8.0f * zoom), starColor);
     }
 }
 
@@ -554,9 +654,9 @@ void TrackSystem::DrawTunnelPortal(const TrackNode& node, Vector2 camOffset, flo
         DrawRectangle((int)(center.x - portalW * 0.5f + (float)s * 5.6f * zoom), (int)(center.y - portalH), (int)(5.6f * zoom), (int)(3.5f * zoom), stripeC);
     }
 
-    // Overhead Catenary / High Voltage Sign
-    DrawRectangle((int)(center.x - 5.0f * zoom), (int)(center.y - portalH - 4.0f * zoom), (int)(10.0f * zoom), (int)(4.0f * zoom), Color{239, 68, 68, 255});
-    DrawText("SUBWAY", (int)(center.x - 12.0f * zoom), (int)(center.y - portalH + 5.0f * zoom), (int)(6.0f * zoom), Color{203, 213, 225, 255});
+    // Tunnel Portal Warning Beacon
+    DrawCircle((int)center.x, (int)(center.y - portalH - 2.0f * zoom), 2.5f * zoom, Color{245, 158, 11, 255});
+    DrawCircleGradient(Vector2{center.x, center.y - portalH - 2.0f * zoom}, 7.0f * zoom, Color{245, 158, 11, 140}, Color{245, 158, 11, 0});
 }
 
 void TrackSystem::DrawSinglePiece(const TrackNode& node, Vector2 camOffset, float zoom) {

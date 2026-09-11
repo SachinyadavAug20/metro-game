@@ -42,36 +42,36 @@ void UserInterface::DrawHUD(
     DrawText("OCC DISPATCH", 52, 31, 10, Color{148, 163, 184, 255});
 
     // 2. Service Calendar & Weekly Rhythm
-    int calX = 180;
+    int calX = 170;
     DrawText(TextFormat("WEEK %d", week), calX, 10, 13, WHITE);
     float weekPct = std::max(0.0f, std::min(1.0f, weekTimer / 60.0f));
-    DrawRectangle(calX, 28, 64, 7, Color{51, 65, 85, 255});
-    DrawRectangle(calX, 28, (int)(64.0f * weekPct), 7, Color{56, 189, 248, 255});
+    DrawRectangle(calX, 28, 54, 7, Color{51, 65, 85, 255});
+    DrawRectangle(calX, 28, (int)(54.0f * weekPct), 7, Color{56, 189, 248, 255});
 
     // 3. Transit Authority Treasury
-    int bankX = 260;
+    int bankX = 238;
     DrawText("TREASURY", bankX, 8, 9, Color{148, 163, 184, 255});
     DrawText(TextFormat("$%.0f", balance), bankX, 20, 18, Color{52, 211, 153, 255});
 
     // 4. Commuters Transported (Ridership)
-    int scoreX = 360;
+    int scoreX = 330;
     DrawText("RIDERSHIP", scoreX, 8, 9, Color{148, 163, 184, 255});
     DrawText(TextFormat("%d", ridership), scoreX, 20, 18, Color{255, 214, 0, 255});
 
     // 5. Commuter Satisfaction
-    int satX = 450;
+    int satX = 412;
     DrawText("SATISFACTION", satX, 8, 9, Color{148, 163, 184, 255});
     Color satColor = (satisfaction > 70.0f) ? Color{74, 222, 128, 255} : (satisfaction > 40.0f ? Color{251, 146, 60, 255} : Color{248, 113, 113, 255});
     DrawText(TextFormat("%.0f%%", satisfaction), satX, 20, 18, satColor);
 
     // 6. EMU Speedometer
-    int spdX = 550;
+    int spdX = 502;
     DrawText("TRAIN SPEED", spdX, 8, 9, Color{148, 163, 184, 255});
     Color spdColor = (speedKmh > 55.0f) ? Color{56, 189, 248, 255} : (speedKmh > 10.0f ? Color{251, 191, 36, 255} : Color{148, 163, 184, 255});
     DrawText(TextFormat("%.1f km/h", speedKmh), spdX, 20, 18, spdColor);
 
     // 7. Wayside Signaling Indicator Lamp (3-Aspect)
-    int sigX = 645;
+    int sigX = 594;
     DrawRectangleRounded(Rectangle{(float)sigX, 10.0f, 62.0f, 32.0f}, 0.25f, 4, Color{30, 41, 59, 255});
     DrawRectangleRoundedLines(Rectangle{(float)sigX, 10.0f, 62.0f, 32.0f}, 0.25f, 4, Color{71, 85, 105, 255});
 
@@ -85,7 +85,7 @@ void UserInterface::DrawHUD(
     DrawCircle(sigX + 50, 26, 6, rCol);
 
     // 8. Circuit Status Badge
-    int statX = 720;
+    int statX = 666;
     if (circuitClosed) {
         DrawRectangleRounded(Rectangle{(float)statX, 13.0f, 82.0f, 26.0f}, 0.3f, 4, Color{34, 197, 94, 220});
         DrawText("ACTIVE LOOP", statX + 9, 20, 10, WHITE);
@@ -94,8 +94,23 @@ void UserInterface::DrawHUD(
         DrawText("OPEN TRACK", statX + 9, 20, 10, WHITE);
     }
 
-    // 9. OCC Action Toggle Buttons (Line Ops, Crew, Cab Cam, Manual)
-    int actX = 815;
+    // 10. Simulation Controls & Audio Mute (Far right anchor)
+    int btnX = screenW - 145;
+    DrawRectangleRounded(Rectangle{(float)btnX, 13.0f, 26.0f, 26.0f}, 0.2f, 4, (gameSpeed == 0) ? Color{220, 38, 38, 255} : Color{30, 41, 59, 200});
+    DrawText("||", btnX + 9, 19, 13, WHITE);
+
+    DrawRectangleRounded(Rectangle{(float)btnX + 30, 13.0f, 26.0f, 26.0f}, 0.2f, 4, (gameSpeed == 1) ? Color{220, 38, 38, 255} : Color{30, 41, 59, 200});
+    DrawText(">", btnX + 39, 19, 13, WHITE);
+
+    DrawRectangleRounded(Rectangle{(float)btnX + 60, 13.0f, 26.0f, 26.0f}, 0.2f, 4, (gameSpeed == 2) ? Color{220, 38, 38, 255} : Color{30, 41, 59, 200});
+    DrawText(">>", btnX + 66, 19, 13, WHITE);
+
+    DrawRectangleRounded(Rectangle{(float)btnX + 90, 13.0f, 44.0f, 26.0f}, 0.2f, 4, muted ? Color{239, 68, 68, 220} : Color{30, 41, 59, 200});
+    DrawText(muted ? "MUT" : "SND", btnX + 98, 20, 10, WHITE);
+
+    // 9. OCC Action Toggle Buttons (Line Ops, Crew, Cab Cam, How to Play)
+    // Anchored immediately left of btnX so it never collides!
+    int actX = btnX - 12 - 322;
 
     // Line Operations Button
     DrawRectangleRounded(Rectangle{(float)actX, 13.0f, 74.0f, 26.0f}, 0.25f, 4, lineOpsOpen ? Color{220, 38, 38, 255} : Color{30, 41, 59, 220});
@@ -112,24 +127,10 @@ void UserInterface::DrawHUD(
     DrawRectangleRoundedLines(Rectangle{(float)actX + 148, 13.0f, 74.0f, 26.0f}, 0.25f, 4, Color{71, 85, 105, 200});
     DrawText("CAB CAM", actX + 160, 20, 10, cabCamActive ? WHITE : Color{203, 213, 225, 255});
 
-    // Operations Manual Button
-    DrawRectangleRounded(Rectangle{(float)actX + 228, 13.0f, 60.0f, 26.0f}, 0.25f, 4, helpOpen ? Color{220, 38, 38, 255} : Color{30, 41, 59, 220});
-    DrawRectangleRoundedLines(Rectangle{(float)actX + 228, 13.0f, 60.0f, 26.0f}, 0.25f, 4, Color{71, 85, 105, 200});
-    DrawText("MANUAL", actX + 237, 20, 10, helpOpen ? WHITE : Color{203, 213, 225, 255});
-
-    // 10. Simulation Controls & Audio Mute
-    int btnX = screenW - 145;
-    DrawRectangleRounded(Rectangle{(float)btnX, 13.0f, 26.0f, 26.0f}, 0.2f, 4, (gameSpeed == 0) ? Color{220, 38, 38, 255} : Color{30, 41, 59, 200});
-    DrawText("||", btnX + 9, 19, 13, WHITE);
-
-    DrawRectangleRounded(Rectangle{(float)btnX + 30, 13.0f, 26.0f, 26.0f}, 0.2f, 4, (gameSpeed == 1) ? Color{220, 38, 38, 255} : Color{30, 41, 59, 200});
-    DrawText(">", btnX + 39, 19, 13, WHITE);
-
-    DrawRectangleRounded(Rectangle{(float)btnX + 60, 13.0f, 26.0f, 26.0f}, 0.2f, 4, (gameSpeed == 2) ? Color{220, 38, 38, 255} : Color{30, 41, 59, 200});
-    DrawText(">>", btnX + 66, 19, 13, WHITE);
-
-    DrawRectangleRounded(Rectangle{(float)btnX + 90, 13.0f, 44.0f, 26.0f}, 0.2f, 4, muted ? Color{239, 68, 68, 220} : Color{30, 41, 59, 200});
-    DrawText(muted ? "MUT" : "SND", btnX + 98, 20, 10, WHITE);
+    // How to Play Button (Highlighted)
+    DrawRectangleRounded(Rectangle{(float)actX + 228, 13.0f, 94.0f, 26.0f}, 0.25f, 4, helpOpen ? Color{220, 38, 38, 255} : Color{14, 116, 144, 240});
+    DrawRectangleRoundedLines(Rectangle{(float)actX + 228, 13.0f, 94.0f, 26.0f}, 0.25f, 4, helpOpen ? WHITE : Color{56, 189, 248, 255});
+    DrawText("? HOW TO PLAY", actX + 233, 20, 9, helpOpen ? WHITE : Color{255, 214, 0, 255});
 }
 
 void UserInterface::DrawToolbar(
@@ -144,9 +145,11 @@ void UserInterface::DrawToolbar(
     int screenW = GetScreenWidth();
     int screenH = GetScreenHeight();
 
-    int barW = 780;
+    int barW = 740;
     int barH = 72;
-    int barX = (screenW - barW) / 2;
+    int auxW = 146;
+    int totalDockW = barW + 12 + auxW;
+    int barX = std::max(10, (screenW - totalDockW) / 2);
     int barY = screenH - barH - 12;
 
     // 1. Category Tabs above toolbar
@@ -156,7 +159,7 @@ void UserInterface::DrawToolbar(
     int tabStartY = barY - tabH + 2;
 
     for (int t = 0; t < 3; ++t) {
-        int tx = barX + 16 + t * (tabW + 6);
+        int tx = barX + 16 + t * (tabW + 8);
         bool isCurrentTab = ((int)activeTab == t);
         Color tabBg = isCurrentTab ? Color{15, 23, 42, 255} : Color{30, 41, 59, 200};
         Color tabText = isCurrentTab ? Color{56, 189, 248, 255} : Color{148, 163, 184, 255};
@@ -174,7 +177,6 @@ void UserInterface::DrawToolbar(
     int itemBtnW = 68;
     int itemBtnH = 52;
     int itemStartY = barY + 10;
-    int startX = barX + 12;
 
     if (activeTab == CAT_TRACK) {
         struct TrackBtn { const char* name; const char* key; TrackType type; };
@@ -190,8 +192,11 @@ void UserInterface::DrawToolbar(
             {"Demolish", "X", TRACK_NONE}
         };
 
+        int spacing = 11;
+        int startX = barX + (barW - (9 * itemBtnW + 8 * spacing)) / 2;
+
         for (int i = 0; i < 9; ++i) {
-            int bx = startX + i * (itemBtnW + 5);
+            int bx = startX + i * (itemBtnW + spacing);
             bool isSelected = (i == 8) ? isBulldozing : (!isBulldozing && currentTrack == buttons[i].type);
 
             Color btnBg = isSelected ? Color{220, 38, 38, 255} : Color{30, 41, 59, 230};
@@ -212,35 +217,42 @@ void UserInterface::DrawToolbar(
             {"Bulldoze", "X", GROUND_GRASS, true}
         };
 
+        int infraBtnW = 120;
+        int spacing = 18;
+        int startX = barX + (barW - (4 * infraBtnW + 3 * spacing)) / 2;
+
         for (int i = 0; i < 4; ++i) {
-            int bx = startX + i * (itemBtnW + 20);
+            int bx = startX + i * (infraBtnW + spacing);
             bool isSelected = buttons[i].isBull ? isBulldozing : (!isBulldozing && currentGround == buttons[i].ground);
 
             Color btnBg = isSelected ? Color{220, 38, 38, 255} : Color{30, 41, 59, 230};
             Color textC = isSelected ? WHITE : Color{203, 213, 225, 255};
 
-            DrawRectangleRounded(Rectangle{(float)bx, (float)itemStartY, (float)itemBtnW + 14, (float)itemBtnH}, 0.2f, 4, btnBg);
-            DrawRectangleRoundedLines(Rectangle{(float)bx, (float)itemStartY, (float)itemBtnW + 14, (float)itemBtnH}, 0.2f, 4, isSelected ? Color{254, 202, 202, 255} : Color{71, 85, 105, 200});
+            DrawRectangleRounded(Rectangle{(float)bx, (float)itemStartY, (float)infraBtnW, (float)itemBtnH}, 0.2f, 4, btnBg);
+            DrawRectangleRoundedLines(Rectangle{(float)bx, (float)itemStartY, (float)infraBtnW, (float)itemBtnH}, 0.2f, 4, isSelected ? Color{254, 202, 202, 255} : Color{71, 85, 105, 200});
 
-            DrawText(buttons[i].key, bx + 6, itemStartY + 4, 10, Color{255, 214, 0, 255});
-            DrawText(buttons[i].name, bx + 8, itemStartY + 24, 9, textC);
+            DrawText(buttons[i].key, bx + 8, itemStartY + 5, 10, Color{255, 214, 0, 255});
+            DrawText(buttons[i].name, bx + 10, itemStartY + 25, 10, textC);
         }
     } else if (activeTab == CAT_SCENERY) {
         struct SceneryBtn { const char* name; const char* key; SceneryType scn; int cost; };
         SceneryBtn buttons[] = {
             {"Subway Ent", "1", SCENERY_METRO_ENTRANCE, 120},
             {"Fare Gates", "2", SCENERY_TURNSTILE_GATE, 90},
-            {"Map Board", "3", SCENERY_MAP_KIOSK, 40},
-            {"Street Tree", "4", SCENERY_STREET_TREE, 35},
-            {"Park Tree", "5", SCENERY_PINE_TREE, 30},
-            {"Platform Bch", "6", SCENERY_BENCH, 20},
-            {"LED Lamp", "7", SCENERY_LAMP_POST, 25},
-            {"Newsstand", "8", SCENERY_NEWSSTAND, 150},
+            {"Oak Tree", "3", SCENERY_STREET_TREE, 35},
+            {"Pine Tree", "4", SCENERY_PINE_TREE, 30},
+            {"Bench", "5", SCENERY_BENCH, 20},
+            {"LED Lamp", "6", SCENERY_LAMP_POST, 25},
+            {"Fountain", "7", SCENERY_FOUNTAIN, 120},
+            {"Metro Cafe", "8", SCENERY_NEWSSTAND, 150},
             {"Bulldoze", "X", SCENERY_NONE, 0}
         };
 
+        int spacing = 11;
+        int startX = barX + (barW - (9 * itemBtnW + 8 * spacing)) / 2;
+
         for (int i = 0; i < 9; ++i) {
-            int bx = startX + i * (itemBtnW + 5);
+            int bx = startX + i * (itemBtnW + spacing);
             bool isSelected = (i == 8) ? isBulldozing : (!isBulldozing && currentScenery == buttons[i].scn);
 
             Color btnBg = isSelected ? Color{220, 38, 38, 255} : Color{30, 41, 59, 230};
@@ -258,34 +270,32 @@ void UserInterface::DrawToolbar(
     }
 
     // 4. Auxiliary Pills on Right (Elevation & Heading)
-    int auxX = barX + barW + 10;
-    int auxW = 146;
-    if (auxX + auxW < screenW) {
-        // Height Pill
-        DrawRectangleRounded(Rectangle{(float)auxX, (float)barY, (float)auxW, 34.0f}, 0.25f, 4, Color{15, 23, 42, 245});
-        DrawRectangleRoundedLines(Rectangle{(float)auxX, (float)barY, (float)auxW, 34.0f}, 0.25f, 4, Color{51, 65, 85, 255});
-        DrawText("HEIGHT (E/Q)", auxX + 8, barY + 5, 8, Color{148, 163, 184, 255});
-        DrawText(TextFormat("Z = %d", currentZ), auxX + 10, barY + 17, 13, Color{255, 214, 0, 255});
-        DrawRectangle((float)auxX + 96, (float)barY + 7, 20, 20, Color{30, 41, 59, 255});
-        DrawText("-", auxX + 103, barY + 10, 14, WHITE);
-        DrawRectangle((float)auxX + 120, (float)barY + 7, 20, 20, Color{30, 41, 59, 255});
-        DrawText("+", auxX + 126, barY + 10, 14, WHITE);
+    int auxX = barX + barW + 12;
 
-        // Heading / Orientation Pill
-        const char* dirLabels[] = {"NORTH [^]", "EAST [>]", "SOUTH [v]", "WEST [<]"};
-        DrawRectangleRounded(Rectangle{(float)auxX, (float)barY + 38, (float)auxW, 34.0f}, 0.25f, 4, Color{15, 23, 42, 245});
-        DrawRectangleRoundedLines(Rectangle{(float)auxX, (float)barY + 38, (float)auxW, 34.0f}, 0.25f, 4, Color{51, 65, 85, 255});
-        DrawText("HEADING [R]", auxX + 8, barY + 43, 8, Color{148, 163, 184, 255});
-        DrawText(dirLabels[currentDir], auxX + 10, barY + 55, 12, Color{56, 189, 248, 255});
-        DrawRectangle((float)auxX + 104, (float)barY + 45, 34, 20, Color{30, 41, 59, 255});
-        DrawText("ROT", auxX + 110, barY + 50, 10, WHITE);
-    }
+    // Height Pill
+    DrawRectangleRounded(Rectangle{(float)auxX, (float)barY, (float)auxW, 34.0f}, 0.25f, 4, Color{15, 23, 42, 245});
+    DrawRectangleRoundedLines(Rectangle{(float)auxX, (float)barY, (float)auxW, 34.0f}, 0.25f, 4, Color{51, 65, 85, 255});
+    DrawText("HEIGHT (E/Q)", auxX + 8, barY + 5, 8, Color{148, 163, 184, 255});
+    DrawText(TextFormat("Z = %d", currentZ), auxX + 10, barY + 17, 13, Color{255, 214, 0, 255});
+    DrawRectangle((float)auxX + 96, (float)barY + 7, 20, 20, Color{30, 41, 59, 255});
+    DrawText("-", auxX + 103, barY + 10, 14, WHITE);
+    DrawRectangle((float)auxX + 120, (float)barY + 7, 20, 20, Color{30, 41, 59, 255});
+    DrawText("+", auxX + 126, barY + 10, 14, WHITE);
+
+    // Heading / Orientation Pill
+    const char* dirLabels[] = {"NORTH [^]", "EAST [>]", "SOUTH [v]", "WEST [<]"};
+    DrawRectangleRounded(Rectangle{(float)auxX, (float)barY + 38, (float)auxW, 34.0f}, 0.25f, 4, Color{15, 23, 42, 245});
+    DrawRectangleRoundedLines(Rectangle{(float)auxX, (float)barY + 38, (float)auxW, 34.0f}, 0.25f, 4, Color{51, 65, 85, 255});
+    DrawText("HEADING [R]", auxX + 8, barY + 43, 8, Color{148, 163, 184, 255});
+    DrawText(dirLabels[currentDir], auxX + 10, barY + 55, 12, Color{56, 189, 248, 255});
+    DrawRectangle((float)auxX + 104, (float)barY + 45, 34, 20, Color{30, 41, 59, 255});
+    DrawText("ROT", auxX + 110, barY + 50, 10, WHITE);
 }
 
 void UserInterface::DrawLineOperations(const MetroLineStats& stats) {
     int screenW = GetScreenWidth();
-    int winW = 320;
-    int winH = 430;
+    int winW = 330;
+    int winH = 465;
     int winX = screenW - winW - 16;
     int winY = 62;
 
@@ -298,76 +308,105 @@ void UserInterface::DrawLineOperations(const MetroLineStats& stats) {
     DrawText(TextFormat("METRO: %s", stats.lineName.c_str()), winX + 12, winY + 11, 11, WHITE);
     DrawText("[X]", winX + winW - 28, winY + 10, 14, WHITE);
 
+    // 1. Operating Mode Traffic Light Buttons (RCT Style: Open / Test / Closed)
+    int modeY = winY + 44;
+    int modeBtnW = 94;
+
+    // OPEN Button (Green)
+    bool isOpen = (stats.mode == LINE_OPEN);
+    DrawRectangleRounded(Rectangle{(float)winX + 14, (float)modeY, (float)modeBtnW, 26.0f}, 0.25f, 4, isOpen ? Color{34, 197, 94, 255} : Color{20, 45, 30, 220});
+    DrawRectangleRoundedLines(Rectangle{(float)winX + 14, (float)modeY, (float)modeBtnW, 26.0f}, 0.25f, 4, isOpen ? WHITE : Color{34, 197, 94, 120});
+    DrawCircle(winX + 26, modeY + 13, 5, isOpen ? WHITE : Color{34, 197, 94, 255});
+    DrawText("OPEN", winX + 38, modeY + 7, 10, WHITE);
+
+    // TEST Button (Yellow)
+    bool isTest = (stats.mode == LINE_TEST);
+    DrawRectangleRounded(Rectangle{(float)winX + 118, (float)modeY, (float)modeBtnW, 26.0f}, 0.25f, 4, isTest ? Color{234, 179, 8, 255} : Color{45, 40, 20, 220});
+    DrawRectangleRoundedLines(Rectangle{(float)winX + 118, (float)modeY, (float)modeBtnW, 26.0f}, 0.25f, 4, isTest ? WHITE : Color{234, 179, 8, 120});
+    DrawCircle(winX + 130, modeY + 13, 5, isTest ? WHITE : Color{234, 179, 8, 255});
+    DrawText("TEST RUN", winX + 140, modeY + 7, 10, WHITE);
+
+    // CLOSED Button (Red)
+    bool isClosed = (stats.mode == LINE_CLOSED);
+    DrawRectangleRounded(Rectangle{(float)winX + 222, (float)modeY, (float)modeBtnW, 26.0f}, 0.25f, 4, isClosed ? Color{239, 68, 68, 255} : Color{45, 20, 20, 220});
+    DrawRectangleRoundedLines(Rectangle{(float)winX + 222, (float)modeY, (float)modeBtnW, 26.0f}, 0.25f, 4, isClosed ? WHITE : Color{239, 68, 68, 120});
+    DrawCircle(winX + 234, modeY + 13, 5, isClosed ? WHITE : Color{239, 68, 68, 255});
+    DrawText("CLOSED", winX + 246, modeY + 7, 10, WHITE);
+
     // Content rows
-    int rowY = winY + 46;
-    int rowH = 26;
+    int rowY = winY + 78;
+    int rowH = 24;
+
+    // Train Formation
+    DrawText("Train Formation:", winX + 15, rowY + 2, 11, Color{203, 213, 225, 255});
+    DrawText(TextFormat("%d Cars (%d Seats)", stats.fleetCars, stats.fleetCars * 4), winX + 130, rowY + 2, 11, Color{56, 189, 248, 255});
+    DrawRectangleRounded(Rectangle{(float)winX + 250, (float)rowY, 24.0f, 20.0f}, 0.2f, 4, Color{30, 41, 59, 255});
+    DrawText("-", winX + 258, rowY + 2, 13, WHITE);
+    DrawRectangleRounded(Rectangle{(float)winX + 278, (float)rowY, 24.0f, 20.0f}, 0.2f, 4, Color{30, 41, 59, 255});
+    DrawText("+", winX + 285, rowY + 2, 13, WHITE);
+    rowY += rowH;
+
+    // Fare Tariff Setting
+    DrawText("Standard Metro Fare:", winX + 15, rowY + 2, 11, Color{203, 213, 225, 255});
+    DrawText(TextFormat("$%.2f", stats.ticketFare), winX + 145, rowY + 2, 12, Color{52, 211, 153, 255});
+    DrawRectangleRounded(Rectangle{(float)winX + 250, (float)rowY, 24.0f, 20.0f}, 0.2f, 4, Color{30, 41, 59, 255});
+    DrawText("-", winX + 258, rowY + 2, 13, WHITE);
+    DrawRectangleRounded(Rectangle{(float)winX + 278, (float)rowY, 24.0f, 20.0f}, 0.2f, 4, Color{30, 41, 59, 255});
+    DrawText("+", winX + 285, rowY + 2, 13, WHITE);
+    rowY += rowH + 4;
+
+    DrawLine(winX + 15, rowY, winX + winW - 15, rowY, Color{51, 65, 85, 255});
+    rowY += 6;
 
     // Punctuality / On-Time
-    DrawText("On-Time Punctuality:", winX + 15, rowY, 11, Color{203, 213, 225, 255});
-    DrawText(TextFormat("%.1f%% (Tokyo Grade)", stats.onTimeRate), winX + 145, rowY, 11, Color{74, 222, 128, 255});
+    DrawText("On-Time Punctuality:", winX + 15, rowY, 11, Color{148, 163, 184, 255});
+    DrawText(TextFormat("%.1f%% (Tokyo Grade)", stats.onTimeRate), winX + 155, rowY, 11, Color{74, 222, 128, 255});
     rowY += rowH;
 
     // Commuter Satisfaction
-    DrawText("Commuter Comfort:", winX + 15, rowY, 11, Color{203, 213, 225, 255});
-    DrawText(TextFormat("%.1f%% (High)", stats.commuterSatisfaction), winX + 145, rowY, 11, Color{255, 214, 0, 255});
+    DrawText("Commuter Comfort:", winX + 15, rowY, 11, Color{148, 163, 184, 255});
+    DrawText(TextFormat("%.1f%% (High)", stats.commuterSatisfaction), winX + 155, rowY, 11, Color{255, 214, 0, 255});
     rowY += rowH;
-
-    // Fleet Size
-    DrawText("Train Formation:", winX + 15, rowY, 11, Color{203, 213, 225, 255});
-    DrawText(TextFormat("%d-Car EMU Trainset", stats.fleetCars), winX + 145, rowY, 11, Color{56, 189, 248, 255});
-    rowY += rowH + 4;
-
-    DrawLine(winX + 15, rowY, winX + winW - 15, rowY, Color{51, 65, 85, 255});
-    rowY += 8;
 
     // Speeds & Track Length
     DrawText("Cruising Velocity:", winX + 15, rowY, 11, Color{148, 163, 184, 255});
-    DrawText(TextFormat("%.1f km/h", stats.maxSpeedKmh), winX + 180, rowY, 11, WHITE);
+    DrawText(TextFormat("%.1f km/h", stats.maxSpeedKmh), winX + 155, rowY, 11, WHITE);
     rowY += rowH;
 
     DrawText("Circuit Track Length:", winX + 15, rowY, 11, Color{148, 163, 184, 255});
-    DrawText(TextFormat("%.0f meters", stats.trackLengthM), winX + 180, rowY, 11, WHITE);
+    DrawText(TextFormat("%.0f meters", stats.trackLengthM), winX + 155, rowY, 11, WHITE);
     rowY += rowH;
 
     DrawText("Interchanges / Stations:", winX + 15, rowY, 11, Color{148, 163, 184, 255});
-    DrawText(TextFormat("%d Stations", stats.stationCount), winX + 180, rowY, 11, WHITE);
+    DrawText(TextFormat("%d Stations", stats.stationCount), winX + 155, rowY, 11, WHITE);
     rowY += rowH;
 
-    DrawText("Total Delivered Commuters:", winX + 15, rowY, 11, Color{148, 163, 184, 255});
-    DrawText(TextFormat("%d riders", stats.totalRiders), winX + 180, rowY, 11, Color{255, 214, 0, 255});
-    rowY += rowH + 4;
+    DrawText("Delivered Commuters:", winX + 15, rowY, 11, Color{148, 163, 184, 255});
+    DrawText(TextFormat("%d riders", stats.totalRiders), winX + 155, rowY, 11, Color{255, 214, 0, 255});
+    rowY += rowH;
 
-    DrawLine(winX + 15, rowY, winX + winW - 15, rowY, Color{51, 65, 85, 255});
-    rowY += 8;
-
-    // Fare Tariff Setting
-    DrawText("Standard Metro Fare:", winX + 15, rowY + 3, 11, Color{203, 213, 225, 255});
-    DrawText(TextFormat("$%.2f", stats.ticketFare), winX + 145, rowY + 3, 13, Color{52, 211, 153, 255});
-
-    DrawRectangleRounded(Rectangle{(float)winX + 220, (float)rowY, 26.0f, 22.0f}, 0.2f, 4, Color{30, 41, 59, 255});
-    DrawText("-", winX + 229, rowY + 4, 14, WHITE);
-
-    DrawRectangleRounded(Rectangle{(float)winX + 252, (float)rowY, 26.0f, 22.0f}, 0.2f, 4, Color{30, 41, 59, 255});
-    DrawText("+", winX + 260, rowY + 4, 14, WHITE);
+    DrawText("Total Fare Revenue:", winX + 15, rowY, 11, Color{148, 163, 184, 255});
+    DrawText(TextFormat("$%.2f", stats.totalRevenue), winX + 155, rowY, 11, Color{52, 211, 153, 255});
     rowY += rowH + 4;
 
     // Transit Line Color Livery
     DrawLine(winX + 15, rowY, winX + winW - 15, rowY, Color{51, 65, 85, 255});
-    rowY += 8;
-    DrawText("Line Livery / Route:", winX + 15, rowY + 3, 11, Color{203, 213, 225, 255});
+    rowY += 6;
+    DrawText("Line Livery Palette:", winX + 15, rowY + 3, 11, Color{203, 213, 225, 255});
 
     Color liveries[] = {
         Color{229, 57, 53, 255},  // Tokyo Red (Marunouchi)
         Color{37, 99, 235, 255},  // London Blue (Piccadilly)
         Color{16, 185, 129, 255}, // Paris Green (Line 6)
-        Color{147, 51, 234, 255}, // MTR Purple (Tseung Kwan O)
-        Color{245, 158, 11, 255}  // Chicago Amber (Brown Line)
+        Color{147, 51, 234, 255}, // Victoria Purple
+        Color{245, 158, 11, 255}, // Chicago Amber
+        Color{234, 88, 12, 255}   // Tokyo Ginza Orange
     };
 
-    for (int c = 0; c < 5; ++c) {
-        int cx = winX + 145 + c * 26;
-        DrawRectangleRounded(Rectangle{(float)cx, (float)rowY, 22.0f, 20.0f}, 0.3f, 4, liveries[c]);
-        DrawRectangleRoundedLines(Rectangle{(float)cx, (float)rowY, 22.0f, 20.0f}, 0.3f, 4, WHITE);
+    for (int c = 0; c < 6; ++c) {
+        int cx = winX + 145 + c * 27;
+        DrawRectangleRounded(Rectangle{(float)cx, (float)rowY, 23.0f, 20.0f}, 0.3f, 4, liveries[c]);
+        DrawRectangleRoundedLines(Rectangle{(float)cx, (float)rowY, 23.0f, 20.0f}, 0.3f, 4, WHITE);
     }
 }
 
@@ -499,17 +538,18 @@ void UserInterface::DrawToast(const ToastMessage& toast) {
 void UserInterface::DrawQuickTipBanner(const std::string& tip) {
     if (tip.empty()) return;
     int screenW = GetScreenWidth();
+    int screenH = GetScreenHeight();
     int textW = MeasureText(tip.c_str(), 10);
     int bannerW = textW + 36;
-    int bannerH = 26;
+    int bannerH = 24;
     int bannerX = (screenW - bannerW) / 2;
-    int bannerY = 54;
+    int bannerY = screenH - 122;
 
     DrawRectangleRounded(Rectangle{(float)bannerX, (float)bannerY, (float)bannerW, (float)bannerH}, 0.5f, 4, Color{15, 23, 42, 235});
     DrawRectangleRoundedLines(Rectangle{(float)bannerX, (float)bannerY, (float)bannerW, (float)bannerH}, 0.5f, 4, Color{56, 189, 248, 200});
 
-    DrawCircle(bannerX + 14, bannerY + 13, 3.5f, Color{255, 214, 0, 255});
-    DrawText(tip.c_str(), bannerX + 24, bannerY + 8, 10, Color{241, 245, 249, 255});
+    DrawCircle(bannerX + 14, bannerY + 12, 3.5f, Color{255, 214, 0, 255});
+    DrawText(tip.c_str(), bannerX + 24, bannerY + 7, 10, Color{241, 245, 249, 255});
 }
 
 void UserInterface::DrawTransitOperationsManual() {
@@ -716,37 +756,181 @@ void UserInterface::DrawTitleScreen() {
     int screenW = GetScreenWidth();
     int screenH = GetScreenHeight();
 
-    DrawRectangle(0, 0, screenW, screenH, Color{15, 23, 42, 255});
+    // 1. Sleek dark transit blueprint background
+    DrawRectangle(0, 0, screenW, screenH, Color{15, 23, 42, 255}); // Slate 900
 
-    // Schematic metro line grid background
-    for (int i = 0; i < screenW; i += 60) {
-        DrawLine(i, 0, i + 200, screenH, Color{30, 41, 59, 80});
+    // Schematic metro track network in background
+    for (int x = -100; x < screenW + 300; x += 80) {
+        DrawLine(x, 0, x - 180, screenH, Color{30, 41, 59, 70});
+    }
+    for (int y = 0; y < screenH; y += 80) {
+        DrawLine(0, y, screenW, y + 40, Color{30, 41, 59, 50});
     }
 
-    // Central Metro Roundel
+    // Top accent metro line bar
+    DrawRectangle(0, 0, screenW, 5, Color{220, 38, 38, 255});
+
+    // 2. Title & Roundel Header
     int cx = screenW / 2;
-    int cy = screenH / 2 - 80;
-    DrawCircle(cx, cy, 64, Color{220, 38, 38, 255});
-    DrawCircle(cx, cy, 50, Color{15, 23, 42, 255});
-    DrawRectangle(cx - 75, cy - 18, 150, 36, Color{220, 38, 38, 255});
-    DrawText("METRO", cx - 45, cy - 12, 24, WHITE);
+    int headerY = 28;
 
-    DrawText("METRO GRID", screenW / 2 - 180, screenH / 2 + 10, 46, Color{248, 250, 252, 255});
-    DrawText("2.5D Urban Rapid Transit Simulator", screenW / 2 - 165, screenH / 2 + 65, 17, Color{56, 189, 248, 255});
-    DrawText("Tokyo Metro Reliability Meets Mini Metro Logistics", screenW / 2 - 175, screenH / 2 + 95, 13, Color{148, 163, 184, 255});
+    // Metro Roundel Icon
+    int rx = cx - 180;
+    int ry = headerY + 22;
+    DrawCircle(rx, ry, 22, Color{220, 38, 38, 255});
+    DrawCircle(rx, ry, 15, Color{15, 23, 42, 255});
+    DrawRectangle(rx - 26, ry - 6, 52, 12, Color{220, 38, 38, 255});
+    DrawText("M", rx - 6, ry - 6, 12, WHITE);
 
-    DrawRectangleRounded(Rectangle{(float)screenW / 2 - 130, (float)screenH / 2 + 140, 260.0f, 52.0f}, 0.3f, 6, Color{220, 38, 38, 255});
-    DrawText("START TRANSIT SERVICE", screenW / 2 - 105, screenH / 2 + 156, 16, WHITE);
+    DrawText("METRO GRID", cx - 140, headerY, 34, Color{248, 250, 252, 255});
+    DrawText("Urban Rapid Transit Tycoon & Commuter Flow Dispatcher", cx - 190, headerY + 40, 13, Color{56, 189, 248, 255});
 
-    DrawText("WASD / Drag: Pan | Scroll: Zoom | Keys 1-8: Tools | E/Q: Elevation | R: Rotate | H: Manual", screenW / 2 - 320, screenH - 35, 11, Color{100, 116, 139, 255});
+    // Goal Banner Pill
+    int bannerW = 660;
+    int bannerH = 26;
+    int bannerX = (screenW - bannerW) / 2;
+    int bannerY = headerY + 62;
+    DrawRectangleRounded(Rectangle{(float)bannerX, (float)bannerY, (float)bannerW, (float)bannerH}, 0.5f, 4, Color{30, 41, 59, 230});
+    DrawRectangleRoundedLines(Rectangle{(float)bannerX, (float)bannerY, (float)bannerW, (float)bannerH}, 0.5f, 4, Color{245, 158, 11, 200});
+    DrawText("MISSION: Safely board & deliver 500 commuters without letting stations overcrowd!", bannerX + 18, bannerY + 6, 11, Color{255, 214, 0, 255});
+
+    // 3. Three Simple Rule Cards
+    int cardW = 350;
+    int cardH = 370;
+    int gap = 20;
+    int totalCardsW = 3 * cardW + 2 * gap; // 1090
+    int startCardsX = (screenW - totalCardsW) / 2;
+    int cardY = 126;
+
+    // CARD 1: TRAIN & BOARDING
+    int c1X = startCardsX;
+    DrawRectangleRounded(Rectangle{(float)c1X, (float)cardY, (float)cardW, (float)cardH}, 0.10f, 6, Color{23, 32, 51, 250});
+    DrawRectangleRoundedLines(Rectangle{(float)c1X, (float)cardY, (float)cardW, (float)cardH}, 0.10f, 6, Color{56, 189, 248, 255});
+    DrawRectangleRounded(Rectangle{(float)c1X + 4, (float)cardY + 4, (float)cardW - 8, 28.0f}, 0.2f, 4, Color{14, 116, 144, 255});
+    DrawText("1. TRAIN RUNS & BOARDS", c1X + 14, cardY + 10, 12, WHITE);
+
+    int y1 = cardY + 42;
+    DrawText("* Automatic Train Operation:", c1X + 14, y1, 11, Color{56, 189, 248, 255}); y1 += 18;
+    DrawText("The EMU train cruises continuously on your", c1X + 14, y1, 10, Color{203, 213, 225, 255}); y1 += 16;
+    DrawText("closed rail circuit at full line speed.", c1X + 14, y1, 10, Color{203, 213, 225, 255}); y1 += 24;
+
+    DrawText("* Station Stops & PSD Doors:", c1X + 14, y1, 11, Color{56, 189, 248, 255}); y1 += 18;
+    DrawText("When reaching a Station [7], the train decelerates", c1X + 14, y1, 10, Color{203, 213, 225, 255}); y1 += 16;
+    DrawText("to a smooth halt and aligns with platform doors.", c1X + 14, y1, 10, Color{203, 213, 225, 255}); y1 += 24;
+
+    DrawText("* Commuters & Shape Destinations:", c1X + 14, y1, 11, Color{255, 214, 0, 255}); y1 += 18;
+    DrawText("Waiting riders board the train. Each rider wants", c1X + 14, y1, 10, Color{203, 213, 225, 255}); y1 += 16;
+    DrawText("a specific station shape (Square, Circle, Cross).", c1X + 14, y1, 10, Color{203, 213, 225, 255}); y1 += 24;
+
+    DrawText("* Earn Revenue on Delivery:", c1X + 14, y1, 11, Color{34, 197, 94, 255}); y1 += 18;
+    DrawText("Disembarking commuters pay $2.50 ticket fare,", c1X + 14, y1, 10, Color{203, 213, 225, 255}); y1 += 16;
+    DrawText("funding your track and concourse expansions!", c1X + 14, y1, 10, Color{203, 213, 225, 255}); y1 += 28;
+
+    // Mini visual preview card footer
+    DrawRectangleRounded(Rectangle{(float)c1X + 12, (float)cardY + cardH - 52, (float)cardW - 24, 40.0f}, 0.15f, 4, Color{15, 23, 42, 220});
+    DrawText("SHAPES: [ ] Square  (O) Circle  (+) Cross", c1X + 22, cardY + cardH - 38, 10, Color{148, 163, 184, 255});
+
+    // CARD 2: BUILD & EXPAND
+    int c2X = startCardsX + cardW + gap;
+    DrawRectangleRounded(Rectangle{(float)c2X, (float)cardY, (float)cardW, (float)cardH}, 0.10f, 6, Color{23, 32, 51, 250});
+    DrawRectangleRoundedLines(Rectangle{(float)c2X, (float)cardY, (float)cardW, (float)cardH}, 0.10f, 6, Color{34, 197, 94, 255});
+    DrawRectangleRounded(Rectangle{(float)c2X + 4, (float)cardY + 4, (float)cardW - 8, 28.0f}, 0.2f, 4, Color{21, 128, 61, 255});
+    DrawText("2. BUILD & EXPAND", c2X + 14, cardY + 10, 12, WHITE);
+
+    int y2 = cardY + 42;
+    DrawText("* Rail Tools [Keys 1 - 8]:", c2X + 14, y2, 11, Color{34, 197, 94, 255}); y2 += 18;
+    DrawText("1=Straight, 2=Turn Left, 3=Turn Right, 4=Viaduct,", c2X + 14, y2, 10, Color{203, 213, 225, 255}); y2 += 16;
+    DrawText("5=Ramp, 6=Tunnel, 7=Station, 8=Block Signal.", c2X + 14, y2, 10, Color{203, 213, 225, 255}); y2 += 24;
+
+    DrawText("* Rotate & Elevation Controls:", c2X + 14, y2, 11, Color{255, 214, 0, 255}); y2 += 18;
+    DrawText("Press [R] to rotate track heading 90 deg.", c2X + 14, y2, 10, Color{203, 213, 225, 255}); y2 += 16;
+    DrawText("Press [E] / [Q] to raise / lower elevation (Z=0..5).", c2X + 14, y2, 10, Color{203, 213, 225, 255}); y2 += 24;
+
+    DrawText("* Concourse & Plazas [Tab 2]:", c2X + 14, y2, 11, Color{56, 189, 248, 255}); y2 += 18;
+    DrawText("Pave sidewalks and queue areas so commuters can", c2X + 14, y2, 10, Color{203, 213, 225, 255}); y2 += 16;
+    DrawText("walk from entrances to train platform edges.", c2X + 14, y2, 10, Color{203, 213, 225, 255}); y2 += 24;
+
+    DrawText("* Station Amenities [Tab 3]:", c2X + 14, y2, 11, Color{251, 146, 60, 255}); y2 += 18;
+    DrawText("Place benches, turnstiles, trees, lamps, and cafes", c2X + 14, y2, 10, Color{203, 213, 225, 255}); y2 += 16;
+    DrawText("to dramatically raise commuter happiness!", c2X + 14, y2, 10, Color{203, 213, 225, 255}); y2 += 28;
+
+    DrawRectangleRounded(Rectangle{(float)c2X + 12, (float)cardY + cardH - 52, (float)cardW - 24, 40.0f}, 0.15f, 4, Color{15, 23, 42, 220});
+    DrawText("HOTKEYS: [1-8] Build  [R] Rotate  [X] Bulldoze", c2X + 22, cardY + cardH - 38, 10, Color{148, 163, 184, 255});
+
+    // CARD 3: PREVENT OVERCROWDING
+    int c3X = startCardsX + 2 * (cardW + gap);
+    DrawRectangleRounded(Rectangle{(float)c3X, (float)cardY, (float)cardW, (float)cardH}, 0.10f, 6, Color{23, 32, 51, 250});
+    DrawRectangleRoundedLines(Rectangle{(float)c3X, (float)cardY, (float)cardW, (float)cardH}, 0.10f, 6, Color{239, 68, 68, 255});
+    DrawRectangleRounded(Rectangle{(float)c3X + 4, (float)cardY + 4, (float)cardW - 8, 28.0f}, 0.2f, 4, Color{185, 28, 28, 255});
+    DrawText("3. AVOID OVERCROWDING", c3X + 14, cardY + 10, 12, WHITE);
+
+    int y3 = cardY + 42;
+    DrawText("* Commuter Station Crowds:", c3X + 14, y3, 11, Color{239, 68, 68, 255}); y3 += 18;
+    DrawText("Passengers arrive at entrance gates and line up", c3X + 14, y3, 10, Color{203, 213, 225, 255}); y3 += 16;
+    DrawText("at platform gates waiting for train arrivals.", c3X + 14, y3, 10, Color{203, 213, 225, 255}); y3 += 24;
+
+    DrawText("* Danger: 10+ Backlog Countdown:", c3X + 14, y3, 11, Color{255, 214, 0, 255}); y3 += 18;
+    DrawText("If 10 or more commuters wait at any single station,", c3X + 14, y3, 10, Color{203, 213, 225, 255}); y3 += 16;
+    DrawText("an urgent Overcrowding Timer begins ticking!", c3X + 14, y3, 10, Color{203, 213, 225, 255}); y3 += 24;
+
+    DrawText("* Clear the Backlog in Time:", c3X + 14, y3, 11, Color{239, 68, 68, 255}); y3 += 18;
+    DrawText("Pick up commuters before the timer expires to", c3X + 14, y3, 10, Color{203, 213, 225, 255}); y3 += 16;
+    DrawText("prevent platform riots and customer walkouts!", c3X + 14, y3, 10, Color{203, 213, 225, 255}); y3 += 24;
+
+    DrawText("* Victory & Failure Conditions:", c3X + 14, y3, 11, Color{34, 197, 94, 255}); y3 += 18;
+    DrawText("WIN: Deliver 500 passengers across districts.", c3X + 14, y3, 10, Color{203, 213, 225, 255}); y3 += 16;
+    DrawText("FAIL: Satisfaction drops to 0% due to delays.", c3X + 14, y3, 10, Color{203, 213, 225, 255}); y3 += 28;
+
+    DrawRectangleRounded(Rectangle{(float)c3X + 12, (float)cardY + cardH - 52, (float)cardW - 24, 40.0f}, 0.15f, 4, Color{15, 23, 42, 220});
+    DrawText("GOAL: Deliver 500  |  AVOID: Overcrowd timer", c3X + 22, cardY + cardH - 38, 10, Color{239, 68, 68, 255});
+
+    // 4. Large Glowing START Button
+    int btnW = 360;
+    int btnH = 54;
+    int btnX = (screenW - btnW) / 2;
+    int btnY = cardY + cardH + 16;
+
+    Vector2 mousePos = GetMousePosition();
+    bool isHovered = CheckCollisionPointRec(mousePos, Rectangle{(float)btnX, (float)btnY, (float)btnW, (float)btnH});
+    Color btnColor = isHovered ? Color{239, 68, 68, 255} : Color{220, 38, 38, 255};
+
+    DrawRectangleRounded(Rectangle{(float)btnX, (float)btnY, (float)btnW, (float)btnH}, 0.28f, 6, btnColor);
+    DrawRectangleRoundedLines(Rectangle{(float)btnX, (float)btnY, (float)btnW, (float)btnH}, 0.28f, 6, isHovered ? WHITE : Color{254, 202, 202, 255});
+
+    DrawText("START PLAYING", btnX + 90, btnY + 12, 19, WHITE);
+    DrawText("(or press SPACE / ENTER)", btnX + 105, btnY + 34, 10, Color{255, 214, 0, 255});
+
+    // 5. Bottom Navigation & Control Reference Bar
+    int ctrlY = btnY + btnH + 12;
+    int ctrlW = totalCardsW;
+    int ctrlH = 34;
+    int ctrlX = startCardsX;
+    DrawRectangleRounded(Rectangle{(float)ctrlX, (float)ctrlY, (float)ctrlW, (float)ctrlH}, 0.3f, 4, Color{23, 32, 51, 230});
+    DrawRectangleRoundedLines(Rectangle{(float)ctrlX, (float)ctrlY, (float)ctrlW, (float)ctrlH}, 0.3f, 4, Color{51, 65, 85, 200});
+
+    DrawText("CONTROLS:  [WASD / Drag] Pan Camera   |   [Mouse Wheel] Zoom   |   [1 - 8] Select Tool   |   [R] Rotate   |   [E / Q] Elevation   |   [F] Cab Cam   |   [?] How to Play", ctrlX + 16, ctrlY + 11, 10, Color{203, 213, 225, 255});
+}
+
+bool UserInterface::CheckTitleStartClick(Vector2 mousePos) const {
+    int screenW = GetScreenWidth();
+    int cardH = 370;
+    int cardY = 126;
+    int btnW = 360;
+    int btnH = 54;
+    int btnX = (screenW - btnW) / 2;
+    int btnY = cardY + cardH + 16;
+
+    return CheckCollisionPointRec(mousePos, Rectangle{(float)btnX, (float)btnY, (float)btnW, (float)btnH});
 }
 
 int UserInterface::CheckToolbarTabClick(Vector2 mousePos) const {
     int screenW = GetScreenWidth();
     int screenH = GetScreenHeight();
-    int barW = 780;
+    int barW = 740;
     int barH = 72;
-    int barX = (screenW - barW) / 2;
+    int auxW = 146;
+    int totalDockW = barW + 12 + auxW;
+    int barX = std::max(10, (screenW - totalDockW) / 2);
     int barY = screenH - barH - 12;
 
     int tabW = 140;
@@ -754,7 +938,7 @@ int UserInterface::CheckToolbarTabClick(Vector2 mousePos) const {
     int tabStartY = barY - tabH + 2;
 
     for (int t = 0; t < 3; ++t) {
-        int tx = barX + 16 + t * (tabW + 6);
+        int tx = barX + 16 + t * (tabW + 8);
         if (CheckCollisionPointRec(mousePos, Rectangle{(float)tx, (float)tabStartY, (float)tabW, (float)tabH + 4})) {
             return t;
         }
@@ -765,24 +949,37 @@ int UserInterface::CheckToolbarTabClick(Vector2 mousePos) const {
 int UserInterface::CheckToolbarItemClick(Vector2 mousePos, ToolCategory activeTab) const {
     int screenW = GetScreenWidth();
     int screenH = GetScreenHeight();
-    int barW = 780;
+    int barW = 740;
     int barH = 72;
-    int barX = (screenW - barW) / 2;
+    int auxW = 146;
+    int totalDockW = barW + 12 + auxW;
+    int barX = std::max(10, (screenW - totalDockW) / 2);
     int barY = screenH - barH - 12;
 
-    int itemBtnW = 68;
     int itemBtnH = 52;
     int itemStartY = barY + 10;
-    int startX = barX + 12;
 
-    int count = (activeTab == CAT_INFRA) ? 4 : 9;
-    int step = (activeTab == CAT_INFRA) ? (itemBtnW + 20) : (itemBtnW + 5);
-    int width = (activeTab == CAT_INFRA) ? (itemBtnW + 14) : itemBtnW;
+    if (activeTab == CAT_INFRA) {
+        int infraBtnW = 120;
+        int spacing = 18;
+        int startX = barX + (barW - (4 * infraBtnW + 3 * spacing)) / 2;
 
-    for (int i = 0; i < count; ++i) {
-        int bx = startX + i * step;
-        if (CheckCollisionPointRec(mousePos, Rectangle{(float)bx, (float)itemStartY, (float)width, (float)itemBtnH})) {
-            return i;
+        for (int i = 0; i < 4; ++i) {
+            int bx = startX + i * (infraBtnW + spacing);
+            if (CheckCollisionPointRec(mousePos, Rectangle{(float)bx, (float)itemStartY, (float)infraBtnW, (float)itemBtnH})) {
+                return i;
+            }
+        }
+    } else {
+        int itemBtnW = 68;
+        int spacing = 11;
+        int startX = barX + (barW - (9 * itemBtnW + 8 * spacing)) / 2;
+
+        for (int i = 0; i < 9; ++i) {
+            int bx = startX + i * (itemBtnW + spacing);
+            if (CheckCollisionPointRec(mousePos, Rectangle{(float)bx, (float)itemStartY, (float)itemBtnW, (float)itemBtnH})) {
+                return i;
+            }
         }
     }
     return -1;
@@ -791,11 +988,13 @@ int UserInterface::CheckToolbarItemClick(Vector2 mousePos, ToolCategory activeTa
 bool UserInterface::CheckToolbarAuxClick(Vector2 mousePos, int& outZDelta, bool& outRotate) const {
     int screenW = GetScreenWidth();
     int screenH = GetScreenHeight();
-    int barW = 780;
+    int barW = 740;
     int barH = 72;
-    int barX = (screenW - barW) / 2;
+    int auxW = 146;
+    int totalDockW = barW + 12 + auxW;
+    int barX = std::max(10, (screenW - totalDockW) / 2);
     int barY = screenH - barH - 12;
-    int auxX = barX + barW + 10;
+    int auxX = barX + barW + 12;
 
     // Height down [-]
     if (CheckCollisionPointRec(mousePos, Rectangle{(float)auxX + 96, (float)barY + 7, 20.0f, 20.0f})) {
@@ -826,8 +1025,9 @@ bool UserInterface::CheckHUDClick(
 ) const {
     int screenW = GetScreenWidth();
 
-    // Action buttons at actX = 815
-    int actX = 815;
+    int btnX = screenW - 145;
+    int actX = btnX - 12 - 322;
+
     // Line Ops Button
     if (CheckCollisionPointRec(mousePos, Rectangle{(float)actX, 13.0f, 74.0f, 26.0f})) {
         outToggleStats = true;
@@ -843,14 +1043,13 @@ bool UserInterface::CheckHUDClick(
         outToggleRideCam = true;
         return true;
     }
-    // Operations Manual Button
-    if (CheckCollisionPointRec(mousePos, Rectangle{(float)actX + 228, 13.0f, 60.0f, 26.0f})) {
+    // Operations Manual Button (? HOW TO PLAY)
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)actX + 228, 13.0f, 94.0f, 26.0f})) {
         outToggleHelp = true;
         return true;
     }
 
     // Time controls
-    int btnX = screenW - 145;
     if (CheckCollisionPointRec(mousePos, Rectangle{(float)btnX, 13.0f, 26.0f, 26.0f})) {
         outNewSpeed = 0;
         return true;
@@ -871,13 +1070,16 @@ bool UserInterface::CheckHUDClick(
     return false;
 }
 
-bool UserInterface::CheckStatsWindowClick(Vector2 mousePos, float& outTicketPriceDelta, int& outColorChoice, bool& outClose) const {
+bool UserInterface::CheckStatsWindowClick(Vector2 mousePos, float& outTicketPriceDelta, int& outColorChoice, int& outModeChange, int& outCarDelta, bool& outClose) const {
     int screenW = GetScreenWidth();
-    int winW = 320;
+    int winW = 330;
     int winX = screenW - winW - 16;
     int winY = 62;
 
     outColorChoice = -1;
+    outModeChange = -1;
+    outCarDelta = 0;
+    outTicketPriceDelta = 0.0f;
 
     // Close button [X]
     if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + winW - 32, (float)winY + 4, 28.0f, 28.0f})) {
@@ -885,23 +1087,49 @@ bool UserInterface::CheckStatsWindowClick(Vector2 mousePos, float& outTicketPric
         return true;
     }
 
-    // Fare price [-]
-    int rowY = winY + 46 + 26 * 3 + 12 + 26 * 4 + 12;
-    if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + 220, (float)rowY, 26.0f, 22.0f})) {
+    // Operating Mode buttons: Open, Test, Closed
+    int modeY = winY + 44;
+    int modeBtnW = 94;
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + 14, (float)modeY, (float)modeBtnW, 26.0f})) {
+        outModeChange = (int)LINE_OPEN;
+        return true;
+    }
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + 118, (float)modeY, (float)modeBtnW, 26.0f})) {
+        outModeChange = (int)LINE_TEST;
+        return true;
+    }
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + 222, (float)modeY, (float)modeBtnW, 26.0f})) {
+        outModeChange = (int)LINE_CLOSED;
+        return true;
+    }
+
+    // Train Formation [-] and [+]
+    int carRowY = winY + 78;
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + 250, (float)carRowY, 24.0f, 20.0f})) {
+        outCarDelta = -1;
+        return true;
+    }
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + 278, (float)carRowY, 24.0f, 20.0f})) {
+        outCarDelta = 1;
+        return true;
+    }
+
+    // Fare price [-] and [+]
+    int fareRowY = carRowY + 24;
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + 250, (float)fareRowY, 24.0f, 20.0f})) {
         outTicketPriceDelta = -0.25f;
         return true;
     }
-    // Fare price [+]
-    if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + 252, (float)rowY, 26.0f, 22.0f})) {
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + 278, (float)fareRowY, 24.0f, 20.0f})) {
         outTicketPriceDelta = 0.25f;
         return true;
     }
 
-    // Theme color buttons
-    int palY = rowY + 26 + 12;
-    for (int c = 0; c < 5; ++c) {
-        int cx = winX + 145 + c * 26;
-        if (CheckCollisionPointRec(mousePos, Rectangle{(float)cx, (float)palY, 22.0f, 20.0f})) {
+    // Theme color buttons (6 colors)
+    int palY = fareRowY + 28 + 24 * 6 + 10;
+    for (int c = 0; c < 6; ++c) {
+        int cx = winX + 145 + c * 27;
+        if (CheckCollisionPointRec(mousePos, Rectangle{(float)cx, (float)palY, 23.0f, 20.0f})) {
             outColorChoice = c;
             return true;
         }

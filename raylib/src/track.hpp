@@ -9,6 +9,9 @@ struct StationInfo {
     int waitingCount = 0;
     float overcrowdTimer = 20.0f;
     bool isOvercrowded = false;
+    float circuitDist = 0.0f;
+    int stationLevel = 1;
+    int passengersServed = 0;
 };
 
 struct TrackNode {
@@ -22,6 +25,8 @@ struct TrackNode {
     // Station & Signaling Properties
     StationShape stationShape = SHAPE_NONE;
     std::string stationName = "";
+    int stationLevel = 1;
+    int passengersServed = 0;
     SignalAspect signalAspect = SIGNAL_GREEN;
     float signalTimer = 0.0f;
     float circuitDist = 0.0f;
@@ -53,6 +58,8 @@ public:
     int GetStationCount() const;
     const TrackNode* GetStationAt(int gx, int gy) const;
     StationShape GetStationShapeAt(int gx, int gy) const;
+    bool GetNextStationAhead(float currentDist, float& outDistToStation, StationInfo& outStation) const;
+    void RecordStationAlight(int gx, int gy, int count, bool& outLeveledUp, int& outNewLevel);
 
     // Dynamic Wayside Signaling
     void UpdateSignals(float trainDistance);

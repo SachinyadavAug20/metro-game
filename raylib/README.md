@@ -1,119 +1,100 @@
-# COASTER GRID: 2.5D Isometric Coaster Tycoon
-> A real-time coaster design & queue triage simulator combining the creative track construction and kinetic physics of **RollerCoaster Tycoon** with the high-stakes crowd logistics and station overcrowding mechanics of **Mini Metro**. Built in C++ using **Raylib**.
+# METRO GRID: 2.5D Isometric Metro Tycoon
+> A real-time metropolitan transit network design & crowd triage simulator combining the creative construction, operating modes, and management depth of **RollerCoaster Tycoon** with the elegant urban network flow and shape-based passenger triage of **Mini Metro**. Built in C++17 using **Raylib 6.0**.
 
 ---
 
 ## 📸 In-Game Screenshots
 
-| Park Entrance Plaza & Staff Sweeping | Staff & Cleanliness Management Window |
+| Central Hub Island Platform & Fountain | Operations Control Center (OCC) Dashboard |
 |---|---|
-| ![Park Entrance Plaza](test_staff_entrance_plaza.png) | ![Staff Window](test_staff_management_window.png) |
+| ![Central Hub Platform](test_metro_hub_island_platform.png) | ![OCC Dashboard](test_metro_occ_dashboard.png) |
 
-| Night Rush Hour & Lamppost Lighting | Custom Coaster Paint (Emerald Viper) |
+| Passenger Boarding & Fare Collection | Elevated SkyTrain Viaduct & Canal |
 |---|---|
-| ![Night Lighting](test_night_lighting.png) | ![Repainted Coaster](test_repainted_coaster_emerald.png) |
+| ![Boarding Simulation](test_metro_boarding_simulation.png) | ![Viaduct & Canal](test_metro_viaduct_signaling.png) |
 
-| Guest Inspector & Helium Balloons | Ride Cam Action (Following Train) |
+| Transit Crew & Platform Maintenance | OCC Operations Quick Guide |
 |---|---|
-| ![Guest Inspector](test_peep_balloon_inspector.png) | ![Ride Cam Mode](test_ride_cam.png) |
+| ![Crew Management](test_metro_crew_management.png) | ![Operations Manual](test_metro_operations_manual.png) |
 
 ---
 
 ## 🎮 Complete Feature Set
 
-### 1. 2.5D Isometric Construction Engine
-- **Classic Dimetric Projection**: 2:1 ratio ($64 \times 32$ diamond tiles) with elevation levels ($Z \in [0, 5]$), depth cliff faces, and steel support trellis pillars.
-- **Grand Park Entrance Arch**: Imposing brick archway with welcome flags and entrance sign at `(0, 12)`.
-- **Categorized Building Dock**:
-  - **Category 1: Track Pieces**:
-    - `[1] Straight Track`: High-speed flat line.
-    - `[2] Turn Left` & `[3] Turn Right`: 90-degree curved track sections.
-    - `[4] Chain Lift Hill (+1Z)`: Motorized ratchet ascent with procedural gear clicks.
-    - `[5] Steep Drop (-1Z)`: Gravity plunge converting potential into kinetic velocity.
-    - `[6] Vertical Inversion Loop`: Stunt element that Thrill Seekers love.
-    - `[7] Magnetic Brakes`: Deceleration zone before sharp turns or station.
-    - `[8] Station Platform`: Boarding & arrival terminal.
-    - `[X] Bulldozer`: Demolish and refund track, paths, or scenery.
-  - **Category 2: Paths & Infrastructure**:
-    - `[1] Cobblestone Footpath`: Pave park promenades for arriving guests.
-    - `[2] Queue Line`: Designated queue tiles with polished brass stanchions & red velvet ropes.
-    - `[X] Bulldozer`: Revert path to grass.
-  - **Category 3: Scenery & Landscaping**:
-    - `[1] Pine Tree` ($30): Dense evergreens boosting park satisfaction.
-    - `[2] Oak Tree` ($45): Lush leafy shade trees.
-    - `[3] Park Bench` ($20): Resting spot that reduces guest nausea!
-    - `[4] Splashing Fountain` ($180): Elegant multi-tier water fountain with animated splashes.
-    - `[5] Flower Bed` ($15): Vibrant multi-color botanical blossoms.
-    - `[6] Soda Stall` ($150): Generates +$2.50 per drink and cures queasy guests!
-    - `[7] Balloon Stall` ($120): Sells floating helium balloons that guests carry around the park.
-    - `[8] Victorian Lamp Post` ($25): Evening illumination casting radiant warm light pools.
-    - `[X] Bulldozer`: Clear scenery.
+### 1. RollerCoaster Tycoon Inspired Mechanics
+- **3-Aspect Line Operating Modes**:
+  - 🟢 **OPEN**: Full passenger service active. Commuters queue, board, and pay fares upon delivery.
+  - 🟡 **TEST RUN**: Train operates continuous test loops without taking passengers—ideal for verifying custom circuits, viaduct grades, and track alignment before opening to the public.
+  - 🔴 **CLOSED**: Service suspended. Train comes to a safe stop at the platform.
+- **Rolling Stock Fleet Formation**:
+  - Dynamically configure trainsets between **2, 3, 4, or 5 EMU cars** (8 to 20 passenger capacity) with responsive handling physics.
+- **Ticket Fare Tariff Control**:
+  - Adjust network ticket pricing from **$0.50 to $10.00** using responsive `[-]` / `[+]` stepping controls.
+- **Floating Financial Feedback**:
+  - Every transaction is visually signaled directly on the isometric map using RCT-style floating drop-shadowed text: `+$2.50` fare earnings in emerald green, `-$40` rail construction in bright crimson, and refund credits.
+- **Commuter / Guest Inspector Card**:
+  - Click on any passenger on the concourse, queue line, or inside a train car to view their profile, target station shape, transit smartcard balance, satisfaction rating, and live thoughts.
 
-### 2. Staff Management & Park Cleanliness
-- **Handymen (Blue Overalls & Straw Hat)**:
-  - Patrol walkways with sweeping brooms.
-  - Detect and sweep away vomit puddles and empty soda cups.
-  - Keep Park Cleanliness high to prevent guest dissatisfaction!
-- **Mechanics (Orange/Yellow Jumpsuit & Hardhat)**:
-  - Patrol station and track junctions with wrenches to inspect ride reliability.
-- **Staff Management Window (`P` or `[STAFF]`)**:
-  - Live Park Cleanliness percentage gauge.
-  - One-click employee hiring (`+ Handyman $80`, `+ Mechanic $100`).
-  - Active staff roster with real-time status indicators ("Sweeping", "Inspecting", "Patrolling").
+### 2. Kinetic Train Physics & Infinite Circuit Simulation
+- **Continuous Loop Reliability**:
+  - Trains navigate arbitrary closed loops and multi-station circuits indefinitely without stalls, derailments, or ghost passenger traps.
+- **Realistic Station Deceleration & Dwell Profile**:
+  - Lookahead circuit distance calculation detects upcoming station platforms and calculates an exact deceleration curve from 70 km/h down to 0 km/h.
+  - Halts dead-center at platform screen doors (PSDs).
+  - Procedural door opening chime (`SFX_DOOR_OPEN`), followed by passenger alighting, fare collection, commuter boarding, dwell countdown, and door closing chime (`SFX_DOOR_CLOSE`).
+- **Dynamic Wayside Signaling**:
+  - 3-aspect trackside signals (Green $\rightarrow$ Yellow $\rightarrow$ Red) automatically monitor block occupancy and enforce safe train separation.
 
-### 3. Comprehensive Theme Park UI & UX
-- **Top HUD**:
-  - In-game calendar week counter & progression bar.
-  - Live park treasury (`PARK FUNDS: $1,500`).
-  - Delivered guests score & Park Satisfaction percentage rating.
-  - Coaster speedometer (`km/h`) with color-coded safety warnings.
-  - Circuit status pill (`ACTIVE` in green, `CIRCUIT OPEN` in red).
-  - Quick action buttons: `[STATS]`, `[STAFF]`, `[CAM (F)]`, `[HELP]`, `[|| / > / >>]`, `[SND / MUT]`.
-- **Coaster Information Window (`T` or `[STATS]`)**:
-  - Comprehensive RCT ratings: **Excitement**, **Intensity**, and **Nausea**.
-  - Technical telemetry: Max Speed, Track Length, Highest Drop, Inversions, Total Riders.
-  - **Coaster Line Palette Theme**: Instantly repaint rails and carriages to **Red Falcon**, **Blue Comet**, **Emerald Viper**, **Mystic Phantom**, or **Golden Dragon**!
-  - **Real-Time Ticket Pricing**: Adjust ticket price with `[-]` and `[+]` buttons ($1.00 to $20.00).
-- **Guest Inspector Card**:
-  - Click on any peep in the park or queue line to open their personal inspector card:
-    - Guest portrait, name, and archetype badge.
-    - Happiness percentage bar & Nausea percentage bar.
-    - Dynamic thought bubble reacting to rides, cleanliness, benches, and stalls.
-- **Ride Camera Mode (`F` or `[CAM]`)**:
-  - Locks the camera onto the train, smoothly tracking its journey around the circuit with speed-dependent camera shake on high-velocity drops!
-- **Day / Sunset / Night Cycle**:
-  - Cycles with the weekly progression: crisp daytime $\rightarrow$ golden sunset $\rightarrow$ atmospheric twilight night with radial lamppost light pools and train headlamps!
-- **Toast Notification Banner**:
-  - Slides down with high-priority updates (e.g. circuit closure, queue backups, derailments, milestones).
-- **Interactive Help Overlay (`H` or `?`)**:
-  - Full keyboard & mouse guide accessible at any time.
+### 3. 2.5D Isometric Construction Engine
+- **Classic Dimetric Projection**: $64 \times 32$ diamond tiles with multi-level elevation ($Z \in [0, 5]$), viaduct support pillars, and canal water bodies.
+- **Categorized Construction Dock**:
+  - **Category 1: Track & Signaling**:
+    - `[1] Straight Track`: High-speed continuous rail.
+    - `[2] L-Turn Left` & `[3] R-Turn Right`: 90-degree curved rail transitions.
+    - `[4] Elevated Viaduct`: Concrete elevated guideway (+1Z).
+    - `[5] Ramp Slope`: Smooth elevation transition between grades (-1Z).
+    - `[6] Tunnel Portal`: Subterranean portal entry for underground lines.
+    - `[7] Station Platform`: Island platform with tactile pavers, PSDs, PIDS, and station totem.
+    - `[8] 3-Aspect Signal`: Wayside signal mast for automatic train control.
+    - `[X] Bulldozer`: Demolish and recover funds (+$25 rail refund).
+  - **Category 2: Concourse & Infrastructure**:
+    - `[1] Sidewalk`: Granite pavement for commuter foot traffic.
+    - `[2] Tactile Queue`: Platform queuing lanes with safety markings.
+    - `[3] Plaza Stone`: Expansive architectural transit plazas.
+  - **Category 3: Urban Scenery & Amenities**:
+    - `[1] Subway Entrance`: Grand neoclassical portal arch with glowing roundel marquee.
+    - `[2] Fare Gates`: Contactless smartcard turnstiles and TVM ticketing machines.
+    - `[3] Oak Tree`: Leafy municipal shade trees.
+    - `[4] Pine Tree`: Conifer park landscaping.
+    - `[5] Bench`: Modern stainless steel and wood platform seating.
+    - `[6] LED Lamp Post`: High-efficiency streetlamps illuminating platforms at night.
+    - `[7] Fountain`: Multi-jet splashing water fountain with animated water sprays.
+    - `[8] Metro Cafe`: Refreshment kiosk providing coffee and snacks.
 
-### 4. Kinetic Coaster Physics & Safety Limits
-- **Energy Conservation**: $E_p + E_k = \text{Const} - \text{Friction}$. Gravity drives acceleration down steep slopes; friction and brake runs decelerate the train safely.
-- **Dangerous Speed Derailment**: Entering sharp turns above safe speed limits (>75 km/h) derails the train into tumbling crash cars with sparks and smoke! Press `C` to recover the train to the station.
+### 4. Transit Crew & Station Maintenance
+- **Station Custodians (Blue Uniform & Broom)**:
+  - Patrol concourses and platforms, automatically locating and cleaning spilled coffee and litter to keep station cleanliness at 100%.
+- **Signal Engineers (High-Vis Orange & Hardhat)**:
+  - Inspect switches, 3rd rail power feeds, and wayside signaling masts.
+- **Transit Crew Management Window (`P` or `[CREW]`)**:
+  - Real-time cleanliness gauge, one-click hiring (`+ Custodian $80`, `+ Technician $100`), and live patrol roster.
 
-### 5. Mini Metro Queue Triage Logistics
-- **Peep Archetypes**:
-  - 🔴 **Thrill Seekers**: Demand loops and steep drops; boost Park Satisfaction rating.
-  - 🟢 **Casuals**: Enjoy smooth, balanced rides.
-  - 🟡 **Queasy Peeps**: High sensitivity to nausea; may vomit if ride is too intense.
-- **Station Overcrowding Countdown**:
-  - If queue line backs up to $\ge 10$ guests, a circular **Mini Metro Triage Clock** appears over the station.
-  - If the train is not dispatched quickly enough to clear the line before the clock expires, guests riot and walk out, dropping Park Satisfaction by 15%!
+### 5. Mini Metro Commuter Triage
+- **Commuter Target Shapes**:
+  - Commuters carry destination symbols: ⬛ **Square** (Central Hub), 🔺 **Triangle** (Marina Viaduct), ➕ **Cross** (University Med Center), and ⭕ **Circle** (Suburban Terminal).
+- **Overcrowding Triage Alarm**:
+  - Stations with excessive passenger backlog display an overcrowding warning timer. Clear waiting crowds with timely dispatches before commuters walk out in frustration!
 
-### 6. Procedural Audio Synthesizer (`audio.cpp`)
-- 100% self-contained waveform generator in memory (no external `.wav` / `.ogg` files):
-  - Chain lift motorized gear clicks
-  - Aerodynamic wind whoosh
-  - Station dispatch bell
-  - Guest delivery score chime
-  - Overcrowding ticking alarm
-  - Crash explosions
-  - Cash register "ka-ching"
-  - Construction hammer thud
-  - Demolish rubble scrape
-  - Crowd cheers
-  - Soda slurp effervescence
+### 6. Procedural Audio Synthesizer (`src/audio.cpp`)
+- 100% synthesized procedural audio with zero external audio assets:
+  - EMU electric motor acceleration/deceleration whine
+  - Dual-tone door open chime (High-Mid chime)
+  - Quad-tone door closing warning (Tokyo Metro melody)
+  - Metallic double-bell cash register chime (`SFX_CASH_REGISTER`)
+  - Smartcard turnstile tap beep
+  - Platform dispatch chime
+  - Construction hammer & rubble bulldozing sounds
+  - Overcrowding triage alarm bell
 
 ---
 
@@ -121,34 +102,36 @@
 
 | Key / Control | Action |
 |---|---|
-| **W / A / S / D** or **Arrow Keys** | Pan park camera |
-| **Right Mouse Drag** | Pan camera |
-| **Mouse Wheel** | Zoom in / Zoom out |
-| **Left Mouse Click** | Place piece / Inspect guest / Click UI |
-| **P** | Toggle Staff & Cleanliness Window |
-| **T** | Toggle Coaster Stats Window (with color palette & ticket price) |
-| **F** | Toggle Ride Camera (Lock on train) |
-| **H** or **?** | Toggle Help & Keybindings Overlay |
-| **TAB** | Cycle Toolbar Category (Tracks / Paths / Scenery) |
+| **W / A / S / D** or **Arrow Keys** | Pan isometric camera |
+| **Right Mouse Drag** | Pan camera smoothly |
+| **Mouse Wheel** | Zoom In / Zoom Out |
+| **Left Mouse Click** | Place piece / Inspect commuter / Click UI buttons |
+| **TAB** | Switch category (1. Track / 2. Concourse / 3. Scenery) |
 | **1 - 8** | Select tool in active category |
-| **X** | Toggle Bulldozer |
-| **R** | Rotate piece orientation (North, East, South, West) |
+| **X** | Toggle Bulldozer (refunds cost) |
+| **R** | Rotate build heading (North, East, South, West) |
 | **E / Q** | Raise / Lower placement elevation ($Z \in [0, 5]$) |
-| **C** | Recover / Reset derailed train to station |
+| **F** | Toggle Driver's Cab Cam (lock camera to lead EMU) |
+| **T** | Toggle Line Operations Window (Mode, Fleet size, Fare tariff, Livery) |
+| **P** | Toggle Transit Crew Window (Cleanliness, Staff hiring) |
+| **H** or **?** | Toggle Operations Manual & Tutorial Overlay |
+| **C** | Calibrate / Reset train position to Central Hub |
 | **Space** | Pause / Resume simulation |
-| **M** | Toggle sound mute |
+| **M** | Toggle audio mute |
 
 ---
 
 ## 🛠️ Build & Run
 
-### Compiling
+### Linux / macOS
 ```bash
 cd raylib
-make
+make clean && make
+./metro_grid
 ```
 
-### Running
+### Windows (MSYS2 / MinGW)
 ```bash
-./coaster_grid
+make
+./metro_grid.exe
 ```

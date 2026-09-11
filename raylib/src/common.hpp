@@ -107,7 +107,9 @@ enum SceneryType {
     SCENERY_BENCH,         // Modern stainless steel & wood subway bench
     SCENERY_LAMP_POST,     // High-efficiency LED urban streetlamp
     SCENERY_NEWSSTAND,     // Platform coffee / newspaper kiosk
-    SCENERY_BIKE_RACK      // Metro bike share docking station
+    SCENERY_BIKE_RACK,     // Metro bike share docking station
+    SCENERY_FOUNTAIN,      // Splashing park water fountain with animated sprays
+    SCENERY_FLOWER_BED     // Vibrant multi-color botanical blossoms
 };
 
 // Tool Categories
@@ -165,10 +167,18 @@ struct ToastMessage {
     float timer = 0.0f;
 };
 
+// Metro Line Operating Status (RCT 3-Aspect: Open, Testing, Closed)
+enum LineOperatingMode {
+    LINE_OPEN = 0,   // Full passenger service: boarding and revenue active
+    LINE_TEST = 1,   // Test run: train runs empty to test loops & track
+    LINE_CLOSED = 2  // Service suspended: train stopped at station
+};
+
 // Metro Line Telemetry & Efficiency Ratings (replacing CoasterStats)
 struct MetroLineStats {
     std::string lineName = "Line 1 - Central Loop";
     Color themeColor = Color{229, 57, 53, 255}; // Tokyo Red Line
+    LineOperatingMode mode = LINE_OPEN;
     float maxSpeedKmh = 72.0f;
     float currentSpeedKmh = 0.0f;
     float trackLengthM = 0.0f;
@@ -177,6 +187,7 @@ struct MetroLineStats {
     float onTimeRate = 98.4f;        // Punctuality %
     float commuterSatisfaction = 94.0f; // Commuter happiness %
     int totalRiders = 0;
+    float totalRevenue = 0.0f;
     float ticketFare = 2.50f;        // Standard metro fare ($2.50)
     SignalAspect currentSignal = SIGNAL_GREEN;
 };

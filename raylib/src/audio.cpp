@@ -222,6 +222,20 @@ void Init() {
         sounds[SFX_COFFEE_SIP] = CreateProceduralSound(buf, sr);
     }
 
+    // 14. SFX_CASH_REGISTER: RCT style metallic ka-ching chime (0.4s)
+    {
+        int n = (int)(sr * 0.40f);
+        std::vector<float> buf(n);
+        for (int i = 0; i < n; ++i) {
+            float t = (float)i / sr;
+            float bell1 = sinf(2.0f * PI * 1864.0f * t) * expf(-14.0f * t);
+            float bell2 = (t > 0.08f) ? sinf(2.0f * PI * 2793.0f * (t - 0.08f)) * expf(-18.0f * (t - 0.08f)) : 0.0f;
+            float coin = (t > 0.16f) ? sinf(2.0f * PI * 3520.0f * (t - 0.16f)) * expf(-25.0f * (t - 0.16f)) * 0.5f : 0.0f;
+            buf[i] = (bell1 * 0.5f + bell2 * 0.6f + coin) * 0.7f;
+        }
+        sounds[SFX_CASH_REGISTER] = CreateProceduralSound(buf, sr);
+    }
+
     initialized = true;
 }
 

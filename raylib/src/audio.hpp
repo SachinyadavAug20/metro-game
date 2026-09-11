@@ -15,7 +15,8 @@ enum SfxType {
     SFX_CONSTRUCTION,       // Steel rail and concrete sleeper placement
     SFX_BULLDOZE,           // Infrastructure demolition
     SFX_COMMUTER_CHATTER,   // Commuters boarding / cheering
-    SFX_COFFEE_SIP          // Station newsstand coffee sip
+    SFX_COFFEE_SIP,         // Station newsstand coffee sip
+    SFX_CASH_REGISTER       // RCT style cash register ka-ching chime
 };
 
 namespace AudioManager {
