@@ -1,5 +1,6 @@
 #include "track.hpp"
 #include "isometric.hpp"
+#include "font_system.hpp"
 #include <sstream>
 
 TrackSystem::TrackSystem() {
@@ -169,6 +170,25 @@ const TrackNode* TrackSystem::GetPiece(int gx, int gy) const {
 
 bool TrackSystem::HasPiece(int gx, int gy) const {
     return GetPiece(gx, gy) != nullptr;
+}
+
+bool TrackSystem::SuggestConnectingHeading(int gx, int gy, int gz, Direction& outHeading) const {
+    Direction testDirs[4] = { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST };
+    for (Direction d : testDirs) {
+        Vector2 off = GetDirectionOffset(d);
+        int nx = gx - (int)off.x;
+        int ny = gy - (int)off.y;
+        if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+            const TrackNode* neighbor = GetPiece(nx, ny);
+            if (neighbor && neighbor->gz == gz) {
+                if (neighbor->outDir == d) {
+                    outHeading = d;
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 void TrackSystem::GenerateTileSpline(TrackNode& node) {
@@ -587,19 +607,25 @@ void TrackSystem::DrawPlatformCanopy(const TrackNode& node, Vector2 camOffset, f
 
         // Station District Name Banner & Level Stars
         std::string label = node.stationName.empty() ? GetShapeName(node.stationShape) : node.stationName;
-        int textW = MeasureText(label.c_str(), 9);
-        float pillW = (float)textW + 14.0f * zoom;
-        float pillH = 14.0f * zoom;
+        int textW = MeasureText(label.c_str(), 10);
+        float pillW = (float)textW + 16.0f * zoom;
+        float pillH = 16.0f * zoom;
         Vector2 pillPos = { rCenter.x - pillW * 0.5f, rCenter.y + badgeRadius + 2.0f * zoom };
 
         DrawRectangleRounded(Rectangle{pillPos.x, pillPos.y, pillW, pillH}, 0.35f, 4, Color{15, 23, 42, 240});
         DrawRectangleRoundedLines(Rectangle{pillPos.x, pillPos.y, pillW, pillH}, 0.35f, 4, shapeCol);
-        DrawText(label.c_str(), (int)(pillPos.x + 7.0f * zoom), (int)(pillPos.y + 2.5f * zoom), (int)(8.5f * zoom), WHITE);
+        DrawText(label.c_str(), (int)(pillPos.x + 8.0f * zoom), (int)(pillPos.y + 3.0f * zoom), (int)(10.0f * zoom), WHITE);
 
-        // Level Star Tag
-        const char* lvTag = (node.stationLevel >= 3) ? "★★★ LV 3" : ((node.stationLevel == 2) ? "★★ LV 2" : "★ LV 1");
+        // Level Tag Pill
+        const char* lvTag = (node.stationLevel >= 3) ? "LV 3 GRAND" : ((node.stationLevel == 2) ? "LV 2 HUB" : "LV 1 LOCAL");
         Color starColor = (node.stationLevel >= 3) ? Color{250, 204, 21, 255} : ((node.stationLevel == 2) ? Color{56, 189, 248, 255} : Color{148, 163, 184, 255});
-        DrawText(lvTag, (int)(rCenter.x - 16.0f * zoom), (int)(rCenter.y - badgeRadius - 10.0f * zoom), (int)(8.0f * zoom), starColor);
+        int lvTextW = MeasureText(lvTag, (int)(8.5f * zoom));
+        float lvPillW = (float)lvTextW + 12.0f * zoom;
+        float lvPillH = 14.0f * zoom;
+        Vector2 lvPillPos = { rCenter.x - lvPillW * 0.5f, rCenter.y - badgeRadius - 14.0f * zoom };
+        DrawRectangleRounded(Rectangle{lvPillPos.x, lvPillPos.y, lvPillW, lvPillH}, 0.35f, 3, Color{15, 23, 42, 230});
+        DrawRectangleRoundedLines(Rectangle{lvPillPos.x, lvPillPos.y, lvPillW, lvPillH}, 0.35f, 3, starColor);
+        DrawText(lvTag, (int)(lvPillPos.x + 6.0f * zoom), (int)(lvPillPos.y + 2.5f * zoom), (int)(8.5f * zoom), starColor);
     }
 }
 

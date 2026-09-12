@@ -1,5 +1,6 @@
 #include "particles.hpp"
 #include "isometric.hpp"
+#include "font_system.hpp"
 
 void ParticleSystem::SpawnSparks(Vector3 gridPos, int count) {
     for (int i = 0; i < count; ++i) {

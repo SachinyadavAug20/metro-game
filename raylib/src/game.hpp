@@ -22,6 +22,10 @@ public:
     bool ShouldClose() const;
     void ShowToast(const std::string& text, Color color = Color{34, 197, 94, 255}, float duration = 3.5f);
 
+    // Public fleet pricing (used by the toolbar shop)
+    static int MaxExtraTrains() { return MAX_EXTRA_TRAINS; }
+    static float ExtraTrainCostP(int owned) { return EXTRA_TRAIN_BASE_COST + 900.0f * owned; }
+
 protected:
     GameState state = STATE_PLAYING;
     int gameSpeed = 1; // 0 = Pause, 1 = Normal, 2 = Fast
@@ -89,6 +93,29 @@ protected:
     float weekTimer = 0.0f;
     const float WEEK_DURATION = 60.0f;
     int lastMilestoneAwarded = 0;
+    float rushCombo = 1.0f;
+    float comboTimer = 0.0f;
+    int comboStreak = 0;
+    bool endlessMode = false;
+
+    // Island land expansion (RCT-style purchasable land)
+    static const int LAND_CENTER_X = 9;
+    static const int LAND_CENTER_Y = 11;
+    static constexpr float TRAIN_CAR_COST = 800.0f;
+    static constexpr float LAND_EXPAND_COST = 600.0f;
+    static constexpr float EXTRA_TRAIN_BASE_COST = 1400.0f;
+    static constexpr int MAX_EXTRA_TRAINS = 3;
+    int buildRadius = 14;  // Manhattan ring of developable land
+    bool IsBuildable(int gx, int gy) const;
+    void ReclaimLand();
+
+    // Purchasable extra EMUs running the same loop (each more expensive)
+    std::vector<MetroTrain> extraTrains;
+    int GetExtraTrainCount() const { return (int)extraTrains.size(); }
+
+    // Rush-hour logic (weekly peak: doubled spawn demand)
+    float rushHourTimer = 0.0f;
+    bool rushHourActive = false;
 
     // Audio roar / chain click timers
     float chainSoundTimer = 0.0f;
@@ -96,6 +123,24 @@ protected:
     // Weekly upgrade choices
     std::vector<UpgradeChoice> activeUpgrades;
     int hoveredUpgrade = -1;
+
+    // Guided tutorial objectives
+    bool showObjectivePanel = true;
+    bool tutorialDone = false;
+    int tutorialDoneCount = 0;
+    int piecesPlaced = 0;
+    int stationsPlaced = 0;
+    int sceneryPlaced = 0;
+    bool GetTutorialDone(int idx) const;
+    int GetTutorialDoneCount() const;
+    int GetCurrentTutorialIdx() const;
+    bool GetTutorialStageInfo(int idx, TutorialStageInfo& out) const;
+
+    // Deliberate tutorial tracking counters
+    int viaductPiecesPlaced = 0;
+    int bulldozeUses = 0;
+    bool rideCamUsed = false;
+    float lastManualPanTime = 0.0f;  // player panning suspends tutorial camera focus
 
     // Helper functions
     void SetupInitialPark();

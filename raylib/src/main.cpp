@@ -1,5 +1,6 @@
 #include <raylib.h>
 #include "game.hpp"
+#include "font_system.hpp"
 
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
@@ -25,6 +26,8 @@ int main() {
     InitWindow(screenWidth, screenHeight, "METRO GRID - 2.5D Urban Transit Simulator");
     SetTargetFPS(60);
 
+    InitGameFont();
+
     Game game;
 
 #if defined(PLATFORM_WEB)
@@ -38,6 +41,7 @@ int main() {
     }
 #endif
 
+    CleanupGameFont();
     CloseWindow();
     return 0;
 }

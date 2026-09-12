@@ -10,6 +10,17 @@ struct UpgradeChoice {
     Color accentColor;
 };
 
+// A single stage in the guided, deliberate tutorial walkthrough.
+struct TutorialStageInfo {
+    const char* title = "";
+    const char* body = "";
+    const char* hint = "";
+    int focusGx = -1;        // grid tile the camera should center on (-1 = none)
+    int focusGy = -1;
+    bool focusTrain = false; // focus the moving lead EMU instead of a tile
+    int toolbarTag = 0;      // 0 none, 1 CAR+1 btn, 2 LAND btn, 3 EXTRA TRAIN btn
+};
+
 class UserInterface {
 public:
     UserInterface();
@@ -31,7 +42,8 @@ public:
         bool lineOpsOpen,
         bool crewOpen,
         bool cabCamActive,
-        bool helpOpen
+        bool helpOpen,
+        float rushCombo = 1.0f
     );
 
     // Categorized Toolbar (Track, Concourse, Scenery)
@@ -42,7 +54,11 @@ public:
         GroundType currentGround,
         int currentZ,
         Direction currentDir,
-        bool isBulldozing
+        bool isBulldozing,
+        float balance,
+        int carCount,
+        int buildRadius,
+        int extraTrainCount
     );
 
     // OCC Panels & Modals
@@ -51,6 +67,7 @@ public:
     void DrawCommuterInspector(const Commuter* commuter);
     void DrawToast(const ToastMessage& toast);
     void DrawQuickTipBanner(const std::string& tip);
+    void DrawTutorialPanel(bool visible, const TutorialStageInfo& stage, int currentIdx, int total, const bool* doneFlags);
     void DrawTransitOperationsManual();
     void DrawWeeklyModal(const std::vector<UpgradeChoice>& choices, int hoveredChoice);
     void DrawGameOver(int finalRidership);
@@ -68,7 +85,7 @@ public:
     // Interaction checks
     int CheckToolbarTabClick(Vector2 mousePos) const;
     int CheckToolbarItemClick(Vector2 mousePos, ToolCategory activeTab) const;
-    bool CheckToolbarAuxClick(Vector2 mousePos, int& outZDelta, bool& outRotate) const;
+    bool CheckToolbarAuxClick(Vector2 mousePos, int& outZDelta, bool& outRotate, int& outBuy) const;
 
     bool CheckHUDClick(
         Vector2 mousePos,
@@ -86,6 +103,7 @@ public:
     bool CheckHelpOverlayClick(Vector2 mousePos) const;
     int CheckUpgradeModalClick(Vector2 mousePos) const;
     bool CheckRestartClick(Vector2 mousePos) const;
+    bool CheckVictoryContinueClick(Vector2 mousePos) const;
     bool CheckTitleStartClick(Vector2 mousePos) const;
 
 private:

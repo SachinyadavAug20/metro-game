@@ -24,6 +24,7 @@ void Game::Init() {
     SetupInitialPark();
     tracks.InitDefaultCircuit();
     train.Reset(tracks);
+    extraTrains.clear();
     peeps.Init({1.0f, 9.0f}, {7.0f, 8.0f}, {6.0f, 10.0f});
     particles.Clear();
 
@@ -40,6 +41,10 @@ void Game::Init() {
     gameSpeed = 1;
     state = STATE_TITLE;
     lastMilestoneAwarded = 0;
+    rushCombo = 1.0f;
+    comboTimer = 0.0f;
+    comboStreak = 0;
+    endlessMode = false;
 
     statsWindowOpen = false;
     staffWindowOpen = false;
@@ -74,6 +79,117 @@ void Game::ShowToast(const std::string& text, Color color, float duration) {
     activeToast.text = text;
     activeToast.color = color;
     activeToast.timer = duration;
+}
+
+bool Game::IsBuildable(int gx, int gy) const {
+    if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) return false;
+    int d = std::abs(gx - LAND_CENTER_X) + std::abs(gy - LAND_CENTER_Y);
+    return d <= buildRadius;
+}
+
+void Game::ReclaimLand() {
+    for (int x = 0; x < GRID_SIZE; ++x) {
+        for (int y = 0; y < GRID_SIZE; ++y) {
+            if (IsBuildable(x, y) && terrain[x][y] == GROUND_WATER) {
+                terrain[x][y] = GROUND_GRASS;
+            }
+        }
+    }
+    particles.SpawnConfetti(Vector3{(float)LAND_CENTER_X + 2.0f, (float)LAND_CENTER_Y - 2.0f, 0.5f}, 24);
+    particles.SpawnFloatingText(Vector3{(float)LAND_CENTER_X + 2.0f, (float)LAND_CENTER_Y - 2.0f, 1.2f}, "NEW ISLAND!", Color{74, 222, 128, 255});
+    ShowToast(TextFormat("LAND EXPANDED! Buildable island ring is now %d tiles wide.", buildRadius), Color{34, 197, 94, 255}, 4.0f);
+    AudioManager::Play(SFX_UPGRADE_FANFARE, 0.8f);
+}
+
+static const TutorialStageInfo kTutorialStages[] = {
+    {"YOUR TRAIN IS RUNNING!",
+     "Look - your EMU already circulates the island on its closed rail loop. Stations, signals and viaducts are pre-built so you can just watch it work.",
+     "Tip: no click needed yet. Just watch the loop.",
+     -1, -1, true, 0},
+    {"DELIVER 10 COMMUTERS",
+     "Commuters arrive at the platform, queue, board, and get off at the station matching the shape badge above their head. Deliver 10 of them.",
+     "The HUD counter at the top tracks your deliveries.",
+     9, 11, false, 0},
+    {"BUILD 5 TRACK PIECES",
+     "Pick the Track tab (TAB or key 1) then press 1 for Straight track. Click a green grass tile to lay rail - each piece costs $40.",
+     "Keys 1-8 pick tools; R rotates; E/Q raise/lower.",
+     14, 4, false, 0},
+    {"ADD A STATION TO THE LINE",
+     "Stations let riders alight with a big fare bonus. With the Track tab open, press key 5 (Station), then click a track tile to place it.",
+     "Stations level up as they serve more riders.",
+     14, 9, false, 0},
+    {"PLACE 3 PIECES OF SCENERY",
+     "Switch to the Scenery tab (key 3 or TAB twice). Click trees, benches, lampposts or shops around the plaza - the city comes alive!",
+     "Scenery also keeps commuter happiness high.",
+     7, 13, false, 0},
+    {"LEARN HEIGHT: BUILD A VIADUCT",
+     "Open the Track tab and press key 4 for Viaduct. The track will stride over the canal at Z1. Lay one piece - elevated rail dodges water!",
+     "Press E/Q to raise or lower elevation manually.",
+     12, 9, false, 0},
+    {"BUY A BIGGER TRAIN  (CAR+1)",
+     "Click the blue CAR+1 button on the toolbar's right side for $800. Each new car seats 6 more commuters so the platform empties faster.",
+     "Short on cash? Deliver more riders first.",
+     0, 0, false, 1},
+    {"EXPAND THE ISLAND  (LAND)",
+     "The city is an island in the ocean. Click the green LAND button ($600) to reclaim a new ring of sea as buildable ground.",
+     "You cannot build on water - buy LAND or go elevated.",
+     0, 0, false, 2},
+    {"BUY A SECOND TRAIN  (EXTRA $1,400)",
+     "Click the blue EXTRA TRAIN button on the bottom toolbar strip. A second EMU joins the loop, boards riders and doubles your throughput.",
+     "Each extra train costs more than the last.",
+     0, 0, false, 3},
+    {"ROTATE + DEMOLISH",
+     "Press R to rotate the piece you are placing. Press X for the Bulldozer, then click a tile to remove it (you get a small refund).",
+     "Bulldoze is your undo button - don't fear mistakes.",
+     -1, -1, false, 0},
+    {"RIDE THE DRIVER'S CAB  (F)",
+     "Press F for the driver's cab camera and ride along the route. Press F again to return to the OCC overhead view.",
+     "WASD or right-drag moves the camera too.",
+     -1, -1, false, 0},
+    {"FINAL LESSON: SERVE 75 COMMUTERS",
+     "Keep the track loop closed so the train never stops. If a platform fills up a red clock warns you - extra cars and trains clear it fast. Serve 75 to finish onboarding!",
+     "After this, the real goal: deliver 5,000 for victory!",
+     -1, -1, false, 0}
+};
+static const int kTutorialCount = 12;
+
+bool Game::GetTutorialDone(int idx) const {
+    switch (idx) {
+        case 0: return train.GetSpeedKmh() > 0.5f;      // train running
+        case 1: return economy.totalDelivered >= 10;
+        case 2: return piecesPlaced >= 5;
+        case 3: return stationsPlaced >= 1;
+        case 4: return sceneryPlaced >= 3;
+        case 5: return viaductPiecesPlaced >= 1;        // height: built one elevated piece
+        case 6: return train.GetCarriageCount() >= 4;   // bought a train car
+        case 7: return buildRadius > 14;                // bought land / expanded island
+        case 8: return !extraTrains.empty();            // bought an extra train
+        case 9: return bulldozeUses >= 1;               // tried the bulldozer
+        case 10: return rideCamUsed;                    // tried the cab camera
+        case 11: return economy.totalDelivered >= 75;
+        default: return true;
+    }
+}
+
+bool Game::GetTutorialStageInfo(int idx, TutorialStageInfo& out) const {
+    if (idx < 0 || idx >= kTutorialCount) return false;
+    out = kTutorialStages[idx];
+    return true;
+}
+
+int Game::GetTutorialDoneCount() const {
+    int done = 0;
+    for (int i = 0; i < kTutorialCount; ++i) {
+        if (GetTutorialDone(i)) done++;
+    }
+    return done;
+}
+
+int Game::GetCurrentTutorialIdx() const {
+    for (int i = 0; i < kTutorialCount; ++i) {
+        if (!GetTutorialDone(i)) return i;
+    }
+    return kTutorialCount;
 }
 
 void Game::SetupInitialPark() {
@@ -146,6 +262,16 @@ void Game::SetupInitialPark() {
     scenery[17][12] = SCENERY_PINE_TREE;
     scenery[17][16] = SCENERY_PINE_TREE;
     scenery[15][18] = SCENERY_PINE_TREE;
+
+    // Island ocean border: land further out than the bought ring is open sea.
+    // Buy LAND (toolbar) to reclaim more island ring.
+    for (int x = 0; x < GRID_SIZE; ++x) {
+        for (int y = 0; y < GRID_SIZE; ++y) {
+            if (terrain[x][y] == GROUND_GRASS && !IsBuildable(x, y)) {
+                terrain[x][y] = GROUND_WATER;
+            }
+        }
+    }
 }
 
 void Game::ResetPark() {
@@ -214,7 +340,7 @@ void Game::HandleInput() {
     if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))  { cameraPos.y -= panSpeed; manualPan = true; }
     if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))  { cameraPos.x += panSpeed; manualPan = true; }
     if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) { cameraPos.x -= panSpeed; manualPan = true; }
-    if (manualPan) rideCamActive = false;
+    if (manualPan) { rideCamActive = false; lastManualPanTime = 7.0f; }
 
     // Mouse Right-Click Drag
     if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
@@ -239,10 +365,10 @@ void Game::HandleInput() {
     }
 
     // Hotkeys
-    if (IsKeyPressed(KEY_F)) {
+if (IsKeyPressed(KEY_F)) {
         rideCamActive = !rideCamActive;
+        rideCamUsed = true;
         ShowToast(rideCamActive ? "[CAB CAM] Driver's Cab Cam Active (Tracking Lead EMU)" : "Free OCC Camera Mode", Color{56, 189, 248, 255}, 2.0f);
-        AudioManager::Play(SFX_BUTTON_CLICK, 0.7f);
     }
     if (IsKeyPressed(KEY_T)) {
         statsWindowOpen = !statsWindowOpen;
@@ -262,6 +388,10 @@ void Game::HandleInput() {
     }
     if (IsKeyPressed(KEY_M)) {
         AudioManager::SetMute(!AudioManager::IsMuted());
+    }
+    if (IsKeyPressed(KEY_G)) {
+        showObjectivePanel = !showObjectivePanel;
+        AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_C)) {
         train.Reset(tracks);
@@ -357,7 +487,23 @@ void Game::HandleInput() {
         }
         return;
     }
-    if (state == STATE_GAME_OVER || state == STATE_VICTORY) {
+    if (state == STATE_VICTORY) {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            if (ui.CheckVictoryContinueClick(mousePos)) {
+                endlessMode = true;
+                state = STATE_PLAYING;
+                ShowToast("[ENDLESS METROPOLIS] Service Continued! Grants every 250 commuters!", Color{34, 197, 94, 255}, 5.0f);
+                AudioManager::Play(SFX_UPGRADE_FANFARE, 0.9f);
+                return;
+            }
+            if (ui.CheckRestartClick(mousePos)) {
+                ResetPark();
+                return;
+            }
+        }
+        return;
+    }
+    if (state == STATE_GAME_OVER) {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ui.CheckRestartClick(mousePos)) {
             ResetPark();
         }
@@ -539,10 +685,59 @@ void Game::HandleInput() {
             return;
         }
 
-        // Toolbar Aux Click (Height & Rotate)
+        // Toolbar Aux Click (Height & Rotate & Buy)
         int zDelta = 0;
         bool doRotate = false;
-        if (ui.CheckToolbarAuxClick(mousePos, zDelta, doRotate)) {
+        int buyAction = 0;
+        if (ui.CheckToolbarAuxClick(mousePos, zDelta, doRotate, buyAction)) {
+            if (buyAction == 1) {
+                if (economy.balance >= TRAIN_CAR_COST) {
+                    economy.balance -= TRAIN_CAR_COST;
+                    train.AddCarriage();
+                    ShowToast("Bought a train car! +" + std::to_string(train.GetCarriageCount()) + " car formation.", Color{56, 189, 248, 255});
+                    AudioManager::Play(SFX_UPGRADE_FANFARE, 0.8f);
+                } else {
+                    ShowToast("Need $" + std::to_string((int)TRAIN_CAR_COST) + " for a train car!", Color{239, 68, 68, 255});
+                }
+                return;
+            }
+            if (buyAction == 2) {
+                if (economy.balance >= LAND_EXPAND_COST) {
+                    economy.balance -= LAND_EXPAND_COST;
+                    buildRadius = std::min(26, buildRadius + 3);
+                    ReclaimLand();
+                    AudioManager::Play(SFX_UPGRADE_FANFARE, 0.9f);
+                } else {
+                    ShowToast("Need $" + std::to_string((int)LAND_EXPAND_COST) + " to expand the island!", Color{239, 68, 68, 255});
+                }
+                return;
+            }
+            if (buyAction == 3) {
+                if (GetExtraTrainCount() >= MAX_EXTRA_TRAINS) {
+                    ShowToast("Fleet at max capacity! More cars or more LAND instead.", Color{56, 189, 248, 255});
+                } else {
+                    float cost = ExtraTrainCostP(GetExtraTrainCount());
+                    if (economy.balance >= cost) {
+                        if (!tracks.IsCircuitClosed()) {
+                            ShowToast("Connect the loop (press C) so another train can run!", Color{239, 68, 68, 255});
+                        } else {
+                            economy.balance -= cost;
+                            MetroTrain nt;
+                            nt.SetCarriageCount(3);
+                            nt.SetTrainTheme(train.GetTrainTheme());
+                            int index = GetExtraTrainCount();
+                            nt.Reset(tracks, 0.5f + tracks.GetTotalCircuitLength() * (0.5f + 0.18f * index));
+                            extraTrains.push_back(nt);
+                            ShowToast("EXTRA TRAIN bought! Fleet now has " + std::to_string(GetExtraTrainCount() + 1) + " trains.", Color{56, 189, 248, 255});
+                            particles.SpawnConfetti(nt.GetLocomotivePos(), 30);
+                            AudioManager::Play(SFX_UPGRADE_FANFARE, 1.0f);
+                        }
+                    } else {
+                        ShowToast("Need $" + std::to_string((int)cost) + " for an extra train!", Color{239, 68, 68, 255});
+                    }
+                }
+                return;
+            }
             if (zDelta != 0) currentZ = std::max(0, std::min(5, currentZ + zDelta));
             if (doRotate) {
                 buildHeading = (Direction)((buildHeading + 1) % 4);
@@ -558,8 +753,18 @@ void Game::HandleInput() {
     hoveredGy = (int)floorf(gridPos.y);
     bool insideGrid = (hoveredGx >= 0 && hoveredGx < GRID_SIZE && hoveredGy >= 0 && hoveredGy < GRID_SIZE);
 
+    // Smart Snap Assist: If placing track, auto-align heading to continue adjacent track pieces
+    if (activeTab == CAT_TRACK && !isBulldozing && insideGrid && !IsKeyPressed(KEY_R)) {
+        if (!tracks.HasPiece(hoveredGx, hoveredGy)) {
+            Direction suggested;
+            if (tracks.SuggestConnectingHeading(hoveredGx, hoveredGy, currentZ, suggested)) {
+                buildHeading = suggested;
+            }
+        }
+    }
+
     // 3. Commuter Inspection or Placement
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && mousePos.y > 60 && mousePos.y < GetScreenHeight() - 90) {
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && mousePos.y > 60 && mousePos.y < GetScreenHeight() - 140) {
         // Check if clicking on a commuter
         int peepUnderMouse = peeps.FindCommuterAtScreenPos(mousePos, cameraPos, zoom);
         if (peepUnderMouse != -1) {
@@ -574,12 +779,14 @@ void Game::HandleInput() {
                 if (scenery[hoveredGx][hoveredGy] != SCENERY_NONE) {
                     scenery[hoveredGx][hoveredGy] = SCENERY_NONE;
                     economy.balance += 15.0f;
+                    bulldozeUses++;
                     AudioManager::Play(SFX_BULLDOZE, 0.7f);
                     particles.SpawnSmoke(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 10);
                     particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ + 0.5f}, "+$15", Color{34, 197, 94, 255});
                 } else if (tracks.HasPiece(hoveredGx, hoveredGy)) {
                     tracks.RemovePiece(hoveredGx, hoveredGy);
                     economy.balance += 25.0f;
+                    bulldozeUses++;
                     AudioManager::Play(SFX_BULLDOZE, 0.8f);
                     particles.SpawnSmoke(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 12);
                     particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ + 0.5f}, "+$25", Color{34, 197, 94, 255});
@@ -591,6 +798,17 @@ void Game::HandleInput() {
                 }
             } else {
                 // Active placement based on Tab
+                if (terrain[hoveredGx][hoveredGy] == GROUND_WATER) {
+                    bool elevatedTrack = (activeTab == CAT_TRACK && currentZ > 0);
+                    if (!elevatedTrack) {
+                        if (IsBuildable(hoveredGx, hoveredGy)) {
+                            ShowToast("That's the river! Press E to raise elevation and build a viaduct track over it.", Color{239, 68, 68, 255}, 3.0f);
+                        } else {
+                            ShowToast("That's open ocean! Buy LAND on the toolbar to expand the island.", Color{239, 68, 68, 255}, 3.0f);
+                        }
+                        return;
+                    }
+                }
                 if (activeTab == CAT_TRACK) {
                     if (economy.balance >= 40.0f) {
                         bool wasClosed = tracks.IsCircuitClosed();
@@ -598,6 +816,9 @@ void Game::HandleInput() {
                         GetTrackPieceDirs(currentTrack, buildHeading, inDir, outDir);
                         if (tracks.AddPiece(hoveredGx, hoveredGy, currentZ, currentTrack, inDir, outDir)) {
                             economy.balance -= 40.0f;
+                            if (currentTrack == TRACK_VIADUCT_ELEVATED || currentTrack == TRACK_VIADUCT_SLOPE || currentZ >= 1) {
+                                viaductPiecesPlaced++;
+                            }
                             AudioManager::Play(SFX_CONSTRUCTION, 0.8f);
                             particles.SpawnSparks(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 8);
                             particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ + 0.6f}, "-$40", Color{239, 68, 68, 255});
@@ -612,6 +833,8 @@ void Game::HandleInput() {
                             hoveredGx += (int)fwd.x;
                             hoveredGy += (int)fwd.y;
                             buildHeading = outDir; // Auto-align next track piece
+                            if (currentTrack == TRACK_STATION) stationsPlaced++;
+                            else piecesPlaced++;
                             if (currentTrack == TRACK_VIADUCT_ELEVATED) currentZ++;
                             if (currentTrack == TRACK_VIADUCT_SLOPE) currentZ = std::max(0, currentZ - 1);
                         }
@@ -645,6 +868,7 @@ void Game::HandleInput() {
                         scenery[hoveredGx][hoveredGy] = currentScenery;
                         economy.balance -= (float)scnCost;
                         parkRating = std::min(100.0f, parkRating + boost);
+                        sceneryPlaced++;
                         AudioManager::Play(SFX_CONSTRUCTION, 0.8f);
                         particles.SpawnConfetti(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, 0.5f}, 10);
                         particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, 0.8f}, TextFormat("-$%d", scnCost), Color{239, 68, 68, 255});
@@ -667,6 +891,29 @@ void Game::Update(float dt) {
     if (state != STATE_PLAYING) return;
     if (gameSpeed == 0) return;
 
+    // Tutorial objective progression
+    if (!tutorialDone) {
+        int nowDone = GetTutorialDoneCount();
+        int wasDone = tutorialDoneCount;
+        tutorialDoneCount = nowDone;
+        if (nowDone > wasDone) {
+            if (nowDone >= kTutorialCount) {
+                tutorialDone = true;
+                ShowToast("TUTORIAL COMPLETE! Final goal: 500 riders to win.", Color{34, 197, 94, 255}, 5.0f);
+                AudioManager::Play(SFX_UPGRADE_FANFARE, 0.9f);
+            } else {
+                TutorialStageInfo next;
+                if (GetTutorialStageInfo(nowDone, next)) {
+                    ShowToast(TextFormat("LESSON COMPLETE! Next: %s", next.title), Color{255, 214, 0, 255}, 4.0f);
+                } else {
+                    ShowToast("LESSON COMPLETE!", Color{255, 214, 0, 255}, 3.0f);
+                }
+                particles.SpawnConfetti(train.GetLocomotivePos(), 18);
+                AudioManager::Play(SFX_BUTTON_CLICK, 0.8f);
+            }
+        }
+    }
+
     float simDt = dt * (float)gameSpeed;
 
     // 1. Cab Cam Smooth Tracking (Driver's point of view)
@@ -678,6 +925,26 @@ void Game::Update(float dt) {
         Vector2 desiredCam = { (float)screenW / 2.0f - targetScreen.x, (float)screenH / 2.0f - targetScreen.y };
 
         cameraPos = Vector2Lerp(cameraPos, desiredCam, simDt * 5.0f);
+    } else if (!tutorialDone) {
+        // Deliberate tutorial: gently steer the camera at the lesson's focus
+        lastManualPanTime = std::max(0.0f, lastManualPanTime - simDt);
+        TutorialStageInfo st;
+        if (GetTutorialStageInfo(GetCurrentTutorialIdx(), st) && lastManualPanTime <= 0.0f) {
+            Vector3 fp;
+            bool haveFocus = st.focusTrain;
+            if (st.focusTrain) {
+                fp = train.GetLocomotivePos();
+            } else if (st.focusGx >= 0) {
+                fp = Vector3{(float)st.focusGx + 0.5f, (float)st.focusGy + 0.5f, 0.0f};
+            }
+            if (haveFocus) {
+                Vector2 targetScreen = Iso::GridToScreen(fp.x, fp.y, fp.z, {0, 0}, zoom);
+                int screenW = GetScreenWidth();
+                int screenH = GetScreenHeight();
+                Vector2 desiredCam = { (float)screenW / 2.0f - targetScreen.x, (float)screenH / 2.0f - targetScreen.y };
+                cameraPos = Vector2Lerp(cameraPos, desiredCam, std::min(1.0f, simDt * 2.2f));
+            }
+        }
     }
 
     // 2. Weekly Calendar Progression & Mini Metro Rhythm
@@ -690,6 +957,22 @@ void Game::Update(float dt) {
         AudioManager::Play(SFX_UPGRADE_FANFARE, 0.8f);
         return;
     }
+    if (weekTimer >= 12.0f && weekTimer < 40.0f) {
+        rushHourActive = (fmodf(weekTimer, 14.0f) < 7.0f);
+    } else {
+        rushHourActive = false;
+    }
+    if (rushHourActive) {
+        rushHourTimer += simDt;
+        peeps.SetSpawnInterval(0.85f);
+        if (rushHourTimer > 0.45f) {
+            rushHourTimer = 0.0f;
+            particles.SpawnFloatingText(Vector3{(float)LAND_CENTER_X, (float)LAND_CENTER_Y, 0.6f}, "RUSH HOUR!", Color{248, 113, 113, 255});
+        }
+    } else {
+        peeps.SetSpawnInterval(1.9f);
+        rushHourTimer = 0.0f;
+    }
 
     // 3. Update Particles
     particles.Update(simDt);
@@ -699,14 +982,34 @@ void Game::Update(float dt) {
     float fareRevenue = 0.0f;
     train.Update(simDt, tracks, particles, delivered, fareRevenue);
 
+    // Extra fleet EMUs (purchasable); rush-hour surges spawn them in demand
+    for (auto& extra : extraTrains) {
+        int deliveredN = 0;
+        float fareN = 0.0f;
+        extra.Update(simDt, tracks, particles, deliveredN, fareN);
+        delivered += deliveredN;
+        fareRevenue += fareN;
+    }
+
     if (delivered > 0) {
         economy.totalDelivered += delivered;
-        economy.balance += fareRevenue;
+
+        // Ridership Rush Combo multiplier
+        comboStreak += delivered;
+        comboTimer = 18.0f;
+        rushCombo = 1.0f + std::min(1.0f, (float)comboStreak * 0.05f); // up to 2.0x
+        float comboBonus = fareRevenue * (rushCombo - 1.0f);
+        float totalEarned = fareRevenue + comboBonus;
+        economy.balance += totalEarned;
         parkRating = std::min(100.0f, parkRating + (float)delivered * 0.6f);
 
         // Alight passengers onto platform and concourse
         Vector3 locoP = train.GetLocomotivePos();
         peeps.AlightPassengers(delivered, Vector2{locoP.x, locoP.y});
+
+        if (rushCombo > 1.05f) {
+            particles.SpawnFloatingText(Vector3{locoP.x, locoP.y, locoP.z + 1.4f}, TextFormat("RUSH x%.1f!", rushCombo), Color{255, 215, 0, 255});
+        }
 
         // Milestone grants
         int milestones[] = {25, 50, 100, 250, 500};
@@ -723,9 +1026,20 @@ void Game::Update(float dt) {
             }
         }
 
-        if (economy.totalDelivered >= 500) {
+        if (economy.totalDelivered >= 500 && !endlessMode) {
             state = STATE_VICTORY;
             AudioManager::Play(SFX_UPGRADE_FANFARE, 1.0f);
+        } else if (endlessMode) {
+            int nextEndlessMilestone = ((lastMilestoneAwarded / 250) + 1) * 250;
+            if (economy.totalDelivered >= nextEndlessMilestone && lastMilestoneAwarded < nextEndlessMilestone) {
+                lastMilestoneAwarded = nextEndlessMilestone;
+                float bonus = 2500.0f;
+                economy.balance += bonus;
+                particles.SpawnConfetti(locoP, 40);
+                particles.SpawnFloatingText(Vector3{locoP.x, locoP.y, locoP.z + 1.2f}, TextFormat("+$%.0f ENDLESS SUBSIDY", bonus), Color{255, 215, 0, 255});
+                ShowToast(TextFormat("[ENDLESS METROPOLIS] %d Commuters! Subsidy: +$%.0f", nextEndlessMilestone, bonus), Color{34, 197, 94, 255}, 4.0f);
+                AudioManager::Play(SFX_UPGRADE_FANFARE, 1.0f);
+            }
         }
     }
 
@@ -734,7 +1048,7 @@ void Game::Update(float dt) {
 
     // 5. Update Commuter Flow & Overcrowding Triage
     int angry = 0;
-    peeps.Update(simDt, train, particles, parkRating, angry, messes);
+    peeps.Update(simDt, train, extraTrains.empty() ? nullptr : &extraTrains, particles, parkRating, angry, messes);
     peeps.CheckSceneryInteractions(scenery, particles, economy.balance, messes);
 
     // Platform Cleanliness calculation
@@ -838,8 +1152,21 @@ void Game::Update(float dt) {
         }
     }
 
+    // Rush Combo timer decay
+    if (comboTimer > 0.0f) {
+        comboTimer -= simDt;
+        if (comboTimer <= 0.0f) {
+            comboTimer = 0.0f;
+            comboStreak = 0;
+            rushCombo = 1.0f;
+        }
+    }
+
     if (angry > 0) {
         angryLeaves += angry;
+        comboStreak = 0;
+        rushCombo = 1.0f;
+        comboTimer = 0.0f;
         ShowToast("[ALERT] Platform Overcrowding! Commuters left in frustration!", Color{239, 68, 68, 255}, 3.0f);
         if (parkRating <= 0.0f) {
             state = STATE_GAME_OVER;
@@ -899,13 +1226,14 @@ void Game::Draw() {
 
     // 8. Draw Metro EMU Rolling Stock & Commuter Passengers
     train.Draw(cameraPos, zoom);
+    for (auto& extra : extraTrains) extra.Draw(cameraPos, zoom);
 
     // 9. Draw Particles (Sparks, Smoke, Confetti, Door Chime rings)
     particles.Draw(cameraPos, zoom);
 
     // 10. Draw Ghost Placement Preview
     Vector2 mousePos = GetMousePosition();
-    bool overUI = (mousePos.y <= 56 || mousePos.y >= GetScreenHeight() - 86);
+    bool overUI = (mousePos.y <= 56 || mousePos.y >= GetScreenHeight() - 140);
     if (!overUI && hoveredGx >= 0 && hoveredGx < GRID_SIZE && hoveredGy >= 0 && hoveredGy < GRID_SIZE) {
         if (isBulldozing) {
             Iso::DrawCursor(hoveredGx, hoveredGy, currentZ, cameraPos, zoom, Color{239, 68, 68, 220});
@@ -960,25 +1288,37 @@ void Game::Draw() {
         statsWindowOpen,
         staffWindowOpen,
         rideCamActive,
-        helpOverlayOpen
+        helpOverlayOpen,
+        rushCombo
     );
+
+    // 12a. Guided Tutorial Objectives Panel (until all steps done)
+    if (showObjectivePanel && !tutorialDone) {
+        bool doneFlags[kTutorialCount];
+        for (int i = 0; i < kTutorialCount; ++i) doneFlags[i] = GetTutorialDone(i);
+        TutorialStageInfo stage;
+        int idx = GetCurrentTutorialIdx();
+        if (GetTutorialStageInfo(idx, stage)) {
+            ui.DrawTutorialPanel(true, stage, idx, kTutorialCount, doneFlags);
+        }
+    }
 
     // 12b. Draw Contextual Quick Tip Banner
     std::string quickTip;
     if (isBulldozing) {
-        quickTip = "[DEMOLITION ACTIVE] Click any rail, platform, or prop to demolish and recover funds (Press X to exit)";
+        quickTip = "DEMOLISH MODE: click a tile to remove it (X to exit)";
     } else if (train.CanBoard() || train.GetState() == TRAIN_BOARDING || train.GetState() == TRAIN_STOPPED_IN_STATION) {
-        quickTip = "[BOARDING PASSENGERS] Train stopped at platform! Commuters boarding to reach matching shape stations";
+        quickTip = "Train is at a station - commuters are boarding!";
     } else if (activeTab == CAT_TRACK) {
         if (tracks.IsCircuitClosed()) {
-            quickTip = "[LINE 1 SERVICE ACTIVE] Train cruising along track! Pave concourses [Tab 2] or lay amenities [Tab 3]";
+            quickTip = "Train running! Tab 2/3 or keys 1-8 to build more";
         } else {
-            quickTip = "[CIRCUIT BROKEN] Connect tracks into a complete continuous loop so EMU trains can circulate!";
+            quickTip = "Connect the track into a closed loop so the train can run";
         }
     } else if (activeTab == CAT_INFRA) {
-        quickTip = "[CONCOURSE & PLAZA] 1=Sidewalk, 2=Tactile Queue, 3=Plaza Stone | Pave paths from entrance to stations";
+        quickTip = "Concourse: 1 Sidewalk  2 Queue  3 Plaza (X demolish)";
     } else if (activeTab == CAT_SCENERY) {
-        quickTip = "[STATION AMENITIES] 1=Stairs, 2=Fare Gates, 3=Trees, 5=Bench, 6=Lamp, 8=Cafe | Place to boost satisfaction";
+        quickTip = "Scenery: 1 Entrance  2 Gates  3 Tree  5 Bench  8 Cafe";
     }
     ui.DrawQuickTipBanner(quickTip);
 
@@ -990,7 +1330,11 @@ void Game::Draw() {
         currentGround,
         currentZ,
         buildHeading,
-        isBulldozing
+        isBulldozing,
+        economy.balance,
+        train.GetCarriageCount(),
+        buildRadius,
+        GetExtraTrainCount()
     );
 
     // 14. Draw Line Operations Window

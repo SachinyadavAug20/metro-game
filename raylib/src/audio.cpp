@@ -8,6 +8,12 @@ static bool initialized = false;
 static bool muted = false;
 static std::map<SfxType, Sound> sounds;
 
+// SFX playback budget: raylib's audio thread can corrupt memory if PlaySound
+// is hammered too fast. Cooldown per effect type keeps audio lively but stable.
+static std::map<SfxType, double> lastPlayed;
+static const int sPlayBudget = 4;  // max distinct sounds started per second
+static std::vector<double> playTimestamps;
+
 // Helper to construct procedural sound from generated float samples
 static Sound CreateProceduralSound(const std::vector<float>& samples, int sampleRate = 44100) {
     int count = (int)samples.size();
@@ -254,10 +260,24 @@ void Cleanup() {
 void Play(SfxType type, float volume) {
     if (!initialized || muted) return;
     auto it = sounds.find(type);
-    if (it != sounds.end()) {
-        SetSoundVolume(it->second, volume);
-        PlaySound(it->second);
+    if (it == sounds.end()) return;
+
+    double now = GetTime();
+
+    // Per-type cooldown: never restart the same effect more than ~5x/s
+    auto lp = lastPlayed.find(type);
+    if (lp != lastPlayed.end() && (now - lp->second) < 0.2) return;
+    lastPlayed[type] = now;
+
+    // Global soft budget: at most ~6 sound starts per rolling second
+    while (!playTimestamps.empty() && (now - playTimestamps.front()) > 1.0) {
+        playTimestamps.erase(playTimestamps.begin());
     }
+    if ((int)playTimestamps.size() >= sPlayBudget) return;
+    playTimestamps.push_back(now);
+
+    SetSoundVolume(it->second, volume);
+    PlaySound(it->second);
 }
 
 void SetMute(bool isMuted) { muted = isMuted; }

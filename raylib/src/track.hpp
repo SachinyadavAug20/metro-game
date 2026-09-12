@@ -45,6 +45,7 @@ public:
     TrackNode* GetPiece(int gx, int gy);
     const TrackNode* GetPiece(int gx, int gy) const;
     bool HasPiece(int gx, int gy) const;
+    bool SuggestConnectingHeading(int gx, int gy, int gz, Direction& outHeading) const;
 
     void RecalculateCircuit();
     bool IsCircuitClosed() const { return circuitClosed; }

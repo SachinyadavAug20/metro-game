@@ -8,7 +8,7 @@ struct MetroCar {
     Vector3 pos = {0, 0, 0};
     Vector3 forward = {1, 0, 0};
     int passengerCount = 0;
-    int maxCapacity = 4; // 4 commuters per carriage
+    int maxCapacity = 6; // 6 commuters per carriage
     std::vector<StationShape> targetShapes;
     std::vector<Color> commuterShirtColors;
     float doorOpenProgress = 0.0f; // 0.0f = closed, 1.0f = open
@@ -18,7 +18,7 @@ class MetroTrain {
 public:
     MetroTrain();
 
-    void Reset(const TrackSystem& tracks);
+    void Reset(const TrackSystem& tracks, float startOffset = 0.5f);
     void Update(float dt, TrackSystem& tracks, ParticleSystem& particles, int& outDeliveredCommuters, float& outFareRevenue);
     void Draw(Vector2 camOffset, float zoom) const;
 
@@ -31,6 +31,7 @@ public:
     bool BoardCommuter(StationShape targetShape, Color shirtColor);
     int AlightCommutersAtStation(StationShape stationShape);
     void SetCarriageCount(int count);
+    void AddCarriage();
 
     Vector3 GetLocomotivePos() const { return cars.empty() ? Vector3{0,0,0} : cars[0].pos; }
     MetroLineStats GetStats(const TrackSystem& tracks) const;

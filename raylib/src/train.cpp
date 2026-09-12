@@ -1,6 +1,7 @@
 #include "train.hpp"
 #include "isometric.hpp"
 #include "audio.hpp"
+#include "font_system.hpp"
 
 MetroTrain::MetroTrain() {
     SetCarriageCount(3); // Standard 3-car urban EMU trainset
@@ -11,14 +12,21 @@ void MetroTrain::SetCarriageCount(int count) {
     for (int i = 0; i < count; ++i) {
         MetroCar car;
         car.passengerCount = 0;
-        car.maxCapacity = 4;
+        car.maxCapacity = 6;
         cars.push_back(car);
     }
 }
 
-void MetroTrain::Reset(const TrackSystem& tracks) {
+void MetroTrain::AddCarriage() {
+    MetroCar car;
+    car.passengerCount = 0;
+    car.maxCapacity = 6;
+    cars.push_back(car);
+}
+
+void MetroTrain::Reset(const TrackSystem& tracks, float startOffset) {
     state = TRAIN_BOARDING;
-    distance = 0.5f; // Center of Central Hub Station
+    distance = startOffset; // Center of Central Hub Station by default
     velocity = 0.0f;
     stationTimer = 3.5f;
     doorsOpen = true;
@@ -52,7 +60,8 @@ int MetroTrain::GetTotalPassengers() const {
 }
 
 int MetroTrain::GetMaxCapacity() const {
-    return (int)cars.size() * 4;
+    if (cars.empty()) return 0;
+    return (int)cars.size() * cars[0].maxCapacity;
 }
 
 bool MetroTrain::BoardCommuter(StationShape targetShape, Color shirtColor) {
@@ -187,7 +196,7 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
                         particles.SpawnConfetti(headPos, 28);
                         particles.SpawnFloatingText(
                             Vector3{headPos.x, headPos.y, headPos.z + 1.4f},
-                            TextFormat("★ STATION LEVEL %d! ★", newLevel),
+                            TextFormat("STATION LEVEL UP (LV %d)!", newLevel),
                             Color{255, 215, 0, 255}
                         );
                     } else if (lvlBonus > 1.0f) {
@@ -386,6 +395,28 @@ void MetroTrain::Draw(Vector2 camOffset, float zoom) const {
                 DrawCircle((int)pPos.x, (int)pPos.y, 2.0f * zoom, sCol);
             }
         }
+    }
+
+    // 11. Onboard load tag (Mini Metro style): riders / capacity above the cab
+    {
+        const auto& car = cars[0];
+        Vector2 sPos = Iso::GridToScreen(car.pos.x, car.pos.y, car.pos.z + 0.6f, camOffset, zoom);
+        int totalCap = 0, totalOn = 0;
+        for (const auto& c : cars) { totalCap += c.maxCapacity; totalOn += c.passengerCount; }
+
+        const char* tag = TextFormat("%d/%d", totalOn, totalCap);
+        int tagW = MeasureText(tag, 13);
+        float pillW = (float)tagW + 12.0f * zoom;
+        float pillH = 16.0f * zoom;
+        Vector2 pillPos = { sPos.x - pillW * 0.5f, sPos.y - 12.0f * zoom - pillH };
+
+        Color loadCol = (totalOn >= totalCap) ? Color{239, 68, 68, 255}
+                       : (totalOn * 2 >= totalCap) ? Color{255, 214, 0, 255}
+                                                   : Color{74, 222, 128, 255};
+
+        DrawRectangleRounded(Rectangle{pillPos.x, pillPos.y, pillW, pillH}, 0.35f, 4, Color{15, 23, 42, 235});
+        DrawRectangleRoundedLines(Rectangle{pillPos.x, pillPos.y, pillW, pillH}, 0.35f, 4, loadCol);
+        DrawGameBoldTextCentered(tag, (int)(pillPos.x + pillW * 0.5f), (int)(pillPos.y + 2.0f * zoom), (int)(13.0f * zoom), loadCol);
     }
 }
 

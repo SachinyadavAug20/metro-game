@@ -1,6 +1,7 @@
 #include "peep.hpp"
 #include "isometric.hpp"
 #include "audio.hpp"
+#include "font_system.hpp"
 
 CommuterManager::CommuterManager() {
     Init({2.0f, 12.0f}, {7.0f, 12.0f}, {8.0f, 13.0f});
@@ -110,13 +111,13 @@ float CommuterManager::GetQueueOvercrowdRatio() const {
     return (float)queueCommuters.size() / (float)maxQueueCap;
 }
 
-void CommuterManager::Update(float dt, MetroTrain& train, ParticleSystem& particles, float& outSatisfaction, int& outAngryLeaves, std::vector<StationMess>& outMesses) {
+void CommuterManager::Update(float dt, MetroTrain& train, std::vector<MetroTrain>* extraTrains, ParticleSystem& particles, float& outSatisfaction, int& outAngryLeaves, std::vector<StationMess>& outMesses) {
     (void)outMesses;
 
     // 1. Spawning Commuters
     spawnTimer -= dt;
     if (spawnTimer <= 0.0f) {
-        if ((int)commuters.size() < 65) {
+        if ((int)commuters.size() < 140) {
             SpawnCommuter();
         }
         spawnTimer = spawnInterval;
@@ -127,7 +128,7 @@ void CommuterManager::Update(float dt, MetroTrain& train, ParticleSystem& partic
         overcrowdActive = true;
         overcrowdTimer -= dt;
 
-        if (fmodf(overcrowdTimer, 1.8f) < dt) {
+        if (fmodf(overcrowdTimer, 2.6f) < dt) {
             AudioManager::Play(SFX_QUEUE_ALARM, 0.45f);
         }
 
@@ -151,12 +152,21 @@ void CommuterManager::Update(float dt, MetroTrain& train, ParticleSystem& partic
         overcrowdTimer = std::min(MAX_OVERCROWD_TIME, overcrowdTimer + dt * 2.2f);
     }
 
-    // 3. Boarding Train from Platform Queue
-    if (train.CanBoard() && train.GetOperatingMode() == LINE_OPEN && !queueCommuters.empty()) {
+    // 3. Boarding Train(s) from Platform Queue
+    if (!queueCommuters.empty()) {
         size_t cIdx = queueCommuters.front();
-        if (train.BoardCommuter(commuters[cIdx].targetShape, commuters[cIdx].shirtColor)) {
+        MetroTrain* boardTarget = (train.CanBoard() && train.GetOperatingMode() == LINE_OPEN) ? &train : nullptr;
+        if (!boardTarget && extraTrains) {
+            for (auto& extra : *extraTrains) {
+                if (extra.CanBoard() && extra.GetOperatingMode() == LINE_OPEN) {
+                    boardTarget = &extra;
+                    break;
+                }
+            }
+        }
+        if (boardTarget && boardTarget->BoardCommuter(commuters[cIdx].targetShape, commuters[cIdx].shirtColor)) {
             commuters[cIdx].state = COMMUTER_RIDING;
-            commuters[cIdx].thought = "Boarded Line 1 EMU!";
+            commuters[cIdx].thought = (boardTarget == &train) ? "Boarded Line 1 EMU!" : "Boarded an express EMU!";
             queueCommuters.erase(queueCommuters.begin());
             AudioManager::Play(SFX_SMARTCARD_BEEP, 0.4f);
             particles.SpawnSparks(Vector3{commuters[cIdx].pos.x, commuters[cIdx].pos.y, 0.2f}, 4);

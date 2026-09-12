@@ -1,5 +1,6 @@
 #include <raylib.h>
 #include "game.hpp"
+#include "font_system.hpp"
 #include <iostream>
 
 class TestGame : public Game {
@@ -61,6 +62,23 @@ public:
         hoveredGx = gx;
         hoveredGy = gy;
     }
+    void BuyExtraTrainNow() {
+        float cost = ExtraTrainCostP(GetExtraTrainCount());
+        if (GetExtraTrainCount() < MaxExtraTrains() && economy.balance >= cost) {
+            economy.balance -= cost;
+            MetroTrain nt;
+            nt.SetCarriageCount(3);
+            nt.SetTrainTheme(train.GetTrainTheme());
+            int index = GetExtraTrainCount();
+            nt.Reset(tracks, 0.5f + tracks.GetTotalCircuitLength() * (0.5f + 0.18f * index));
+            extraTrains.push_back(nt);
+        }
+    }
+    void GiveCash(double amt) { economy.balance = (float)amt; }
+    float GetDistance() const { return train.GetTrainDistance(); }
+    float GetDistance2() const { return extraTrains.empty() ? 0.0f : extraTrains[0].GetTrainDistance(); }
+    int GetDelivered() const { return economy.totalDelivered; }
+    int FleetCount() const { return GetExtraTrainCount(); }
     void SetBuildTool(TrackType t, Direction heading) {
         activeTab = CAT_TRACK;
         currentTrack = t;
@@ -83,6 +101,8 @@ int main() {
     const int screenHeight = 720;
     InitWindow(screenWidth, screenHeight, "METRO GRID - Inspection Capture");
     SetTargetFPS(60);
+
+    InitGameFont();
 
     TestGame game;
     game.AddStationMesses();
@@ -138,13 +158,32 @@ int main() {
     TakeScreenshot("test_metro_operations_manual.png");
     std::cout << "Captured test_metro_operations_manual.png\n";
 
-    // 7. Long Simulation Loop Test: Run 600 steps to verify infinite loop without stall
+    // 7. Buy a Fleet (2 extra trains) and verify they all run & deliver
+    int dBefore = game.GetDelivered();
+    game.GiveCash(10000.0);
+    game.BuyExtraTrainNow();
+    game.BuyExtraTrainNow();
+    for (int i = 0; i < 400; ++i) game.Step(0.033f);
+    int dAfter = game.GetDelivered();
+    std::cout << "Extra fleet delivered +" << (dAfter - dBefore)
+              << " commuters (fleet=" << game.FleetCount()
+              << " d1=" << game.GetDistance() << " d2=" << game.GetDistance2() << ")\n";
+    game.Render();
+    TakeScreenshot("test_metro_extra_train.png");
+    std::cout << "Captured test_metro_extra_train.png\n";
+    if (dAfter - dBefore < 5 || game.FleetCount() != 2) {
+        std::cout << "TEST FAIL: extra fleet not contributing\n";
+        return 1;
+    }
+
+    // 8. Long Simulation Loop Test: Run 600 steps to verify infinite loop without stall
     game.OpenManualOverlay(false);
     for (int i = 0; i < 600; ++i) game.Step(0.033f);
     game.Render();
     TakeScreenshot("test_metro_infinite_loop_proof.png");
     std::cout << "Captured test_metro_infinite_loop_proof.png\n";
 
+    CleanupGameFont();
     CloseWindow();
     return 0;
 }

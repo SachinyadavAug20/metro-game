@@ -31,7 +31,7 @@ public:
     CommuterManager();
 
     void Init(Vector2 stationEntrance, Vector2 platformEntrance, Vector2 stationExit);
-    void Update(float dt, MetroTrain& train, ParticleSystem& particles, float& outSatisfaction, int& outAngryLeaves, std::vector<StationMess>& outMesses);
+    void Update(float dt, MetroTrain& train, std::vector<MetroTrain>* extraTrains, ParticleSystem& particles, float& outSatisfaction, int& outAngryLeaves, std::vector<StationMess>& outMesses);
     void CheckSceneryInteractions(const SceneryType scenery[GRID_SIZE][GRID_SIZE], ParticleSystem& particles, float& outFunds, std::vector<StationMess>& outMesses);
     void Draw(Vector2 camOffset, float zoom) const;
 
@@ -68,13 +68,13 @@ private:
     Vector2 exitPos;
 
     float spawnTimer = 0.0f;
-    float spawnInterval = 2.4f;
-    int maxQueueCap = 14;
+    float spawnInterval = 1.9f;
+    int maxQueueCap = 18;
 
     // Overcrowding Mini-Metro style clock
     bool overcrowdActive = false;
-    float overcrowdTimer = 20.0f;
-    const float MAX_OVERCROWD_TIME = 20.0f;
+    float overcrowdTimer = 26.0f;
+    const float MAX_OVERCROWD_TIME = 26.0f;
 
     void UpdateCommuterMovement(Commuter& c, float dt);
 };
