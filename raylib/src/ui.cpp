@@ -30,7 +30,7 @@ void UserInterface::DrawHUD(
     float rushCombo
 ) {
     (void)satisfaction; (void)week; (void)weekTimer;
-    (void)signalAspect; (void)circuitClosed;
+    (void)signalAspect;
     (void)lineOpsOpen; (void)crewOpen; (void)cabCamActive; (void)rushCombo;
 
     int screenW = GetScreenWidth();
@@ -63,10 +63,22 @@ void UserInterface::DrawHUD(
     DrawText(TextFormat("GOAL %d", GOAL), scoreX + 116, 38, 13, Color{148, 163, 184, 255});
 
     // 4. Train speed (single clean number)
-    int spdX = 434;
+    int spdX = 500;
     Color spdColor = (speedKmh > 55.0f) ? Color{56, 189, 248, 255} : Color{203, 213, 225, 255};
     DrawText(TextFormat("%.0f km/h", speedKmh), spdX, 12, 18, spdColor);
     DrawText("TRAIN", spdX, 34, 13, Color{148, 163, 184, 255});
+
+    // 4b. Circuit status badge (OPEN TRACK = red, LOOP CLOSED = green)
+    int badgeX = spdX + 130;
+    Color badgeBg = circuitClosed ? Color{22, 101, 52, 255} : Color{185, 28, 28, 255};
+    Color badgeBorder = circuitClosed ? Color{34, 197, 94, 255} : Color{239, 68, 68, 255};
+    DrawRectangleRounded(Rectangle{(float)badgeX, 10.0f, 110.0f, 30.0f}, 0.3f, 4, badgeBg);
+    DrawRectangleRoundedLines(Rectangle{(float)badgeX, 10.0f, 110.0f, 30.0f}, 0.3f, 4, badgeBorder);
+    const char* badgeText = circuitClosed ? "LOOP CLOSED" : "OPEN TRACK";
+    DrawText(badgeText, badgeX + 8, 16, 14, circuitClosed ? Color{110, 231, 183, 255} : WHITE);
+    if (!circuitClosed) {
+        DrawText("CLOSE THE LOOP", badgeX + 8, 32, 9, Color{254, 202, 202, 255});
+    }
 
     // 5. Simulation controls & mute (far right anchor)
     int btnX = screenW - 140;
@@ -591,45 +603,46 @@ void UserInterface::DrawTutorialPanel(bool visible, const TutorialStageInfo& sta
     int screenH = GetScreenHeight();
     int cardW = std::min(920, screenW - 40);
     int cardX = (screenW - cardW) / 2;
-    int cardY = 14;
+    int cardY = 58;
+    int cardH = 108;
     float pulse = 0.5f + 0.5f * sinf(GetTime() * 5.0f);
 
-    // ---- Big arcade directive card ----
-    DrawRectangleRounded(Rectangle{(float)cardX, (float)cardY, (float)cardW, 148.0f}, 0.16f, 8, Color{15, 23, 42, 242});
-    DrawRectangleRoundedLines(Rectangle{(float)cardX, (float)cardY, (float)cardW, 148.0f}, 0.16f, 8,
+    // ---- Compact arcade directive card (sits below the HUD) ----
+    DrawRectangleRounded(Rectangle{(float)cardX, (float)cardY, (float)cardW, (float)cardH}, 0.16f, 8, Color{15, 23, 42, 242});
+    DrawRectangleRoundedLines(Rectangle{(float)cardX, (float)cardY, (float)cardW, (float)cardH}, 0.16f, 8,
                               Color{(unsigned char)(pulse ? 255 : 214), (unsigned char)(pulse ? 214 : 11), 0, 255});
 
     // Lesson chip
-    DrawRectangleRounded(Rectangle{(float)cardX + 14, (float)cardY + 12, 150.0f, 24.0f}, 0.4f, 4, Color{220, 38, 38, 255});
-    DrawText(TextFormat("LESSON %d / %d", currentIdx + 1, total), cardX + 24, cardY + 16, 13, WHITE);
-    DrawText("(G = hide)", cardX + cardW - 82, cardY + 17, 11, Color{148, 163, 184, 255});
+    DrawRectangleRounded(Rectangle{(float)cardX + 14, (float)cardY + 8, 130.0f, 20.0f}, 0.4f, 4, Color{220, 38, 38, 255});
+    DrawText(TextFormat("LESSON %d / %d", currentIdx + 1, total), cardX + 22, cardY + 12, 12, WHITE);
+    DrawText("(G = hide)", cardX + cardW - 78, cardY + 12, 10, Color{148, 163, 184, 255});
 
-    // Bold directive title
-    DrawGameBoldText(stage.title, cardX + 16, cardY + 42, 22, Color{248, 250, 252, 255});
+    // Bold directive title (single line)
+    DrawGameBoldText(stage.title, cardX + 14, cardY + 32, 18, Color{248, 250, 252, 255});
 
-    // Body text (wrapped)
-    DrawTutorialWrapped(stage.body, cardX + 16, cardY + 74, 13, Color{203, 213, 225, 255}, cardW - 32);
+    // Body text (wrapped, compact)
+    DrawTutorialWrapped(stage.body, cardX + 14, cardY + 54, 12, Color{203, 213, 225, 255}, cardW - 28);
 
     // Hint pill
     if (stage.hint[0] != '\0') {
-        DrawRectangleRounded(Rectangle{(float)cardX + 14, (float)cardY + 116, 250.0f, 24.0f}, 0.4f, 4, Color{30, 41, 59, 255});
-        DrawRectangleRoundedLines(Rectangle{(float)cardX + 14, (float)cardY + 116, 250.0f, 24.0f}, 0.4f, 4, Color{255, 214, 0, 180});
-        DrawText(stage.hint, cardX + 22, cardY + 120, 12, Color{255, 214, 0, 255});
+        DrawRectangleRounded(Rectangle{(float)cardX + 14, (float)cardY + 82, 220.0f, 20.0f}, 0.4f, 4, Color{30, 41, 59, 255});
+        DrawRectangleRoundedLines(Rectangle{(float)cardX + 14, (float)cardY + 82, 220.0f, 20.0f}, 0.4f, 4, Color{255, 214, 0, 180});
+        DrawText(stage.hint, cardX + 20, cardY + 86, 11, Color{255, 214, 0, 255});
     }
 
-    // ---- Progress dots ----
-    int dotY = cardY + 152;
-    int dotGap = 20;
+    // ---- Progress dots (inside card, bottom row) ----
+    int dotY = cardY + cardH - 18;
+    int dotGap = 16;
     int dotsStartX = cardX + cardW / 2 - (total / 2) * dotGap - (total % 2) * dotGap / 2;
     for (int i = 0; i < total; ++i) {
         int ddx = dotsStartX + i * dotGap;
         if (doneFlags[i]) {
-            DrawRectangleRounded(Rectangle{(float)ddx, (float)dotY, 14.0f, 14.0f}, 0.35f, 4, Color{34, 197, 94, 255});
+            DrawRectangleRounded(Rectangle{(float)ddx, (float)dotY, 10.0f, 10.0f}, 0.35f, 4, Color{34, 197, 94, 255});
         } else if (i == currentIdx) {
-            DrawCircleLines(ddx + 7, dotY + 7, 10.0f + 2.0f * pulse, Color{255, 214, 0, 255});
-            DrawRectangleRounded(Rectangle{(float)ddx, (float)dotY, 14.0f, 14.0f}, 0.35f, 4, Color{255, 214, 0, 200});
+            DrawCircleLines(ddx + 5, dotY + 5, 7.0f + 1.5f * pulse, Color{255, 214, 0, 255});
+            DrawRectangleRounded(Rectangle{(float)ddx, (float)dotY, 10.0f, 10.0f}, 0.35f, 4, Color{255, 214, 0, 200});
         } else {
-            DrawRectangleRounded(Rectangle{(float)ddx, (float)dotY, 14.0f, 14.0f}, 0.35f, 4, Color{71, 85, 105, 255});
+            DrawRectangleRounded(Rectangle{(float)ddx, (float)dotY, 10.0f, 10.0f}, 0.35f, 4, Color{71, 85, 105, 255});
         }
     }
 
@@ -908,10 +921,52 @@ void UserInterface::DrawPauseOverlay() {
     int screenH = GetScreenHeight();
     DrawRectangle(0, 0, screenW, screenH, Color{2, 6, 23, 190});
     float fl = 0.5f + 0.5f * sinf(GetTime() * 5.0f);
-    DrawGameBoldTextCentered("PAUSED", (float)screenW / 2.0f, (float)(screenH / 2 - 62), 58, Color{255, 214, 0, (unsigned char)(255 * fl)});
-    DrawText("THE CITY WAITS FOR YOU...", screenW / 2 - 105, screenH / 2 + 12, 14, Color{226, 232, 240, 255});
-    DrawText("[ESC] Resume     [SPACE] 1x / 0x Speed     [M] Mute", screenW / 2 - 150, screenH / 2 + 46, 12, Color{148, 163, 184, 255});
-    DrawText("[WASD / window edges] Move view   [Right or Middle drag] Pan   [HOME] Recenter   [Wheel] Zoom", screenW / 2 - 262, screenH / 2 + 68, 12, Color{56, 189, 248, 255});
+    DrawGameBoldTextCentered("PAUSED", (float)screenW / 2.0f, (float)(screenH / 2 - 120), 58, Color{255, 214, 0, (unsigned char)(255 * fl)});
+    DrawText("THE CITY WAITS FOR YOU...", screenW / 2 - 105, screenH / 2 - 52, 14, Color{226, 232, 240, 255});
+
+    int cx = screenW / 2;
+    int by = screenH / 2 + 8;
+
+    // RESUME (primary)
+    DrawRectangleRounded(Rectangle{(float)cx - 130, (float)by, 260.0f, 44.0f}, 0.3f, 4, Color{16, 185, 129, 255});
+    DrawRectangleRoundedLines(Rectangle{(float)cx - 130, (float)by, 260.0f, 44.0f}, 0.3f, 4, Color{209, 250, 229, 255});
+    DrawGameBoldTextCentered("RESUME  [ESC]", (float)cx, (float)by + 13, 18, WHITE);
+
+    // RESTART + QUIT TO MENU (secondary)
+    DrawRectangleRounded(Rectangle{(float)cx - 155, (float)by + 56, 150.0f, 38.0f}, 0.3f, 4, Color{220, 38, 38, 220});
+    DrawText("RESTART RUN", cx - 138, by + 71, 13, WHITE);
+
+    DrawRectangleRounded(Rectangle{(float)cx + 5, (float)by + 56, 150.0f, 38.0f}, 0.3f, 4, Color{51, 65, 85, 255});
+    DrawText("QUIT TO MENU", cx + 20, by + 71, 13, Color{226, 232, 240, 255});
+
+    DrawText("[WASD / window edges] Move view   [Right or Middle drag] Pan   [HOME] Recenter   [Wheel] Zoom   [M] Mute", screenW / 2 - 262, screenH / 2 + 126, 12, Color{56, 189, 248, 255});
+}
+
+int UserInterface::CheckPauseClick(Vector2 mousePos) const {
+    int screenW = GetScreenWidth();
+    int screenH = GetScreenHeight();
+    int cx = screenW / 2;
+    int by = screenH / 2 + 8;
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)cx - 130, (float)by, 260.0f, 44.0f})) return 0;
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)cx - 155, (float)by + 56, 150.0f, 38.0f})) return 1;
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)cx + 5, (float)by + 56, 150.0f, 38.0f})) return 2;
+    return -1;
+}
+
+void UserInterface::DrawObjectiveChip(const char* title, const char* sub, float progressPct) {
+    int w = 250;
+    int h = progressPct >= 0.0f ? 52 : 38;
+    int x = 12;
+    int y = 62;
+    DrawRectangleRounded(Rectangle{(float)x, (float)y, (float)w, (float)h}, 0.22f, 6, Color{15, 23, 42, 235});
+    DrawRectangleRoundedLines(Rectangle{(float)x, (float)y, (float)w, (float)h}, 0.22f, 6, Color{255, 214, 0, 160});
+    DrawGameBoldText(title, x + 12, y + 7, 15, Color{255, 214, 0, 255});
+    DrawText(sub, x + 12, (progressPct >= 0.0f) ? y + 28 : y + 22, 12, Color{203, 213, 225, 255});
+    if (progressPct >= 0.0f) {
+        float p = std::max(0.0f, std::min(1.0f, progressPct));
+        DrawRectangle(x + 12, y + 44, w - 24, 4, Color{51, 65, 85, 255});
+        DrawRectangle(x + 12, y + 44, (int)((w - 24) * p), 4, Color{74, 222, 128, 255});
+    }
 }
 
 void UserInterface::DrawTitleScreen(int best) {

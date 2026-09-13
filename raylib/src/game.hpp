@@ -145,10 +145,13 @@ protected:
     float briefingTimer = 0.0f;      // arcade MISSION BRIEFING overlay at game start
     bool isPaused = false;           // arcade ESC hard-pause overlay
     int bestSessionRiders = 0;       // high-score table (this session) for replay loop
+    int lastArmedLesson = -1;      // which lesson's tool is currently pre-selected
 
     // Helper functions
     void SetupInitialPark();
     void GenerateWeeklyUpgrades();
     void ApplyUpgrade(int choiceIdx);
     void ResetPark();
+    void DrawTutorialTarget() const;   // world-space "go here" ring + off-screen arrow
+    void AutoArmTutorialTool();        // pre-select the exact tool for the current lesson
 };

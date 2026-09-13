@@ -93,6 +93,10 @@ public:
     void DrawVictory(int finalRidership, int weeks, int stars, float balance, int best);
     void DrawTitleScreen(int best);
     void DrawPauseOverlay();
+    void DrawObjectiveChip(const char* title, const char* sub, float progressPct);
+
+    // Arcade pause menu. Returns: 0 = RESUME, 1 = RESTART, 2 = QUIT TO MENU, -1 = none.
+    int CheckPauseClick(Vector2 mousePos) const;
 
     // Compatibility aliases
     void DrawCoasterStats(const MetroLineStats& stats) { DrawLineOperations(stats); }

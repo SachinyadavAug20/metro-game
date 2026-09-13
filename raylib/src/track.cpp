@@ -237,6 +237,8 @@ void TrackSystem::RecalculateCircuit() {
     pathDistances.clear();
     circuitClosed = false;
     totalLength = 0.0f;
+    openEndA = {-1, -1};
+    openEndB = {-1, -1};
 
     if (pieces.empty()) return;
 
@@ -265,10 +267,10 @@ void TrackSystem::RecalculateCircuit() {
         }
 
         const TrackNode* nextPiece = GetPiece(nextGx, nextGy);
-        if (!nextPiece) break;
+        if (!nextPiece) { openEndA = {current->gx, current->gy}; openEndB = {nextGx, nextGy}; break; }
 
         Direction expectedIn = GetOppositeDir(current->outDir);
-        if (nextPiece->inDir != expectedIn) break;
+        if (nextPiece->inDir != expectedIn) { openEndA = {current->gx, current->gy}; openEndB = {nextGx, nextGy}; break; }
 
         // Prevent infinite loops on broken circuits
         bool alreadyInChain = false;
@@ -278,7 +280,7 @@ void TrackSystem::RecalculateCircuit() {
                 break;
             }
         }
-        if (alreadyInChain) break;
+        if (alreadyInChain) { openEndA = {current->gx, current->gy}; openEndB = {nextGx, nextGy}; break; }
 
         chain.push_back(nextPiece);
         current = nextPiece;

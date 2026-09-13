@@ -53,6 +53,12 @@ public:
     float GetTotalCircuitLength() const { return totalLength; }
     Vector3 GetPointAtDistance(float distance, Vector3* outTangent = nullptr) const;
 
+    // Open-circuit gap endpoints (the two tiles that need reconnecting)
+    void GetOpenEndpoints(int& gx1, int& gy1, int& gx2, int& gy2) const {
+        gx1 = openEndA.gx; gy1 = openEndA.gy;
+        gx2 = openEndB.gx; gy2 = openEndB.gy;
+    }
+
     // Station references & queries
     bool GetPrimaryStationLocation(int& outGx, int& outGy, int& outGz) const;
     std::vector<StationInfo> GetAllStations() const;
@@ -87,6 +93,8 @@ private:
     float totalLength = 0.0f;
     Color lineThemeColor = Color{229, 57, 53, 255}; // Tokyo Red
     SignalAspect masterSignalAspect = SIGNAL_GREEN;
+    struct GridPos { int gx = -1, gy = -1; };
+    GridPos openEndA, openEndB;
 
     void GenerateTileSpline(TrackNode& node);
     void DrawSinglePiece(const TrackNode& node, Vector2 camOffset, float zoom);

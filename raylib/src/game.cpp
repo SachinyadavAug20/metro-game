@@ -53,6 +53,7 @@ void Game::Init() {
     helpOverlayOpen = false;
     selectedPeepIdx = -1;
     panMoves = 0;
+    lastArmedLesson = -1;
 
     // Staff & Cleanliness
     staff.clear();
@@ -105,56 +106,56 @@ void Game::ReclaimLand() {
 
 static const TutorialStageInfo kTutorialStages[] = {
     {"YOUR TRAIN IS RUNNING!",
-     "Look - your EMU already circulates the island on its closed rail loop. Stations, signals and viaducts are pre-built so you can just watch it work.",
-     "Tip: no click needed yet. Just watch the loop.",
+     "Watch the red EMU circle the island on the pre-built loop.",
+     "Just watch - riders will board at stations.",
      -1, -1, true, 0},
     {"DELIVER 10 COMMUTERS",
-     "Commuters arrive at the platform, queue, board, and get off at the station matching the shape badge above their head. Deliver 10 of them.",
-     "The HUD counter at the top tracks your deliveries.",
-     9, 11, false, 0},
+     "Riders board, ride, and leave at their station. Deliver 10.",
+     "Watch the RIDERS counter at the top.",
+     7, 9, false, 0},
     {"BUILD 5 TRACK PIECES",
-     "Pick the Track tab (TAB or key 1) then press 1 for Straight track. Click a green grass tile to lay rail - each piece costs $40.",
-     "Keys 1-8 pick tools; R rotates; E/Q raise/lower.",
-     14, 4, false, 0},
+     "Straight Track is armed for you. Click the glowing grass 5 times.",
+     "Each piece costs $40.",
+     9, 13, false, 0},
     {"ADD A STATION TO THE LINE",
-     "Stations let riders alight with a big fare bonus. With the Track tab open, press key 5 (Station), then click a track tile to place it.",
-     "Stations level up as they serve more riders.",
+     "Station tool is armed. Click a track tile to add boarding.",
+     "Stations pay a big fare bonus.",
      14, 9, false, 0},
     {"PLACE 3 PIECES OF SCENERY",
-     "Switch to the Scenery tab (key 3 or TAB twice). Click trees, benches, lampposts or shops around the plaza - the city comes alive!",
-     "Scenery also keeps commuter happiness high.",
+     "Tree tool is armed. Click grass 3 times to plant.",
+     "Scenery keeps the city happy.",
      7, 13, false, 0},
-    {"LEARN HEIGHT: BUILD A VIADUCT",
-     "Open the Track tab and press key 4 for Viaduct. The track will stride over the canal at Z1. Lay one piece - elevated rail dodges water!",
-     "Press E/Q to raise or lower elevation manually.",
-     12, 9, false, 0},
+    {"LEARN HEIGHT: CROSS THE CANAL",
+     "Viaduct is armed and raised to Z=1. Click the water to stride across.",
+     "Elevated rail dodges the canal.",
+     12, 8, false, 0},
     {"BUY A BIGGER TRAIN  (CAR+1)",
-     "Click the blue CAR+1 button on the toolbar's right side for $800. Each new car seats 6 more commuters so the platform empties faster.",
-     "Short on cash? Deliver more riders first.",
+     "Click the blue CAR+1 button for $800 - more seats, faster boarding.",
+     "Low on cash? Deliver riders first.",
      0, 0, false, 1},
     {"EXPAND THE ISLAND  (LAND)",
-     "The city is an island in the ocean. Click the green LAND button ($600) to reclaim a new ring of sea as buildable ground.",
-     "You cannot build on water - buy LAND or go elevated.",
+     "Click the green LAND button ($600) to reclaim sea as buildable ground.",
+     "You cannot build on water.",
      0, 0, false, 2},
     {"BUY A SECOND TRAIN  (EXTRA $1,400)",
-     "Click the blue EXTRA TRAIN button on the bottom toolbar strip. A second EMU joins the loop, boards riders and doubles your throughput.",
+     "Click the blue EXTRA TRAIN button - a second EMU doubles your throughput.",
      "Each extra train costs more than the last.",
      0, 0, false, 3},
     {"ROTATE + DEMOLISH",
-     "Press R to rotate the piece you are placing. Press X for the Bulldozer, then click a tile to remove it (you get a small refund).",
-     "Bulldoze is your undo button - don't fear mistakes.",
+     "Bulldozer is armed. Click any tile to remove it.",
+     "Bulldoze is your undo button.",
      -1, -1, false, 0},
     {"NAVIGATE THE MAP",
-     "Explore the whole city - inside the island and out over the ocean. Hold W/A/S/D or the arrow keys, drag the map with the RIGHT or MIDDLE mouse button, or slide the mouse to the edge of the screen.",
-     "Once you have roamed, press HOME to snap the camera back to the train - the OCC dispatcher's best friend.",
+     "Explore the city: WASD/arrows pan, drag with the right or middle mouse button, or slide the mouse to the screen edge.",
+     "Then press HOME to snap back to the train.",
      -1, -1, false, 0},
     {"RIDE THE DRIVER'S CAB  (F)",
-     "Press F for the driver's cab camera and ride along the route. Press F again to return to the OCC overhead view.",
-     "The cab camera follows the rails all by itself.",
+     "Press F to ride along in the cab. Press F again to return to map view.",
+     "The cab follows the rails by itself.",
      -1, -1, false, 0},
     {"FINAL LESSON: SERVE 75 COMMUTERS",
-     "Keep the track loop closed so the train never stops. If a platform fills up a red clock warns you - extra cars and trains clear it fast. Serve 75 to finish onboarding!",
-     "After this, the real goal: deliver 5,000 for victory!",
+     "Keep the loop closed and clear crowded platforms. Serve 75 to finish onboarding!",
+     "Then: 500 riders wins. Keep growing in Endless Mode!",
      -1, -1, false, 0}
 };
 static const int kTutorialCount = 13;
@@ -285,6 +286,98 @@ void Game::ResetPark() {
     Init();
 }
 
+void Game::AutoArmTutorialTool() {
+    TutorialStageInfo st;
+    if (!GetTutorialStageInfo(GetCurrentTutorialIdx(), st)) return;
+    switch (GetCurrentTutorialIdx()) {
+        case 2:  activeTab = CAT_TRACK;   currentTrack = TRACK_STRAIGHT;      isBulldozing = false; break; // lay straight rail
+        case 3:  activeTab = CAT_TRACK;   currentTrack = TRACK_STATION;       isBulldozing = false; break; // drop a station
+        case 4:  activeTab = CAT_SCENERY; currentScenery = SCENERY_STREET_TREE; isBulldozing = false; break; // plant trees
+        case 5:  activeTab = CAT_TRACK;   currentTrack = TRACK_VIADUCT_ELEVATED; currentZ = 1;       isBulldozing = false; break; // cross the canal
+        case 6:
+        case 7:
+        case 8:  activeTab = CAT_TRACK;   currentTrack = TRACK_STRAIGHT;      currentZ = 0;          isBulldozing = false; break; // shop lessons: neutral
+        case 9:  isBulldozing = true;     currentZ = 0; break;                                                          // undo button
+        case 10: activeTab = CAT_TRACK;   currentTrack = TRACK_STRAIGHT;      currentZ = 0;          isBulldozing = false; break; // navigation: tidy up
+        default: break;
+    }
+}
+
+void Game::DrawTutorialTarget() const {
+    if (state != STATE_PLAYING || tutorialDone) return;
+    if (!showObjectivePanel) return; // player hid the guided lesson (G)
+
+    TutorialStageInfo st;
+    if (!GetTutorialStageInfo(GetCurrentTutorialIdx(), st)) return;
+
+    float pulse = 0.5f + 0.5f * sinf(GetTime() * 4.0f);
+    Color ringC = Color{255, 214, 0, (unsigned char)(150 + 105 * pulse)};
+    Color ringFill = Color{255, 214, 0, (unsigned char)(26 + 22 * pulse)};
+
+    Vector3 fp;
+    if (st.focusTrain) {
+        fp = train.GetLocomotivePos();
+        fp.z += 1.2f; // float above the roof
+    } else if (st.focusGx >= 0) {
+        fp = Vector3{(float)st.focusGx + 0.5f, (float)st.focusGy + 0.5f, 0.0f};
+    } else {
+        return; // pure toolbar spotlight lessons - no world marker needed
+    }
+
+    int screenW = GetScreenWidth();
+    int screenH = GetScreenHeight();
+    Vector2 p = Iso::GridToScreen(fp.x, fp.y, fp.z, cameraPos, zoom);
+    float ts = TILE_WIDTH * zoom;         // on-screen tile width
+    float th = TILE_HEIGHT * zoom;        // on-screen tile height
+
+    bool onScreen = (p.x > 30 && p.x < screenW - 30 && p.y > 66 && p.y < screenH - 168);
+    if (onScreen) {
+        // Soft translucent tile fill + pulsing diamond ring snapped to the tile
+        float bx = p.x - ts / 2.0f, by = p.y - th / 2.0f;
+        DrawRectangle((int)bx, (int)by, (int)ts, (int)th, ringFill);
+        DrawRectangleLinesEx(Rectangle{bx, by, ts, th}, 2.0f, ringC);
+        // Corner ticks make it read as a precise tile
+        float c = 6.0f * (0.6f + 0.4f * pulse);
+        DrawLine((int)bx, (int)by, (int)(bx + c), (int)by, ringC);
+        DrawLine((int)bx, (int)by, (int)bx, (int)(by + c), ringC);
+        DrawLine((int)(bx + ts), (int)by, (int)(bx + ts - c), (int)by, ringC);
+        DrawLine((int)(bx + ts), (int)by, (int)(bx + ts), (int)(by + c), ringC);
+        DrawLine((int)bx, (int)(by + th), (int)(bx + c), (int)(by + th), ringC);
+        DrawLine((int)bx, (int)(by + th), (int)bx, (int)(by + th - c), ringC);
+        DrawLine((int)(bx + ts), (int)(by + th), (int)(bx + ts - c), (int)(by + th), ringC);
+        DrawLine((int)(bx + ts), (int)(by + th), (int)(bx + ts), (int)(by + th - c), ringC);
+        if (st.focusTrain) {
+            // Small bouncing arrow above the train
+            float bounce = 6.0f * pulse;
+            DrawLine((int)p.x, (int)(p.y - th - 8 - bounce), (int)p.x, (int)(p.y - th + 10 - bounce), Color{255, 214, 0, 255});
+            DrawTriangle({p.x, p.y - th - 16 - bounce}, {p.x - 7, p.y - th - 2 - bounce}, {p.x + 7, p.y - th - 2 - bounce}, Color{255, 214, 0, 255});
+        }
+    } else {
+        // Off-screen compass arrow glued to the window edge, pointing at the target
+        Vector2 center{(float)screenW / 2.0f, (float)screenH / 2.0f};
+        Vector2 d = {p.x - center.x, p.y - center.y};
+        float len = std::max(1.0f, sqrtf(d.x * d.x + d.y * d.y));
+        d = {d.x / len, d.y / len};
+        float ang = atan2f(d.y, d.x);
+        Vector2 base = {
+            std::max(38.0f, std::min((float)screenW - 38.0f, p.x)),
+            std::max(76.0f, std::min((float)screenH - 170.0f, p.y))
+        };
+        base.x -= d.x * 16.0f;
+        base.y -= d.y * 16.0f;
+        Vector2 tip = {base.x + d.x * 26.0f, base.y + d.y * 26.0f};
+        float ca = cosf(ang), sa = sinf(ang);
+        auto rot = [ca, sa](Vector2 v) {
+            return Vector2{v.x * ca - v.y * sa, v.x * sa + v.y * ca};
+        };
+        Vector2 left = rot({-11.0f, 8.0f});
+        Vector2 right = rot({-11.0f, -8.0f});
+        DrawTriangle(tip, {base.x + left.x, base.y + left.y}, {base.x + right.x, base.y + right.y},
+                     Color{255, 214, 0, (unsigned char)(180 + 75 * pulse)});
+        DrawCircle((int)base.x, (int)base.y, 5, Color{255, 214, 0, (unsigned char)(150 + 105 * pulse)});
+    }
+}
+
 void Game::GenerateWeeklyUpgrades() {
     activeUpgrades.clear();
 
@@ -341,13 +434,27 @@ void Game::HandleInput() {
         return;
     }
 
-    // 0b. Arcade PAUSE (Esc) - freeze the world, show flickering PAUSED overlay
+    // 0b. Arcade PAUSE (Esc) - freeze the world, show clickable PAUSED menu
     if (state == STATE_PLAYING && isPaused) {
-        if (IsKeyPressed(KEY_ESCAPE)) {
+        if (IsKeyPressed(KEY_ESCAPE) ||
+            (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ui.CheckPauseClick(mousePos) == 0)) {
             isPaused = false;
             gameSpeed = 1;
             AudioManager::Play(SFX_BUTTON_CLICK, 0.7f);
             ShowToast("SERVICE RESUMED!", Color{56, 189, 248, 255}, 2.0f);
+        } else if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+                   ui.CheckPauseClick(mousePos) == 1) {
+            // Restart run from a clean slate (fresh title), keeping session best
+            int keepBest = bestSessionRiders;
+            ResetPark();
+            bestSessionRiders = keepBest;
+            AudioManager::Play(SFX_BUTTON_CLICK, 0.7f);
+        } else if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+                   ui.CheckPauseClick(mousePos) == 2) {
+            int keepBest = bestSessionRiders;
+            ResetPark();
+            bestSessionRiders = keepBest;
+            AudioManager::Play(SFX_BUTTON_CLICK, 0.7f);
         }
         if (IsKeyPressed(KEY_M)) {
             AudioManager::SetMute(!AudioManager::IsMuted());
@@ -841,12 +948,16 @@ if (IsKeyPressed(KEY_F)) {
                     particles.SpawnSmoke(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 10);
                     particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ + 0.5f}, "+$15", Color{34, 197, 94, 255});
                 } else if (tracks.HasPiece(hoveredGx, hoveredGy)) {
+                    bool wasClosed = tracks.IsCircuitClosed();
                     tracks.RemovePiece(hoveredGx, hoveredGy);
                     economy.balance += 25.0f;
                     bulldozeUses++;
                     AudioManager::Play(SFX_BULLDOZE, 0.8f);
                     particles.SpawnSmoke(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 12);
                     particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ + 0.5f}, "+$25", Color{34, 197, 94, 255});
+                    if (wasClosed && !tracks.IsCircuitClosed()) {
+                        ShowToast("[CIRCUIT] Loop broken! Reconnect the track to make a closed loop.", Color{239, 68, 68, 255}, 4.0f);
+                    }
                 } else if (terrain[hoveredGx][hoveredGy] != GROUND_GRASS && terrain[hoveredGx][hoveredGy] != GROUND_WATER) {
                     terrain[hoveredGx][hoveredGy] = GROUND_GRASS;
                     economy.balance += 5.0f;
@@ -883,6 +994,8 @@ if (IsKeyPressed(KEY_F)) {
                             if (!wasClosed && tracks.IsCircuitClosed()) {
                                 ShowToast("[CIRCUIT] Transit Loop Closed! Regular EMU Schedule Active!", Color{34, 197, 94, 255}, 4.0f);
                                 AudioManager::Play(SFX_UPGRADE_FANFARE, 0.8f);
+                            } else if (wasClosed && !tracks.IsCircuitClosed()) {
+                                ShowToast("[CIRCUIT] Loop broken! Reconnect the track to make a closed loop.", Color{239, 68, 68, 255}, 4.0f);
                             }
 
                             // Auto-advance cursor forward along track exit direction and sync build heading!
@@ -976,6 +1089,13 @@ void Game::Update(float dt) {
                 AudioManager::Play(SFX_UPGRADE_FANFARE, 0.7f);
             }
         }
+        // Arm the exact tool for the newly-active lesson so the player
+        // only has to click the glowing ring - no key-number hunting.
+        int curIdx = GetCurrentTutorialIdx();
+        if (curIdx != lastArmedLesson) {
+            lastArmedLesson = curIdx;
+            AutoArmTutorialTool();
+        }
     }
 
     float simDt = dt * (float)gameSpeed;
@@ -1005,7 +1125,10 @@ void Game::Update(float dt) {
                 Vector2 targetScreen = Iso::GridToScreen(fp.x, fp.y, fp.z, {0, 0}, zoom);
                 int screenW = GetScreenWidth();
                 int screenH = GetScreenHeight();
-                Vector2 desiredCam = { (float)screenW / 2.0f - targetScreen.x, (float)screenH / 2.0f - targetScreen.y };
+                // Make the target sit slightly BELOW center so the island's
+                // surroundings stay visible - never a lonely empty void.
+                float anchorH = st.focusTrain ? 0.5f : 0.62f;
+                Vector2 desiredCam = { (float)screenW / 2.0f - targetScreen.x, (float)screenH * anchorH - targetScreen.y };
                 cameraPos = Vector2Lerp(cameraPos, desiredCam, std::min(1.0f, simDt * 2.2f));
             }
         }
@@ -1317,7 +1440,43 @@ void Game::Draw() {
         }
     }
 
-    // 11. Atmospheric Day / Sunset / Night Rush Hour Lighting
+    // 10b. Open-circuit gap markers: two pulsing red rings + dashed connector
+    //      so the player sees exactly which two tiles to bridge.
+    if (state == STATE_PLAYING && !tracks.IsCircuitClosed()) {
+        int ax, ay, bx, by;
+        tracks.GetOpenEndpoints(ax, ay, bx, by);
+        if (ax >= 0 && bx >= 0) {
+            float pulse = 0.5f + 0.5f * sinf(GetTime() * 5.0f);
+            Color ringC = Color{239, 68, 68, (unsigned char)(160 + 95 * pulse)};
+            auto drawGapRing = [&](int gx, int gy) {
+                Vector2 p = Iso::GridToScreen((float)gx + 0.5f, (float)gy + 0.5f, 0.0f, cameraPos, zoom);
+                float rw = TILE_WIDTH * zoom * 0.55f;
+                float rh = TILE_HEIGHT * zoom * 0.55f;
+                DrawEllipse((int)p.x, (int)p.y, rw, rh, Color{239, 68, 68, (unsigned char)(30 + 30 * pulse)});
+                DrawEllipseLines((int)p.x, (int)p.y, rw, rh, ringC);
+            };
+            drawGapRing(ax, ay);
+            drawGapRing(bx, by);
+            // Dashed connector between the two endpoints
+            Vector2 pa = Iso::GridToScreen((float)ax + 0.5f, (float)ay + 0.5f, 0.0f, cameraPos, zoom);
+            Vector2 pb = Iso::GridToScreen((float)bx + 0.5f, (float)by + 0.5f, 0.0f, cameraPos, zoom);
+            float dist = Vector2Distance(pa, pb);
+            int segments = std::max(1, (int)(dist / 8.0f));
+            for (int s = 0; s < segments; s += 2) {
+                float t0 = (float)s / (float)segments;
+                float t1 = std::min(1.0f, (float)(s + 1) / (float)segments);
+                Vector2 l0 = Vector2Lerp(pa, pb, t0);
+                Vector2 l1 = Vector2Lerp(pa, pb, t1);
+                DrawLineEx(l0, l1, 2.0f, Color{239, 68, 68, (unsigned char)(100 + 80 * pulse)});
+            }
+        }
+    }
+
+    // 11. Tutorial "GO HERE" target marker (pulsing ring on the exact tile +
+    //     bouncing arrow; never leaves you staring at empty void)
+    DrawTutorialTarget();
+
+    // 12. Atmospheric Day / Sunset / Night Rush Hour Lighting
     float weekPhase = fmodf(weekTimer, WEEK_DURATION);
     if (weekPhase >= 36.0f && weekPhase < 48.0f) {
         // Sunset golden hour
@@ -1358,8 +1517,8 @@ void Game::Draw() {
         rushCombo
     );
 
-    // 12a. Guided Tutorial Objectives Panel (until all steps done)
-    if (showObjectivePanel && !tutorialDone) {
+    // 12a. Guided Tutorial Objectives Panel (hidden during modals)
+    if (showObjectivePanel && !tutorialDone && state == STATE_PLAYING) {
         bool doneFlags[kTutorialCount];
         for (int i = 0; i < kTutorialCount; ++i) doneFlags[i] = GetTutorialDone(i);
         TutorialStageInfo stage;
@@ -1369,19 +1528,34 @@ void Game::Draw() {
         }
     }
 
+    // 12aa. Persistent arcade OBJECTIVE chip - visible whenever the big card is
+    //       hidden (G) or the tutorial is done. Always answers "what now?"
+    if (state == STATE_PLAYING && (!showObjectivePanel || tutorialDone)) {
+        if (!tutorialDone) {
+            TutorialStageInfo st;
+            if (GetTutorialStageInfo(GetCurrentTutorialIdx(), st) && st.title[0]) {
+                ui.DrawObjectiveChip("NEXT TASK", st.title, -1.0f);
+            }
+        } else if (endlessMode) {
+            int m = ((lastMilestoneAwarded / 250) + 1) * 250;
+            float pct = (float)(economy.totalDelivered - (m - 250)) / 250.0f;
+            ui.DrawObjectiveChip("ENDLESS METROPOLIS", TextFormat("Next subsidy grant at %d riders", m), pct);
+        } else {
+            int left = std::max(0, 500 - economy.totalDelivered);
+            ui.DrawObjectiveChip("VICTORY GOAL", TextFormat("Deliver %d more riders (%d / 500)", left, economy.totalDelivered), (float)economy.totalDelivered / 500.0f);
+        }
+    }
+
     // 12b. Arcade MISSION BRIEFING overlay (0.5s fade-out at the end)
     if (briefingTimer > 0.0f) {
         float fade = std::min(1.0f, briefingTimer / 0.5f);
         int screenW = GetScreenWidth();
         int screenH = GetScreenHeight();
         DrawRectangle(0, 0, screenW, screenH, Color{2, 6, 23, (unsigned char)(238.0f * fade)});
-        DrawGameBoldTextCentered("MISSION BRIEFING", (float)screenW / 2.0f, (float)(screenH / 2 - 150), 40, Color{255, 214, 0, (unsigned char)(255 * fade)});
-        DrawText("YOU ARE THE ISLAND'S TRANSIT AUTHORITY", screenW / 2 - 190, screenH / 2 - 92, 15, Color{248, 250, 252, (unsigned char)(255 * fade)});
-        DrawText("Your EMU bullet train is already running its loop.", screenW / 2 - 210, screenH / 2 - 48, 13, Color{203, 213, 225, (unsigned char)(255 * fade)});
-        DrawText("Follow the colored LESSON cards at the TOP of the screen.", screenW / 2 - 210, screenH / 2 - 22, 13, Color{203, 213, 225, (unsigned char)(255 * fade)});
-        DrawText("Arrows + pulsing rings will point at the EXACT button to press.", screenW / 2 - 210, screenH / 2 + 4, 13, Color{203, 213, 225, (unsigned char)(255 * fade)});
-        DrawText("Passing a lesson pays a cash BONUS. Press G to hide lessons.", screenW / 2 - 210, screenH / 2 + 30, 13, Color{148, 163, 184, (unsigned char)(255 * fade)});
-        DrawGameBoldTextCentered("READY?  THE CITY IS COUNTING ON YOU", (float)screenW / 2.0f, (float)(screenH / 2 + 78), 17, Color{56, 189, 248, (unsigned char)(255 * fade)});
+        DrawGameBoldTextCentered("MISSION BRIEFING", (float)screenW / 2.0f, (float)(screenH / 2 - 130), 40, Color{255, 214, 0, (unsigned char)(255 * fade)});
+        DrawText("Your EMU is already running its loop.", screenW / 2 - 150, screenH / 2 - 72, 14, Color{248, 250, 252, (unsigned char)(255 * fade)});
+        DrawText("Follow the gold LESSON card - a glowing ring points at the spot.", screenW / 2 - 215, screenH / 2 - 44, 14, Color{203, 213, 225, (unsigned char)(255 * fade)});
+        DrawText("Each lesson passed pays a cash BONUS.  (G hides lessons)", screenW / 2 - 180, screenH / 2 - 16, 13, Color{148, 163, 184, (unsigned char)(255 * fade)});
     }
 
     // 12c. Arcade RUSH HOUR banner (pulsing, dropped during peak windows)
@@ -1396,24 +1570,27 @@ void Game::Draw() {
         DrawGameBoldTextCentered("RUSH HOUR!  FARES x1.25", (float)GetScreenWidth() / 2.0f, (float)ry + 7, 15, Color{255, 255, 255, (unsigned char)(220 + 35 * rp)});
     }
 
-    // 12b. Draw Contextual Quick Tip Banner
-    std::string quickTip;
-    if (isBulldozing) {
-        quickTip = "DEMOLISH MODE: click a tile to remove it (X to exit)";
-    } else if (train.CanBoard() || train.GetState() == TRAIN_BOARDING || train.GetState() == TRAIN_STOPPED_IN_STATION) {
-        quickTip = "Train is at a station - commuters are boarding!";
-    } else if (activeTab == CAT_TRACK) {
-        if (tracks.IsCircuitClosed()) {
-            quickTip = "Train running! Tab 2/3 or keys 1-8 to build more";
-        } else {
-            quickTip = "Connect the track into a closed loop so the train can run";
+    // 12b. Draw Contextual Quick Tip Banner (hidden while the lesson card is
+    //      up - one piece of guidance at a time, never a wall of text)
+    if (!(showObjectivePanel && !tutorialDone)) {
+        std::string quickTip;
+        if (isBulldozing) {
+            quickTip = "DEMOLISH MODE: click a tile to remove it (X to exit)";
+        } else if (train.CanBoard() || train.GetState() == TRAIN_BOARDING || train.GetState() == TRAIN_STOPPED_IN_STATION) {
+            quickTip = "Train is at a station - commuters are boarding!";
+        } else if (activeTab == CAT_TRACK) {
+            if (tracks.IsCircuitClosed()) {
+                quickTip = "Train running! Tab 2/3 or keys 1-8 to build more";
+            } else {
+                quickTip = "Connect the track into a closed loop so the train can run";
+            }
+        } else if (activeTab == CAT_INFRA) {
+            quickTip = "Concourse: 1 Sidewalk  2 Queue  3 Plaza (X demolish)";
+        } else if (activeTab == CAT_SCENERY) {
+            quickTip = "Scenery: 1 Entrance  2 Gates  3 Tree  5 Bench  8 Cafe";
         }
-    } else if (activeTab == CAT_INFRA) {
-        quickTip = "Concourse: 1 Sidewalk  2 Queue  3 Plaza (X demolish)";
-    } else if (activeTab == CAT_SCENERY) {
-        quickTip = "Scenery: 1 Entrance  2 Gates  3 Tree  5 Bench  8 Cafe";
+        ui.DrawQuickTipBanner(quickTip);
     }
-    ui.DrawQuickTipBanner(quickTip);
 
     // 13. Draw Categorized Toolbar
     ui.DrawToolbar(
@@ -1450,8 +1627,10 @@ void Game::Draw() {
         }
     }
 
-    // 17. Draw Toast Notifications
-    ui.DrawToast(activeToast);
+    // 17. Draw Toast Notifications (skip while the lesson card is visible)
+    if (!(showObjectivePanel && !tutorialDone)) {
+        ui.DrawToast(activeToast);
+    }
 
     // 18. Draw Operations Manual
     if (helpOverlayOpen) {
