@@ -1,4 +1,5 @@
 #include "game.hpp"
+#include "font_system.hpp"
 #include <algorithm>
 
 Game::Game() {
@@ -17,7 +18,7 @@ void Game::Init() {
     int screenH = GetScreenHeight();
     if (screenH <= 0) screenH = 720;
 
-    zoom = 1.0f;
+    zoom = 1.2f;
     // Center camera on the metropolitan transit circuit and Central Hub
     cameraPos = {(float)screenW / 2.0f + 20.0f * zoom, ((float)screenH / 2.0f) - 390.0f * zoom};
 
@@ -51,6 +52,7 @@ void Game::Init() {
     rideCamActive = false;
     helpOverlayOpen = false;
     selectedPeepIdx = -1;
+    panMoves = 0;
 
     // Staff & Cleanliness
     staff.clear();
@@ -142,16 +144,20 @@ static const TutorialStageInfo kTutorialStages[] = {
      "Press R to rotate the piece you are placing. Press X for the Bulldozer, then click a tile to remove it (you get a small refund).",
      "Bulldoze is your undo button - don't fear mistakes.",
      -1, -1, false, 0},
+    {"NAVIGATE THE MAP",
+     "Explore the whole city - inside the island and out over the ocean. Hold W/A/S/D or the arrow keys, drag the map with the RIGHT or MIDDLE mouse button, or slide the mouse to the edge of the screen.",
+     "Once you have roamed, press HOME to snap the camera back to the train - the OCC dispatcher's best friend.",
+     -1, -1, false, 0},
     {"RIDE THE DRIVER'S CAB  (F)",
      "Press F for the driver's cab camera and ride along the route. Press F again to return to the OCC overhead view.",
-     "WASD or right-drag moves the camera too.",
+     "The cab camera follows the rails all by itself.",
      -1, -1, false, 0},
     {"FINAL LESSON: SERVE 75 COMMUTERS",
      "Keep the track loop closed so the train never stops. If a platform fills up a red clock warns you - extra cars and trains clear it fast. Serve 75 to finish onboarding!",
      "After this, the real goal: deliver 5,000 for victory!",
      -1, -1, false, 0}
 };
-static const int kTutorialCount = 12;
+static const int kTutorialCount = 13;
 
 bool Game::GetTutorialDone(int idx) const {
     switch (idx) {
@@ -165,8 +171,9 @@ bool Game::GetTutorialDone(int idx) const {
         case 7: return buildRadius > 14;                // bought land / expanded island
         case 8: return !extraTrains.empty();            // bought an extra train
         case 9: return bulldozeUses >= 1;               // tried the bulldozer
-        case 10: return rideCamUsed;                    // tried the cab camera
-        case 11: return economy.totalDelivered >= 75;
+        case 10: return panMoves >= 3;                  // roamed the camera
+        case 11: return rideCamUsed;                    // tried the cab camera
+        case 12: return economy.totalDelivered >= 75;
         default: return true;
     }
 }
@@ -327,32 +334,64 @@ void Game::HandleInput() {
         if ((IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ui.CheckTitleStartClick(mousePos)) ||
             IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) {
             state = STATE_PLAYING;
+            briefingTimer = 4.5f;
             AudioManager::Play(SFX_BUTTON_CLICK, 0.8f);
             ShowToast("[METRO] Service Commenced! Train will board passengers at Station [7]", Color{56, 189, 248, 255}, 5.0f);
         }
         return;
     }
 
-    // 1. Camera Panning with WASD / Arrow Keys
-    float panSpeed = 480.0f * GetFrameTime();
+    // 0b. Arcade PAUSE (Esc) - freeze the world, show flickering PAUSED overlay
+    if (state == STATE_PLAYING && isPaused) {
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            isPaused = false;
+            gameSpeed = 1;
+            AudioManager::Play(SFX_BUTTON_CLICK, 0.7f);
+            ShowToast("SERVICE RESUMED!", Color{56, 189, 248, 255}, 2.0f);
+        }
+        if (IsKeyPressed(KEY_M)) {
+            AudioManager::SetMute(!AudioManager::IsMuted());
+        }
+        return;
+    }
+
+    // 1. Camera Panning with WASD / Arrow Keys (speed scales with zoom so it
+    //    feels identical whether zoomed in on the island or viewing the sea)
+    float panSpeed = 340.0f * zoom * GetFrameTime();
     bool manualPan = false;
     if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))    { cameraPos.y += panSpeed; manualPan = true; }
     if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))  { cameraPos.y -= panSpeed; manualPan = true; }
     if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))  { cameraPos.x += panSpeed; manualPan = true; }
     if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) { cameraPos.x -= panSpeed; manualPan = true; }
-    if (manualPan) { rideCamActive = false; lastManualPanTime = 7.0f; }
 
-    // Mouse Right-Click Drag
-    if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+    // Mouse Edge-of-screen Scrolling (RTS style) - skip when over the toolbar/HUD
+    if (!isDragging && !statsWindowOpen && !staffWindowOpen && !helpOverlayOpen) {
+        Vector2 mEdge = GetMousePosition();
+        int edgeMargin = 26;
+        int scrW = GetScreenWidth();
+        int scrH = GetScreenHeight();
+        if (mEdge.x < edgeMargin) { cameraPos.x += panSpeed; manualPan = true; }
+        else if (mEdge.x > scrW - edgeMargin) { cameraPos.x -= panSpeed; manualPan = true; }
+        if (mEdge.y < edgeMargin && mEdge.y > 60) { cameraPos.y += panSpeed; manualPan = true; }
+        else if (mEdge.y > scrH - 150 && mEdge.y < scrH - 1) { cameraPos.y -= panSpeed; manualPan = true; }
+        // (bottom -140 keeps the toolbar free for clicks)
+    }
+
+    if (manualPan) { rideCamActive = false; lastManualPanTime = 7.0f; panMoves++; }
+
+    // Mouse Drag Pan with RIGHT or MIDDLE button (grab the map and pull)
+    bool dragKey = IsMouseButtonDown(MOUSE_BUTTON_RIGHT) || IsMouseButtonDown(MOUSE_BUTTON_MIDDLE);
+    if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) || IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) {
         dragStart = mousePos;
         isDragging = true;
         rideCamActive = false;
     }
     if (isDragging) {
-        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+        if (dragKey) {
             cameraPos.x += (mousePos.x - dragStart.x);
             cameraPos.y += (mousePos.y - dragStart.y);
             dragStart = mousePos;
+            lastManualPanTime = 7.0f;
         } else {
             isDragging = false;
         }
@@ -361,7 +400,19 @@ void Game::HandleInput() {
     // Zoom
     float wheel = GetMouseWheelMove();
     if (wheel != 0.0f) {
-        zoom = std::max(0.65f, std::min(2.0f, zoom + wheel * 0.1f));
+        zoom = std::max(0.65f, std::min(2.4f, zoom + wheel * 0.1f));
+    }
+
+    // Recenter the camera on the lead train (and exit cab view)
+    if (IsKeyPressed(KEY_HOME)) {
+        rideCamActive = false;
+        Vector3 lp = train.GetLocomotivePos();
+        Vector2 delta = Iso::GridToScreen(lp.x, lp.y, lp.z, Vector2{0.0f, 0.0f}, zoom);
+        cameraPos.x = (float)GetScreenWidth() / 2.0f - delta.x;
+        cameraPos.y = (float)GetScreenHeight() / 2.0f - delta.y;
+        lastManualPanTime = 0.0f;
+        ShowToast("CAMERA RECENTERED on the lead train (HOME)", Color{56, 189, 248, 255}, 2.0f);
+        AudioManager::Play(SFX_BUTTON_CLICK, 0.5f);
     }
 
     // Hotkeys
@@ -383,8 +434,14 @@ if (IsKeyPressed(KEY_F)) {
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_SPACE)) {
-        gameSpeed = (gameSpeed == 0) ? 1 : 0;
-        AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
+        if (!isPaused) {
+            gameSpeed = (gameSpeed == 0) ? 1 : 0;
+            AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
+        }
+    }
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        isPaused = true;
+        AudioManager::Play(SFX_BUTTON_CLICK, 0.7f);
     }
     if (IsKeyPressed(KEY_M)) {
         AudioManager::SetMute(!AudioManager::IsMuted());
@@ -764,7 +821,7 @@ if (IsKeyPressed(KEY_F)) {
     }
 
     // 3. Commuter Inspection or Placement
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && mousePos.y > 60 && mousePos.y < GetScreenHeight() - 140) {
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && mousePos.y > 60 && mousePos.y < GetScreenHeight() - 150) {
         // Check if clicking on a commuter
         int peepUnderMouse = peeps.FindCommuterAtScreenPos(mousePos, cameraPos, zoom);
         if (peepUnderMouse != -1) {
@@ -889,7 +946,10 @@ void Game::Update(float dt) {
     }
 
     if (state != STATE_PLAYING) return;
-    if (gameSpeed == 0) return;
+    if (gameSpeed == 0 || isPaused) return;
+
+    // Arcade mission briefing timer (real-time countdown)
+    if (briefingTimer > 0.0f) briefingTimer -= dt;
 
     // Tutorial objective progression
     if (!tutorialDone) {
@@ -897,19 +957,23 @@ void Game::Update(float dt) {
         int wasDone = tutorialDoneCount;
         tutorialDoneCount = nowDone;
         if (nowDone > wasDone) {
+            int lessons = nowDone - wasDone;
             if (nowDone >= kTutorialCount) {
                 tutorialDone = true;
-                ShowToast("TUTORIAL COMPLETE! Final goal: 500 riders to win.", Color{34, 197, 94, 255}, 5.0f);
-                AudioManager::Play(SFX_UPGRADE_FANFARE, 0.9f);
+                economy.balance += 500.0f;
+                ShowToast("TUTORIAL COMPLETE! +$500 grant. Final goal: 500 riders to win.", Color{34, 197, 94, 255}, 5.5f);
+                AudioManager::Play(SFX_UPGRADE_FANFARE, 1.0f);
             } else {
                 TutorialStageInfo next;
                 if (GetTutorialStageInfo(nowDone, next)) {
-                    ShowToast(TextFormat("LESSON COMPLETE! Next: %s", next.title), Color{255, 214, 0, 255}, 4.0f);
+                    ShowToast(TextFormat("LESSON PASSED (+$%d)! Next: %s", lessons * 75, next.title), Color{255, 214, 0, 255}, 4.0f);
                 } else {
-                    ShowToast("LESSON COMPLETE!", Color{255, 214, 0, 255}, 3.0f);
+                    ShowToast("LESSON PASSED!", Color{255, 214, 0, 255}, 3.0f);
                 }
-                particles.SpawnConfetti(train.GetLocomotivePos(), 18);
-                AudioManager::Play(SFX_BUTTON_CLICK, 0.8f);
+                economy.balance += 75.0f * lessons;
+                particles.SpawnConfetti(Vector3{9.5f, 11.5f, 0.4f}, 18);
+                particles.SpawnFloatingText(Vector3{9.5f, 11.5f, 0.6f}, TextFormat("+$%d LESSON BONUS", lessons * 75), Color{255, 214, 0, 255});
+                AudioManager::Play(SFX_UPGRADE_FANFARE, 0.7f);
             }
         }
     }
@@ -993,13 +1057,15 @@ void Game::Update(float dt) {
 
     if (delivered > 0) {
         economy.totalDelivered += delivered;
+        bestSessionRiders = std::max(bestSessionRiders, economy.totalDelivered);
 
         // Ridership Rush Combo multiplier
         comboStreak += delivered;
         comboTimer = 18.0f;
         rushCombo = 1.0f + std::min(1.0f, (float)comboStreak * 0.05f); // up to 2.0x
-        float comboBonus = fareRevenue * (rushCombo - 1.0f);
-        float totalEarned = fareRevenue + comboBonus;
+        float rushMult = rushHourActive ? 1.25f : 1.0f;                  // rush-hour fare surge
+        float comboBonus = fareRevenue * rushMult * (rushCombo - 1.0f);
+        float totalEarned = fareRevenue * rushMult + comboBonus;
         economy.balance += totalEarned;
         parkRating = std::min(100.0f, parkRating + (float)delivered * 0.6f);
 
@@ -1183,7 +1249,7 @@ void Game::Draw() {
     ClearBackground(Color{241, 245, 249, 255}); // Slate 100 soft architectural canvas
 
     if (state == STATE_TITLE) {
-        ui.DrawTitleScreen();
+        ui.DrawTitleScreen(bestSessionRiders);
         EndDrawing();
         return;
     }
@@ -1233,7 +1299,7 @@ void Game::Draw() {
 
     // 10. Draw Ghost Placement Preview
     Vector2 mousePos = GetMousePosition();
-    bool overUI = (mousePos.y <= 56 || mousePos.y >= GetScreenHeight() - 140);
+    bool overUI = (mousePos.y <= 56 || mousePos.y >= GetScreenHeight() - 150);
     if (!overUI && hoveredGx >= 0 && hoveredGx < GRID_SIZE && hoveredGy >= 0 && hoveredGy < GRID_SIZE) {
         if (isBulldozing) {
             Iso::DrawCursor(hoveredGx, hoveredGy, currentZ, cameraPos, zoom, Color{239, 68, 68, 220});
@@ -1303,6 +1369,33 @@ void Game::Draw() {
         }
     }
 
+    // 12b. Arcade MISSION BRIEFING overlay (0.5s fade-out at the end)
+    if (briefingTimer > 0.0f) {
+        float fade = std::min(1.0f, briefingTimer / 0.5f);
+        int screenW = GetScreenWidth();
+        int screenH = GetScreenHeight();
+        DrawRectangle(0, 0, screenW, screenH, Color{2, 6, 23, (unsigned char)(238.0f * fade)});
+        DrawGameBoldTextCentered("MISSION BRIEFING", (float)screenW / 2.0f, (float)(screenH / 2 - 150), 40, Color{255, 214, 0, (unsigned char)(255 * fade)});
+        DrawText("YOU ARE THE ISLAND'S TRANSIT AUTHORITY", screenW / 2 - 190, screenH / 2 - 92, 15, Color{248, 250, 252, (unsigned char)(255 * fade)});
+        DrawText("Your EMU bullet train is already running its loop.", screenW / 2 - 210, screenH / 2 - 48, 13, Color{203, 213, 225, (unsigned char)(255 * fade)});
+        DrawText("Follow the colored LESSON cards at the TOP of the screen.", screenW / 2 - 210, screenH / 2 - 22, 13, Color{203, 213, 225, (unsigned char)(255 * fade)});
+        DrawText("Arrows + pulsing rings will point at the EXACT button to press.", screenW / 2 - 210, screenH / 2 + 4, 13, Color{203, 213, 225, (unsigned char)(255 * fade)});
+        DrawText("Passing a lesson pays a cash BONUS. Press G to hide lessons.", screenW / 2 - 210, screenH / 2 + 30, 13, Color{148, 163, 184, (unsigned char)(255 * fade)});
+        DrawGameBoldTextCentered("READY?  THE CITY IS COUNTING ON YOU", (float)screenW / 2.0f, (float)(screenH / 2 + 78), 17, Color{56, 189, 248, (unsigned char)(255 * fade)});
+    }
+
+    // 12c. Arcade RUSH HOUR banner (pulsing, dropped during peak windows)
+    if (rushHourActive && briefingTimer <= 0.0f) {
+        float rp = 0.5f + 0.5f * sinf(GetTime() * 6.0f);
+        int rw = 300;
+        int rh = 32;
+        int rx = ((int)GetScreenWidth() - rw) / 2;
+        int ry = 106;
+        DrawRectangleRounded(Rectangle{(float)rx, (float)ry, (float)rw, (float)rh}, 0.5f, 4, Color{185, 28, 28, (unsigned char)(215 + 40 * rp)});
+        DrawRectangleRoundedLines(Rectangle{(float)rx, (float)ry, (float)rw, (float)rh}, 0.5f, 4, Color{254, 202, 202, (unsigned char)(220 * rp)});
+        DrawGameBoldTextCentered("RUSH HOUR!  FARES x1.25", (float)GetScreenWidth() / 2.0f, (float)ry + 7, 15, Color{255, 255, 255, (unsigned char)(220 + 35 * rp)});
+    }
+
     // 12b. Draw Contextual Quick Tip Banner
     std::string quickTip;
     if (isBulldozing) {
@@ -1365,14 +1458,18 @@ void Game::Draw() {
         ui.DrawTransitOperationsManual();
     }
 
-    // 19. Draw Modals (Weekly Grant, Game Over, Victory)
+    // 19. Draw Modals (Weekly Grant, Game Over, Victory) + Arcade Pause overlay
     if (state == STATE_WEEKLY_UPGRADE) {
         int ch = ui.CheckUpgradeModalClick(GetMousePosition());
         ui.DrawWeeklyModal(activeUpgrades, ch);
     } else if (state == STATE_GAME_OVER) {
-        ui.DrawGameOver(economy.totalDelivered);
+        int stars = 1 + ((economy.totalDelivered >= 500) ? 1 : 0) + ((week <= 4) ? 1 : 0);
+        ui.DrawGameOver(economy.totalDelivered, stars, bestSessionRiders);
     } else if (state == STATE_VICTORY) {
-        ui.DrawVictory(economy.totalDelivered);
+        int stars = 1 + ((economy.totalDelivered >= 500) ? 1 : 0) + ((week <= 4) ? 1 : 0);
+        ui.DrawVictory(economy.totalDelivered, week, stars, economy.balance, bestSessionRiders);
+    } else if (state == STATE_PLAYING && (gameSpeed == 0 || isPaused)) {
+        ui.DrawPauseOverlay();
     }
 
     EndDrawing();

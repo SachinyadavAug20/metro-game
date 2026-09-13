@@ -141,6 +141,10 @@ protected:
     int bulldozeUses = 0;
     bool rideCamUsed = false;
     float lastManualPanTime = 0.0f;  // player panning suspends tutorial camera focus
+    int panMoves = 0;                // camera-pan counter for the NAVIGATE lesson
+    float briefingTimer = 0.0f;      // arcade MISSION BRIEFING overlay at game start
+    bool isPaused = false;           // arcade ESC hard-pause overlay
+    int bestSessionRiders = 0;       // high-score table (this session) for replay loop
 
     // Helper functions
     void SetupInitialPark();

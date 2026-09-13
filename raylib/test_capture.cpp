@@ -75,6 +75,26 @@ public:
         }
     }
     void GiveCash(double amt) { economy.balance = (float)amt; }
+    void SetBriefing(float t) { briefingTimer = t; }
+    void SetBest(int b) { bestSessionRiders = b; }
+    void ForceRush(bool on) { rushHourActive = on; }
+    void ForcePause(bool on) { isPaused = on; }
+    void ForceResultsScreen() { economy.totalDelivered = 512; week = 3; state = STATE_VICTORY; }
+    void ForceGameOverScreen() { economy.totalDelivered = 343; state = STATE_GAME_OVER; }
+    void ForceSpotlightLesson() {
+        piecesPlaced = 5;
+        stationsPlaced = 1;
+        sceneryPlaced = 3;
+        viaductPiecesPlaced = 1;
+    }
+    void ResetTutorialTracking() {
+        piecesPlaced = 0;
+        stationsPlaced = 0;
+        sceneryPlaced = 0;
+        viaductPiecesPlaced = 0;
+        bulldozeUses = 0;
+        rideCamUsed = false;
+    }
     float GetDistance() const { return train.GetTrainDistance(); }
     float GetDistance2() const { return extraTrains.empty() ? 0.0f : extraTrains[0].GetTrainDistance(); }
     int GetDelivered() const { return economy.totalDelivered; }
@@ -108,13 +128,39 @@ int main() {
     game.AddStationMesses();
     game.PositionCrew();
 
-    // 0. Start Menu & Instructions Screen (STATE_TITLE)
+    // 0. Start Menu & Instructions Screen (STATE_TITLE) with session high-score
+    game.SetBest(250);
     game.Render();
     TakeScreenshot("test_metro_start_menu.png");
     std::cout << "Captured test_metro_start_menu.png\n";
 
     // Start playing
     game.StartGame();
+
+    // 0c. Arcade PAUSE overlay + RUSH HOUR banner (flickering juice)
+    game.ForceRush(true);
+    game.Render();
+    TakeScreenshot("test_metro_rush_banner.png");
+    std::cout << "Captured test_metro_rush_banner.png\n";
+    game.ForceRush(false);
+    game.ForcePause(true);
+    game.Render();
+    TakeScreenshot("test_metro_paused.png");
+    std::cout << "Captured test_metro_paused.png\n";
+    game.ForcePause(false);
+
+    // 0b. Arcade MISSION BRIEFING overlay + spotlight shop lesson (tutorial wayfinding)
+    game.SetBriefing(4.5f);
+    game.Render();
+    TakeScreenshot("test_metro_briefing.png");
+    std::cout << "Captured test_metro_briefing.png\n";
+    game.SetBriefing(0.0f);
+    game.ForceSpotlightLesson();
+    game.Render();
+    TakeScreenshot("test_metro_spotlight_lesson.png");
+    std::cout << "Captured test_metro_spotlight_lesson.png\n";
+    game.ResetTutorialTracking();
+    game.Render();
 
     // 1. Initial State at Central Hub: Entrance, Plaza, Fountain, Central Hub Platform
     game.SetCamera({660.0f, -30.0f}, 1.0f);
@@ -182,6 +228,16 @@ int main() {
     game.Render();
     TakeScreenshot("test_metro_infinite_loop_proof.png");
     std::cout << "Captured test_metro_infinite_loop_proof.png\n";
+
+    // 9. Arcade result screens (star rating + flicker + RESTART)
+    game.ForceResultsScreen();
+    game.Render();
+    TakeScreenshot("test_metro_victory.png");
+    std::cout << "Captured test_metro_victory.png\n";
+    game.ForceGameOverScreen();
+    game.Render();
+    TakeScreenshot("test_metro_gameover.png");
+    std::cout << "Captured test_metro_gameover.png\n";
 
     CleanupGameFont();
     CloseWindow();

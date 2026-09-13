@@ -10,6 +10,25 @@ struct UpgradeChoice {
     Color accentColor;
 };
 
+// Shared toolbar geometry - ONE source of truth so the draw code, click
+// hit-tests and tutorial spotlight always agree (single place to rescale).
+struct ToolbarMetrics {
+    static constexpr int BAR_W = 840;
+    static constexpr int BAR_H = 118;
+    static constexpr int AUX_W = 146;
+    static constexpr int GAP = 12;          // gap between main bar and aux pillar
+    static constexpr int ITEM_W = 84;
+    static constexpr int ITEM_H = 86;       // tall tool buttons for clean large fonts
+    static constexpr int TAB_H = 30;
+    static constexpr int BUY_H = 24;        // CAR/LAND/EXTRA TRAIN purchase buttons
+    static constexpr int BUY_Y = 90;        // purchase row offset from bar top
+    static constexpr int ITEM_Y = 14;       // tool button row offset from bar top
+    static constexpr int DOCK_H = 12;       // clearances (barY = screenH - BAR_H - DOCK_H)
+    static int BarX(int screenW) { return std::max(10, (screenW - (BAR_W + GAP + AUX_W)) / 2); }
+    static int BarY(int screenH) { return screenH - BAR_H - DOCK_H; }
+    static int AuxX(int screenW)  { return BarX(screenW) + BAR_W + GAP; }
+};
+
 // A single stage in the guided, deliberate tutorial walkthrough.
 struct TutorialStageInfo {
     const char* title = "";
@@ -70,9 +89,10 @@ public:
     void DrawTutorialPanel(bool visible, const TutorialStageInfo& stage, int currentIdx, int total, const bool* doneFlags);
     void DrawTransitOperationsManual();
     void DrawWeeklyModal(const std::vector<UpgradeChoice>& choices, int hoveredChoice);
-    void DrawGameOver(int finalRidership);
-    void DrawVictory(int finalRidership);
-    void DrawTitleScreen();
+    void DrawGameOver(int finalRidership, int stars, int best);
+    void DrawVictory(int finalRidership, int weeks, int stars, float balance, int best);
+    void DrawTitleScreen(int best);
+    void DrawPauseOverlay();
 
     // Compatibility aliases
     void DrawCoasterStats(const MetroLineStats& stats) { DrawLineOperations(stats); }
