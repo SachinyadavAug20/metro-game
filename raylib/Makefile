@@ -32,22 +32,20 @@ web:
 	@echo "==> [1/3] Compiling Metro Grid to WebAssembly (Emscripten)..."
 	@mkdir -p build_web
 	$(EMCC) -O3 -std=c++17 -DPLATFORM_WEB $(INCLUDES) $(RAYLIB_WEB_INC) $(SRCS) $(RAYLIB_WEB_LIB) \
-		-sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 --embed-file assets --shell-file src/itch_shell.html -o build_web/index.html
-	@echo "==> [2/3] Packing directly into itch.io uploadable ZIP ($(ZIP_NAME))..."
-	@rm -f $(ZIP_NAME) ../$(ZIP_NAME) ../build/$(ZIP_NAME)
-	zip -9 -j $(ZIP_NAME) build_web/index.html build_web/index.js build_web/index.wasm
-	@mkdir -p ../build
-	@cp $(ZIP_NAME) ../build/$(ZIP_NAME)
-	@cp $(ZIP_NAME) ../$(ZIP_NAME)
+		-sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 --embed-file assets --shell-file src/itch_shell.html -o build_web/metro_game.html
+	@cp build_web/metro_game.html build_web/index.html
+	@sed -i "s/metro_game.js/metro_game.js?v=$$(date +%s)/g" build_web/index.html
+	@echo "==> [2/3] Packing directly into the single itch.io ZIP (../$(ZIP_NAME))..."
+	@rm -f $(ZIP_NAME) ../$(ZIP_NAME) ../build/$(ZIP_NAME) ../build/MetroGrid_GameJam26.zip
+	zip -9 -j ../$(ZIP_NAME) build_web/index.html build_web/metro_game.js build_web/metro_game.wasm
+	@rm -f $(ZIP_NAME) ../build/$(ZIP_NAME)
 	@echo "==> [3/3] Verification & Integrity Check..."
-	@unzip -t $(ZIP_NAME)
+	@unzip -t ../$(ZIP_NAME)
 	@echo ""
 	@echo "========================================================================="
-	@echo " SUCCESS: itch.io Web Build ZIP is Ready for Direct Upload!"
+	@echo " SUCCESS: The single itch.io Web Build ZIP is ready!"
 	@echo " File location (upload this directly in itch.io 'Uploads' section):"
-	@echo "   1) $(abspath ../$(ZIP_NAME))"
-	@echo "   2) $(abspath $(ZIP_NAME))"
-	@echo "   3) $(abspath ../build/$(ZIP_NAME))"
+	@echo "   $(abspath ../$(ZIP_NAME))"
 	@echo ""
 	@echo " itch.io Settings:"
 	@echo "   * Kind of project: HTML"

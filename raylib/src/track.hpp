@@ -58,6 +58,7 @@ public:
         gx1 = openEndA.gx; gy1 = openEndA.gy;
         gx2 = openEndB.gx; gy2 = openEndB.gy;
     }
+    bool AutoBridgeCircuitGap(int& outPiecesPlaced);
 
     // Station references & queries
     bool GetPrimaryStationLocation(int& outGx, int& outGy, int& outGz) const;

@@ -59,6 +59,16 @@ void DrawTile(int gx, int gy, int gz, GroundType type, Vector2 camOffset, float 
             leftColor = Color{155, 168, 185, 255};
             rightColor = Color{115, 130, 150, 255};
             break;
+        case GROUND_SAND:
+            topColor = (gx % 2 == gy % 2) ? Color{246, 215, 137, 255} : Color{238, 202, 120, 255}; // Warm golden beach sand
+            leftColor = Color{180, 145, 75, 255};
+            rightColor = Color{205, 170, 95, 255};
+            break;
+        case GROUND_STONE:
+            topColor = (gx % 2 == gy % 2) ? Color{148, 163, 184, 255} : Color{115, 130, 150, 255}; // Chiseled slate / cobblestone
+            leftColor = Color{51, 65, 85, 255};
+            rightColor = Color{71, 85, 105, 255};
+            break;
     }
 
     if (hovered) {
@@ -143,6 +153,19 @@ void DrawTile(int gx, int gy, int gz, GroundType type, Vector2 camOffset, float 
         if (shimmer > 0.35f) {
             DrawCircle((int)(mid.x + 3.0f * zoom), (int)(mid.y - 1.0f * zoom), 1.6f * zoom, Color{255, 255, 255, 220});
         }
+    }
+
+    // Sand coastal ripples & dunes
+    if (type == GROUND_SAND) {
+        Vector2 mid = { (top.x + bottom.x) * 0.5f, (top.y + bottom.y) * 0.5f };
+        DrawLineEx({mid.x - 6.0f * zoom, mid.y - 1.0f * zoom}, {mid.x + 6.0f * zoom, mid.y + 1.0f * zoom}, 1.2f * zoom, Color{255, 240, 180, 130});
+    }
+
+    // Cobblestone / slate rock mortar lines
+    if (type == GROUND_STONE) {
+        Vector2 mid = { (top.x + bottom.x) * 0.5f, (top.y + bottom.y) * 0.5f };
+        DrawLineEx({mid.x - 7.0f * zoom, mid.y}, {mid.x + 7.0f * zoom, mid.y}, 1.0f, Color{51, 65, 85, 120});
+        DrawLineEx({mid.x, mid.y - 3.5f * zoom}, {mid.x, mid.y + 3.5f * zoom}, 1.0f, Color{51, 65, 85, 120});
     }
 
     // Subtle edge bevel outline

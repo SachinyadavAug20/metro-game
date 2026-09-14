@@ -13,7 +13,7 @@
 constexpr int TILE_WIDTH = 64;
 constexpr int TILE_HEIGHT = 32;
 constexpr int HEIGHT_STEP = 24; // Pixel rise per elevation level (Z)
-constexpr int GRID_SIZE = 26;   // 26x26 metropolitan isometric grid
+constexpr int GRID_SIZE = 48;   // 48x48 sprawling metropolitan isometric grid
 
 // Directions
 enum Direction {
@@ -86,14 +86,16 @@ enum TrackType {
     TRACK_SIGNAL           // Track segment equipped with 3-aspect wayside signaling mast
 };
 
-// Ground / Pavement Types
+// Ground / Pavement / Terraforming Types (Minecraft / Terraria / RCT Style)
 enum GroundType {
-    GROUND_GRASS = 0,
-    GROUND_DIRT,
-    GROUND_WATER,          // Urban canal / river
+    GROUND_GRASS = 0,      // Lush emerald lawn / parkland
+    GROUND_DIRT,           // Fertile loam
+    GROUND_WATER,          // Urban canal / river / ocean
     GROUND_PATH,           // Urban pedestrian sidewalk
     GROUND_QUEUE,          // Platform queuing tactile safety zone
-    GROUND_PLAZA           // Modern granite transit plaza
+    GROUND_PLAZA,          // Modern granite transit plaza
+    GROUND_SAND,           // Tropical coastal beach sand & dunes
+    GROUND_STONE           // Mountain granite rock / chiseled cobblestone
 };
 
 // Urban & Transit Scenery Types

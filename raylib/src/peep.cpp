@@ -232,6 +232,19 @@ void CommuterManager::Update(float dt, MetroTrain& train, std::vector<MetroTrain
                 c.targetPos = entrancePos;
                 c.happiness = 100.0f;
                 c.thought = "Arrived safely at my destination!";
+                if (GetRandomValue(0, 2) == 0) {
+                    const char* thoughts[] = {
+                        "★ Great commute!",
+                        "♥ Love this line!",
+                        "⚡ Fast express!",
+                        "★ Clean station!"
+                    };
+                    particles.SpawnFloatingText(
+                        Vector3{c.pos.x, c.pos.y, 0.7f},
+                        thoughts[GetRandomValue(0, 3)],
+                        Color{52, 211, 153, 255}
+                    );
+                }
                 break;
             }
 

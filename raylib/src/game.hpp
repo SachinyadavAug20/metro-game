@@ -57,6 +57,8 @@ protected:
     Direction buildHeading = DIR_EAST;
     int currentZ = 0;
     bool isBulldozing = false;
+    bool isTerraformingRaise = false;
+    int currentLineId = 1; // Line 1 to 5 (Tokyo Red, London Blue, etc.)
     int hoveredGx = -1;
     int hoveredGy = -1;
 
@@ -99,13 +101,13 @@ protected:
     bool endlessMode = false;
 
     // Island land expansion (RCT-style purchasable land)
-    static const int LAND_CENTER_X = 9;
-    static const int LAND_CENTER_Y = 11;
-    static constexpr float TRAIN_CAR_COST = 800.0f;
-    static constexpr float LAND_EXPAND_COST = 600.0f;
-    static constexpr float EXTRA_TRAIN_BASE_COST = 1400.0f;
-    static constexpr int MAX_EXTRA_TRAINS = 3;
-    int buildRadius = 14;  // Manhattan ring of developable land
+    static const int LAND_CENTER_X = 14;
+    static const int LAND_CENTER_Y = 14;
+    static constexpr float TRAIN_CAR_COST = 600.0f;
+    static constexpr float LAND_EXPAND_COST = 500.0f;
+    static constexpr float EXTRA_TRAIN_BASE_COST = 1200.0f;
+    static constexpr int MAX_EXTRA_TRAINS = 6;
+    int buildRadius = 16;  // Manhattan ring of developable land
     bool IsBuildable(int gx, int gy) const;
     void ReclaimLand();
 
@@ -116,6 +118,7 @@ protected:
     // Rush-hour logic (weekly peak: doubled spawn demand)
     float rushHourTimer = 0.0f;
     bool rushHourActive = false;
+    float rushHourFlashTimer = 0.0f;  // screen-edge red flash when rush hour starts
 
     // Audio roar / chain click timers
     float chainSoundTimer = 0.0f;
@@ -124,34 +127,17 @@ protected:
     std::vector<UpgradeChoice> activeUpgrades;
     int hoveredUpgrade = -1;
 
-    // Guided tutorial objectives
-    bool showObjectivePanel = true;
-    bool tutorialDone = false;
-    int tutorialDoneCount = 0;
-    int piecesPlaced = 0;
-    int stationsPlaced = 0;
-    int sceneryPlaced = 0;
-    bool GetTutorialDone(int idx) const;
-    int GetTutorialDoneCount() const;
-    int GetCurrentTutorialIdx() const;
-    bool GetTutorialStageInfo(int idx, TutorialStageInfo& out) const;
-
-    // Deliberate tutorial tracking counters
-    int viaductPiecesPlaced = 0;
-    int bulldozeUses = 0;
-    bool rideCamUsed = false;
-    float lastManualPanTime = 0.0f;  // player panning suspends tutorial camera focus
-    int panMoves = 0;                // camera-pan counter for the NAVIGATE lesson
-    float briefingTimer = 0.0f;      // arcade MISSION BRIEFING overlay at game start
     bool isPaused = false;           // arcade ESC hard-pause overlay
     int bestSessionRiders = 0;       // high-score table (this session) for replay loop
-    int lastArmedLesson = -1;      // which lesson's tool is currently pre-selected
+    float stateEntryTime = 0.0f;   // GetTime() when current state was entered (for fade-in effects)
+    float shakeTimer = 0.0f;       // screen shake decay timer (seconds remaining)
+    float shakeIntensity = 0.0f;   // current shake pixel offset
 
     // Helper functions
     void SetupInitialPark();
     void GenerateWeeklyUpgrades();
     void ApplyUpgrade(int choiceIdx);
     void ResetPark();
-    void DrawTutorialTarget() const;   // world-space "go here" ring + off-screen arrow
-    void AutoArmTutorialTool();        // pre-select the exact tool for the current lesson
+    void RecenterCamera();
+    void ClampCamera();
 };

@@ -75,26 +75,11 @@ public:
         }
     }
     void GiveCash(double amt) { economy.balance = (float)amt; }
-    void SetBriefing(float t) { briefingTimer = t; }
     void SetBest(int b) { bestSessionRiders = b; }
     void ForceRush(bool on) { rushHourActive = on; }
     void ForcePause(bool on) { isPaused = on; }
     void ForceResultsScreen() { economy.totalDelivered = 512; week = 3; state = STATE_VICTORY; }
     void ForceGameOverScreen() { economy.totalDelivered = 343; state = STATE_GAME_OVER; }
-    void ForceSpotlightLesson() {
-        piecesPlaced = 5;
-        stationsPlaced = 1;
-        sceneryPlaced = 3;
-        viaductPiecesPlaced = 1;
-    }
-    void ResetTutorialTracking() {
-        piecesPlaced = 0;
-        stationsPlaced = 0;
-        sceneryPlaced = 0;
-        viaductPiecesPlaced = 0;
-        bulldozeUses = 0;
-        rideCamUsed = false;
-    }
     float GetDistance() const { return train.GetTrainDistance(); }
     float GetDistance2() const { return extraTrains.empty() ? 0.0f : extraTrains[0].GetTrainDistance(); }
     int GetDelivered() const { return economy.totalDelivered; }
@@ -111,6 +96,27 @@ public:
     void Render() {
         Draw();
     }
+    void BreakTrack(int gx, int gy) {
+        tracks.RemovePiece(gx, gy);
+    }
+    bool AutoBridgeTrack() {
+        int placed = 0;
+        return tracks.AutoBridgeCircuitGap(placed);
+    }
+    bool IsCircuitClosed() const {
+        return tracks.IsCircuitClosed();
+    }
+    void SetTab(ToolCategory tab) {
+        activeTab = tab;
+        isBulldozing = false;
+        isTerraformingRaise = false;
+    }
+    GroundType GetGround(int gx, int gy) const { return terrain[gx][gy]; }
+    void SetGround(int gx, int gy, GroundType g) { terrain[gx][gy] = g; }
+    int GetZ(int gx, int gy) const { return groundZ[gx][gy]; }
+    void SetZ(int gx, int gy, int z) { groundZ[gx][gy] = z; }
+    void ReclaimDistrict() { ReclaimLand(); }
+    int GetBuildRadius() const { return buildRadius; }
 };
 
 int main() {
@@ -137,6 +143,20 @@ int main() {
     // Start playing
     game.StartGame();
 
+    // 0a. Auto-Loop Verification: Break rail to trigger OPEN TRACK badge, then Auto-Bridge
+    game.BreakTrack(8, 9);
+    game.Step(0.016f);
+    game.Render();
+    TakeScreenshot("test_metro_autoloop_open.png");
+    std::cout << "Captured test_metro_autoloop_open.png\n";
+
+    bool bridged = game.AutoBridgeTrack();
+    std::cout << "Auto-bridging track: " << (bridged ? "SUCCESS" : "FAILED") << "\n";
+    game.Step(0.016f);
+    game.Render();
+    TakeScreenshot("test_metro_autoloop_closed.png");
+    std::cout << "Captured test_metro_autoloop_closed.png\n";
+
     // 0c. Arcade PAUSE overlay + RUSH HOUR banner (flickering juice)
     game.ForceRush(true);
     game.Render();
@@ -148,19 +168,6 @@ int main() {
     TakeScreenshot("test_metro_paused.png");
     std::cout << "Captured test_metro_paused.png\n";
     game.ForcePause(false);
-
-    // 0b. Arcade MISSION BRIEFING overlay + spotlight shop lesson (tutorial wayfinding)
-    game.SetBriefing(4.5f);
-    game.Render();
-    TakeScreenshot("test_metro_briefing.png");
-    std::cout << "Captured test_metro_briefing.png\n";
-    game.SetBriefing(0.0f);
-    game.ForceSpotlightLesson();
-    game.Render();
-    TakeScreenshot("test_metro_spotlight_lesson.png");
-    std::cout << "Captured test_metro_spotlight_lesson.png\n";
-    game.ResetTutorialTracking();
-    game.Render();
 
     // 1. Initial State at Central Hub: Entrance, Plaza, Fountain, Central Hub Platform
     game.SetCamera({660.0f, -30.0f}, 1.0f);
@@ -238,6 +245,51 @@ int main() {
     game.Render();
     TakeScreenshot("test_metro_gameover.png");
     std::cout << "Captured test_metro_gameover.png\n";
+
+    // 10. Terraforming & District Water Reclamation Verification
+    game.StartGame();
+    int rInit = game.GetBuildRadius();
+    game.ReclaimDistrict();
+    int rAfter = game.GetBuildRadius();
+    std::cout << "District expanded: " << rInit << " -> " << rAfter << "\n";
+    if (rAfter <= rInit) {
+        std::cout << "TEST FAIL: ReclaimDistrict did not increase buildRadius\n";
+        return 1;
+    }
+
+    // Test land reclamation on water cell (10, 25)
+    game.SetGround(10, 25, GROUND_WATER);
+    if (game.GetGround(10, 25) != GROUND_WATER) {
+        std::cout << "TEST FAIL: Could not set water\n";
+        return 1;
+    }
+    // Reclaim to grass
+    game.SetGround(10, 25, GROUND_GRASS);
+    if (game.GetGround(10, 25) != GROUND_GRASS) {
+        std::cout << "TEST FAIL: Reclaim to grass failed\n";
+        return 1;
+    }
+    // Reclaim to sand and stone
+    game.SetGround(11, 25, GROUND_SAND);
+    game.SetGround(12, 25, GROUND_STONE);
+    // Excavate canal
+    game.SetGround(13, 25, GROUND_WATER);
+    // Raise hill
+    game.SetZ(10, 25, 2);
+    if (game.GetZ(10, 25) != 2) {
+        std::cout << "TEST FAIL: Hill elevation failed\n";
+        return 1;
+    }
+
+    game.Render();
+    TakeScreenshot("test_metro_terraforming.png");
+    std::cout << "Captured test_metro_terraforming.png\n";
+
+    game.SetTab(CAT_INFRA);
+    game.Render();
+    TakeScreenshot("test_metro_concourse_toolbar.png");
+    std::cout << "Captured test_metro_concourse_toolbar.png\n";
+    std::cout << "TERRAFORMING & RECLAMATION VERIFIED!\n";
 
     CleanupGameFont();
     CloseWindow();

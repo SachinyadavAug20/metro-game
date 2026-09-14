@@ -341,6 +341,101 @@ Vector3 TrackSystem::GetPointAtDistance(float distance, Vector3* outTangent) con
     return Vector3Lerp(p0, p1, t);
 }
 
+bool TrackSystem::AutoBridgeCircuitGap(int& outPiecesPlaced) {
+    outPiecesPlaced = 0;
+    if (circuitClosed) return true;
+    if (pieces.size() < 2) return false;
+
+    // Try bridging up to 6 consecutive missing tiles
+    for (int step = 0; step < 6; ++step) {
+        RecalculateCircuit();
+        if (circuitClosed) return true;
+
+        int ax, ay, bx, by;
+        GetOpenEndpoints(ax, ay, bx, by);
+        if (ax < 0 || bx < 0) return false;
+
+        const TrackNode* nodeA = GetPiece(ax, ay);
+        if (!nodeA) return false;
+
+        int gapX = bx;
+        int gapY = by;
+        if (gapX < 0 || gapX >= GRID_SIZE || gapY < 0 || gapY >= GRID_SIZE) return false;
+
+        if (HasPiece(gapX, gapY)) return false;
+
+        Direction inDir = GetOppositeDir(nodeA->outDir);
+        Direction desiredOut = DIR_NORTH;
+        bool foundTarget = false;
+
+        // Check 3 other directions from gap tile to find the next connecting track
+        for (int d = 0; d < 4; ++d) {
+            Direction outDir = (Direction)d;
+            if (outDir == inDir) continue;
+            Vector2 off = GetDirectionOffset(outDir);
+            int nx = gapX + (int)roundf(off.x);
+            int ny = gapY + (int)roundf(off.y);
+            if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+                const TrackNode* neighbor = GetPiece(nx, ny);
+                if (neighbor && neighbor->gz == nodeA->gz) {
+                    Direction expectedNeighborIn = GetOppositeDir(outDir);
+                    if (neighbor->inDir == expectedNeighborIn) {
+                        desiredOut = outDir;
+                        foundTarget = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // If no direct neighbor has matching inDir, check which neighbor heads towards the first station
+        if (!foundTarget && !pieces.empty()) {
+            float bestDist = 999.0f;
+            for (int d = 0; d < 4; ++d) {
+                Direction outDir = (Direction)d;
+                if (outDir == inDir) continue;
+                Vector2 off = GetDirectionOffset(outDir);
+                int nx = gapX + (int)roundf(off.x);
+                int ny = gapY + (int)roundf(off.y);
+                if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE && !HasPiece(nx, ny)) {
+                    float dist = fabsf((float)(nx - pieces[0].gx)) + fabsf((float)(ny - pieces[0].gy));
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        desiredOut = outDir;
+                        foundTarget = true;
+                    }
+                }
+            }
+        }
+
+        if (!foundTarget) return false;
+
+        TrackType type = TRACK_STRAIGHT;
+        Direction straightHeading = nodeA->outDir;
+        Direction leftDir = (Direction)((straightHeading + 3) % 4);
+        Direction rightDir = (Direction)((straightHeading + 1) % 4);
+
+        if (desiredOut == straightHeading) {
+            type = TRACK_STRAIGHT;
+        } else if (desiredOut == leftDir) {
+            type = TRACK_CURVE_LEFT;
+        } else if (desiredOut == rightDir) {
+            type = TRACK_CURVE_RIGHT;
+        } else {
+            type = TRACK_STRAIGHT;
+        }
+
+        if (AddPiece(gapX, gapY, nodeA->gz, type, inDir, desiredOut, nodeA->color)) {
+            outPiecesPlaced++;
+        } else {
+            break;
+        }
+    }
+
+    RecalculateCircuit();
+    return circuitClosed;
+}
+
 bool TrackSystem::GetPrimaryStationLocation(int& outGx, int& outGy, int& outGz) const {
     for (const auto& p : pieces) {
         if (p.type == TRACK_STATION) {
