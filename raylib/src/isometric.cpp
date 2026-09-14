@@ -40,9 +40,9 @@ void DrawTile(int gx, int gy, int gz, GroundType type, Vector2 camOffset, float 
             rightColor = Color{112, 80, 62, 255};
             break;
         case GROUND_WATER:
-            topColor = Color{14, 165, 233, 220}; // Deep sparkling turquoise canal
-            leftColor = Color{2, 132, 199, 240};
-            rightColor = Color{3, 105, 161, 240};
+            topColor = Color{8, 120, 190, 220}; // Deep ocean blue
+            leftColor = Color{4, 95, 155, 240};
+            rightColor = Color{2, 75, 130, 240};
             break;
         case GROUND_PATH:
             topColor = Color{248, 250, 252, 255}; // Bright architectural concrete
@@ -289,6 +289,9 @@ void DrawScenery(int gx, int gy, int gz, SceneryType type, Vector2 camOffset, fl
         }
 
         case SCENERY_STREET_TREE: {
+            // Subtle wind sway
+            float sway = sinf(GetTime() * 1.2f + center.x * 0.3f) * 1.5f * zoom;
+
             // Cast iron circular tree grate on sidewalk
             DrawEllipse((int)center.x, (int)center.y, 13.0f * zoom, 6.5f * zoom, Color{51, 65, 85, 255});
             DrawEllipse((int)center.x, (int)center.y, 9.0f * zoom, 4.5f * zoom, Color{30, 41, 59, 255});
@@ -296,30 +299,33 @@ void DrawScenery(int gx, int gy, int gz, SceneryType type, Vector2 camOffset, fl
             // Trunk
             DrawRectangle((int)(center.x - 2.5f * zoom), (int)(center.y - 18.0f * zoom), (int)(5.0f * zoom), (int)(18.0f * zoom), Color{101, 78, 64, 255});
 
-            // Lush manicured spherical tree crown
-            DrawCircle((int)(center.x - 8.0f * zoom), (int)(center.y - 24.0f * zoom), 9.0f * zoom, Color{34, 197, 94, 255});
-            DrawCircle((int)(center.x + 8.0f * zoom), (int)(center.y - 24.0f * zoom), 9.0f * zoom, Color{22, 163, 74, 255});
-            DrawCircle((int)center.x, (int)(center.y - 30.0f * zoom), 11.0f * zoom, Color{74, 222, 128, 255});
+            // Lush manicured spherical tree crown (sways gently)
+            DrawCircle((int)(center.x - 8.0f * zoom + sway), (int)(center.y - 24.0f * zoom), 9.0f * zoom, Color{34, 197, 94, 255});
+            DrawCircle((int)(center.x + 8.0f * zoom + sway), (int)(center.y - 24.0f * zoom), 9.0f * zoom, Color{22, 163, 74, 255});
+            DrawCircle((int)(center.x + sway), (int)(center.y - 30.0f * zoom), 11.0f * zoom, Color{74, 222, 128, 255});
             break;
         }
 
         case SCENERY_PINE_TREE: {
+            // Subtle wind sway (pine trees sway less)
+            float sway = sinf(GetTime() * 0.9f + center.x * 0.5f) * 0.8f * zoom;
+
             DrawEllipse((int)center.x, (int)center.y, 10.0f * zoom, 5.0f * zoom, Color{0, 0, 0, 60});
             DrawRectangle((int)(center.x - 2.0f * zoom), (int)(center.y - 12.0f * zoom), (int)(4.0f * zoom), (int)(12.0f * zoom), Color{93, 64, 55, 255});
 
-            Vector2 b1 = {center.x - 13.0f * zoom, center.y - 10.0f * zoom};
-            Vector2 b2 = {center.x + 13.0f * zoom, center.y - 10.0f * zoom};
-            Vector2 bTop = {center.x, center.y - 26.0f * zoom};
+            Vector2 b1 = {center.x - 13.0f * zoom + sway, center.y - 10.0f * zoom};
+            Vector2 b2 = {center.x + 13.0f * zoom + sway, center.y - 10.0f * zoom};
+            Vector2 bTop = {center.x + sway, center.y - 26.0f * zoom};
             DrawTriangle(b1, b2, bTop, Color{27, 94, 32, 255});
 
-            Vector2 m1 = {center.x - 10.0f * zoom, center.y - 20.0f * zoom};
-            Vector2 m2 = {center.x + 10.0f * zoom, center.y - 20.0f * zoom};
-            Vector2 mTop = {center.x, center.y - 34.0f * zoom};
+            Vector2 m1 = {center.x - 10.0f * zoom + sway, center.y - 20.0f * zoom};
+            Vector2 m2 = {center.x + 10.0f * zoom + sway, center.y - 20.0f * zoom};
+            Vector2 mTop = {center.x + sway, center.y - 34.0f * zoom};
             DrawTriangle(m1, m2, mTop, Color{46, 125, 50, 255});
 
-            Vector2 t1 = {center.x - 7.0f * zoom, center.y - 28.0f * zoom};
-            Vector2 t2 = {center.x + 7.0f * zoom, center.y - 28.0f * zoom};
-            Vector2 tTop = {center.x, center.y - 42.0f * zoom};
+            Vector2 t1 = {center.x - 7.0f * zoom + sway, center.y - 28.0f * zoom};
+            Vector2 t2 = {center.x + 7.0f * zoom + sway, center.y - 28.0f * zoom};
+            Vector2 tTop = {center.x + sway, center.y - 42.0f * zoom};
             DrawTriangle(t1, t2, tTop, Color{56, 142, 60, 255});
             break;
         }

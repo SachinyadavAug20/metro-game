@@ -522,6 +522,20 @@ void Game::HandleInput() {
         AudioManager::Play(SFX_BUTTON_CLICK, 0.5f);
     }
 
+    // 1b. Camera bounds — prevent panning into empty ocean.
+    //     Keep the island center (9,11) at least partially on-screen.
+    {
+        int screenW = GetScreenWidth();
+        int screenH = GetScreenHeight();
+        // Island center in screen-space (before camera offset)
+        float ix = (9.0f - 11.0f) * TILE_WIDTH * 0.5f * zoom;
+        float iy = (9.0f + 11.0f) * TILE_HEIGHT * 0.5f * zoom;
+        // Clamp so center stays within [-margin, screen+margin]
+        float mx = screenW * 0.7f, my = screenH * 0.7f;
+        cameraPos.x = std::max(ix - mx, std::min(ix + mx, cameraPos.x));
+        cameraPos.y = std::max(iy - my, std::min(iy + my, cameraPos.y));
+    }
+
     // Hotkeys
 if (IsKeyPressed(KEY_F)) {
         rideCamActive = !rideCamActive;
@@ -1152,10 +1166,6 @@ void Game::Update(float dt) {
     if (rushHourActive) {
         rushHourTimer += simDt;
         peeps.SetSpawnInterval(0.85f);
-        if (rushHourTimer > 0.45f) {
-            rushHourTimer = 0.0f;
-            particles.SpawnFloatingText(Vector3{(float)LAND_CENTER_X, (float)LAND_CENTER_Y, 0.6f}, "RUSH HOUR!", Color{248, 113, 113, 255});
-        }
     } else {
         peeps.SetSpawnInterval(1.9f);
         rushHourTimer = 0.0f;
@@ -1496,6 +1506,21 @@ void Game::Draw() {
                 }
             }
         }
+    }
+
+    // 11b. Subtle screen-edge vignette for cinematic depth
+    {
+        int sw = GetScreenWidth();
+        int sh = GetScreenHeight();
+        int vSize = 80;
+        // Top edge
+        DrawRectangleGradientV(0, 52, sw, vSize, Color{0, 0, 0, 35}, Color{0, 0, 0, 0});
+        // Bottom edge
+        DrawRectangleGradientV(0, sh - vSize - 150, sw, vSize, Color{0, 0, 0, 35}, Color{0, 0, 0, 0});
+        // Left edge
+        DrawRectangleGradientH(0, 52, vSize, sh - 52 - 150, Color{0, 0, 0, 25}, Color{0, 0, 0, 0});
+        // Right edge
+        DrawRectangleGradientH(sw - vSize, 52, vSize, sh - 52 - 150, Color{0, 0, 0, 25}, Color{0, 0, 0, 0});
     }
 
     // 12. Draw Operations Control Center (OCC) Main HUD

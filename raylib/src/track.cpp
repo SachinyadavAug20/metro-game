@@ -23,7 +23,7 @@ void TrackSystem::InitDefaultCircuit() {
     AddPiece(7, 9, 0, TRACK_STATION, DIR_WEST, DIR_EAST, lineCol);
     if (TrackNode* n = GetPiece(7, 9)) {
         n->stationShape = SHAPE_SQUARE;
-        n->stationName = "Central Hub [Square]";
+        n->stationName = "Central Hub";
     }
 
     // 3. Straight acceleration stretch
@@ -49,7 +49,7 @@ void TrackSystem::InitDefaultCircuit() {
     AddPiece(15, 9, 1, TRACK_STATION, DIR_WEST, DIR_EAST, lineCol);
     if (TrackNode* n = GetPiece(15, 9)) {
         n->stationShape = SHAPE_TRIANGLE;
-        n->stationName = "Marina Viaduct [Triangle]";
+        n->stationName = "Marina Viaduct";
     }
 
     // 10. Elevated Turn South (Z=1)
@@ -83,7 +83,7 @@ void TrackSystem::InitDefaultCircuit() {
     AddPiece(10, 16, 0, TRACK_STATION, DIR_EAST, DIR_WEST, lineCol);
     if (TrackNode* n = GetPiece(10, 16)) {
         n->stationShape = SHAPE_CROSS;
-        n->stationName = "University Med [Cross]";
+        n->stationName = "University Med";
     }
 
     // 18. Wayside Signal Mast
@@ -99,7 +99,7 @@ void TrackSystem::InitDefaultCircuit() {
     AddPiece(6, 14, 0, TRACK_STATION, DIR_SOUTH, DIR_NORTH, lineCol);
     if (TrackNode* n = GetPiece(6, 14)) {
         n->stationShape = SHAPE_CIRCLE;
-        n->stationName = "Suburban Heights [Circle]";
+        n->stationName = "Suburban Heights";
     }
     AddPiece(6, 13, 0, TRACK_SIGNAL, DIR_SOUTH, DIR_NORTH, lineCol);
     AddPiece(6, 12, 0, TRACK_STRAIGHT, DIR_SOUTH, DIR_NORTH, lineCol);
@@ -607,19 +607,36 @@ void TrackSystem::DrawPlatformCanopy(const TrackNode& node, Vector2 camOffset, f
             DrawCircle((int)rCenter.x, (int)rCenter.y, 2.6f * zoom, Color{15, 23, 42, 245});
         }
 
-        // Station District Name Banner & Level Stars
+        // Station District Name Banner & Level Stars (with shape icon)
         std::string label = node.stationName.empty() ? GetShapeName(node.stationShape) : node.stationName;
         int textW = MeasureText(label.c_str(), 10);
-        float pillW = (float)textW + 16.0f * zoom;
+        float iconGap = 10.0f * zoom;
+        float pillW = (float)textW + 22.0f * zoom + iconGap;
         float pillH = 16.0f * zoom;
         Vector2 pillPos = { rCenter.x - pillW * 0.5f, rCenter.y + badgeRadius + 2.0f * zoom };
 
         DrawRectangleRounded(Rectangle{pillPos.x, pillPos.y, pillW, pillH}, 0.35f, 4, Color{15, 23, 42, 240});
         DrawRectangleRoundedLines(Rectangle{pillPos.x, pillPos.y, pillW, pillH}, 0.35f, 4, shapeCol);
-        DrawText(label.c_str(), (int)(pillPos.x + 8.0f * zoom), (int)(pillPos.y + 3.0f * zoom), (int)(10.0f * zoom), WHITE);
+
+        // Draw small shape icon inside pill
+        float iconCX = pillPos.x + 7.0f * zoom;
+        float iconCY = pillPos.y + pillH * 0.5f;
+        float iconR = 3.5f * zoom;
+        if (node.stationShape == SHAPE_SQUARE) {
+            DrawRectangle((int)(iconCX - iconR), (int)(iconCY - iconR), (int)(iconR * 2), (int)(iconR * 2), shapeCol);
+        } else if (node.stationShape == SHAPE_TRIANGLE) {
+            DrawTriangle({iconCX, iconCY - iconR}, {iconCX - iconR, iconCY + iconR}, {iconCX + iconR, iconCY + iconR}, shapeCol);
+        } else if (node.stationShape == SHAPE_CIRCLE) {
+            DrawCircle((int)iconCX, (int)iconCY, iconR, shapeCol);
+        } else if (node.stationShape == SHAPE_CROSS) {
+            DrawRectangle((int)(iconCX - 1), (int)(iconCY - iconR), 2, (int)(iconR * 2), shapeCol);
+            DrawRectangle((int)(iconCX - iconR), (int)(iconCY - 1), (int)(iconR * 2), 2, shapeCol);
+        }
+
+        DrawText(label.c_str(), (int)(pillPos.x + 16.0f * zoom + iconGap), (int)(pillPos.y + 3.0f * zoom), (int)(10.0f * zoom), WHITE);
 
         // Level Tag Pill
-        const char* lvTag = (node.stationLevel >= 3) ? "LV 3 GRAND" : ((node.stationLevel == 2) ? "LV 2 HUB" : "LV 1 LOCAL");
+        const char* lvTag = (node.stationLevel >= 3) ? "Lv3" : ((node.stationLevel == 2) ? "Lv2" : "Lv1");
         Color starColor = (node.stationLevel >= 3) ? Color{250, 204, 21, 255} : ((node.stationLevel == 2) ? Color{56, 189, 248, 255} : Color{148, 163, 184, 255});
         int lvTextW = MeasureText(lvTag, (int)(8.5f * zoom));
         float lvPillW = (float)lvTextW + 12.0f * zoom;
