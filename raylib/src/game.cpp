@@ -523,15 +523,15 @@ void Game::HandleInput() {
     }
 
     // 1b. Camera bounds — prevent panning into empty ocean.
-    //     Keep the island center (9,11) at least partially on-screen.
+    //     Keep the island center (9,11) always visible with tight margins.
     {
         int screenW = GetScreenWidth();
         int screenH = GetScreenHeight();
         // Island center in screen-space (before camera offset)
         float ix = (9.0f - 11.0f) * TILE_WIDTH * 0.5f * zoom;
         float iy = (9.0f + 11.0f) * TILE_HEIGHT * 0.5f * zoom;
-        // Clamp so center stays within [-margin, screen+margin]
-        float mx = screenW * 0.7f, my = screenH * 0.7f;
+        // Tight clamp: island center must stay within 40% of screen edges
+        float mx = screenW * 0.4f, my = screenH * 0.4f;
         cameraPos.x = std::max(ix - mx, std::min(ix + mx, cameraPos.x));
         cameraPos.y = std::max(iy - my, std::min(iy + my, cameraPos.y));
     }
@@ -1583,16 +1583,25 @@ void Game::Draw() {
         DrawText("Each lesson passed pays a cash BONUS.  (G hides lessons)", screenW / 2 - 180, screenH / 2 - 16, 13, Color{148, 163, 184, (unsigned char)(255 * fade)});
     }
 
-    // 12c. Arcade RUSH HOUR banner (pulsing, dropped during peak windows)
-    if (rushHourActive && briefingTimer <= 0.0f) {
+    // 12c. Arcade RUSH HOUR banner (dramatic pulsing, hidden during lesson card)
+    bool lessonVisible = showObjectivePanel && !tutorialDone && state == STATE_PLAYING;
+    if (rushHourActive && briefingTimer <= 0.0f && !lessonVisible) {
         float rp = 0.5f + 0.5f * sinf(GetTime() * 6.0f);
-        int rw = 300;
-        int rh = 32;
+        int rw = 380;
+        int rh = 40;
         int rx = ((int)GetScreenWidth() - rw) / 2;
         int ry = 106;
-        DrawRectangleRounded(Rectangle{(float)rx, (float)ry, (float)rw, (float)rh}, 0.5f, 4, Color{185, 28, 28, (unsigned char)(215 + 40 * rp)});
-        DrawRectangleRoundedLines(Rectangle{(float)rx, (float)ry, (float)rw, (float)rh}, 0.5f, 4, Color{254, 202, 202, (unsigned char)(220 * rp)});
-        DrawGameBoldTextCentered("RUSH HOUR!  FARES x1.25", (float)GetScreenWidth() / 2.0f, (float)ry + 7, 15, Color{255, 255, 255, (unsigned char)(220 + 35 * rp)});
+        // Drop shadow
+        DrawRectangleRounded(Rectangle{(float)rx + 2, (float)ry + 3, (float)rw, (float)rh}, 0.4f, 4, Color{0, 0, 0, 60});
+        // Outer glow
+        DrawRectangleRounded(Rectangle{(float)rx - 3, (float)ry - 3, (float)rw + 6, (float)rh + 6}, 0.4f, 4, Color{239, 68, 68, (unsigned char)(40 + 40 * rp)});
+        // Body
+        DrawRectangleRounded(Rectangle{(float)rx, (float)ry, (float)rw, (float)rh}, 0.4f, 4, Color{185, 28, 28, (unsigned char)(220 + 35 * rp)});
+        DrawRectangleRoundedLines(Rectangle{(float)rx, (float)ry, (float)rw, (float)rh}, 0.4f, 4, Color{254, 202, 202, (unsigned char)(200 + 55 * rp)});
+        // Lightning bolt icon
+        DrawTriangle({(float)(rx + 20), (float)(ry + 6)}, {(float)(rx + 14), (float)(ry + 20)}, {(float)(rx + 22), (float)(ry + 18)}, Color{255, 214, 0, 255});
+        DrawTriangle({(float)(rx + 22), (float)(ry + 18)}, {(float)(rx + 16), (float)(ry + 34)}, {(float)(rx + 24), (float)(ry + 22)}, Color{255, 214, 0, 255});
+        DrawGameBoldTextCentered("RUSH HOUR!  FARES x1.25", (float)GetScreenWidth() / 2.0f, (float)ry + 10, 18, Color{255, 255, 255, (unsigned char)(230 + 25 * rp)});
     }
 
     // 12b. Draw Contextual Quick Tip Banner (hidden while the lesson card is

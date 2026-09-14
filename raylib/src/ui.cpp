@@ -197,8 +197,12 @@ void UserInterface::DrawToolbar(
     }
 
     // 2. Toolbar Body Card (semi-transparent for modern layered feel)
+    // Drop shadow
+    DrawRectangleRounded(Rectangle{(float)barX + 2, (float)barY + 3, (float)barW, (float)barH}, 0.2f, 6, Color{0, 0, 0, 40});
     DrawRectangleRounded(Rectangle{(float)barX, (float)barY, (float)barW, (float)barH}, 0.2f, 6, Color{15, 23, 42, 210});
     DrawRectangleRoundedLines(Rectangle{(float)barX, (float)barY, (float)barW, (float)barH}, 0.2f, 6, Color{51, 65, 85, 200});
+    // Subtle top-edge gradient for depth
+    DrawRectangleGradientV(barX + 4, barY + 2, barW - 8, 6, Color{56, 189, 248, 15}, Color{15, 23, 42, 0});
 
     // 3. Render Items according to Active Tab
     int itemBtnW = ToolbarMetrics::ITEM_W;
@@ -206,17 +210,17 @@ void UserInterface::DrawToolbar(
     int itemStartY = barY + ToolbarMetrics::ITEM_Y;
 
     if (activeTab == CAT_TRACK) {
-        struct TrackBtn { const char* name; const char* key; TrackType type; };
+        struct TrackBtn { const char* name; const char* key; TrackType type; const char* tip; };
         TrackBtn buttons[] = {
-            {"Straight", "1", TRACK_STRAIGHT},
-            {"L-Turn", "2", TRACK_CURVE_LEFT},
-            {"R-Turn", "3", TRACK_CURVE_RIGHT},
-            {"Viaduct", "4", TRACK_VIADUCT_ELEVATED},
-            {"Slope", "5", TRACK_VIADUCT_SLOPE},
-            {"Tunnel", "6", TRACK_TUNNEL_PORTAL},
-            {"Station", "7", TRACK_STATION},
-            {"Signal", "8", TRACK_SIGNAL},
-            {"Demolish", "X", TRACK_NONE}
+            {"Straight", "1", TRACK_STRAIGHT, "Flat rail segment"},
+            {"L-Turn", "2", TRACK_CURVE_LEFT, "90° left curve"},
+            {"R-Turn", "3", TRACK_CURVE_RIGHT, "90° right curve"},
+            {"Viaduct", "4", TRACK_VIADUCT_ELEVATED, "Elevated bridge (Z=1)"},
+            {"Slope", "5", TRACK_VIADUCT_SLOPE, "Slope between levels"},
+            {"Tunnel", "6", TRACK_TUNNEL_PORTAL, "Underground passage"},
+            {"Station", "7", TRACK_STATION, "Platform for boarding"},
+            {"Signal", "8", TRACK_SIGNAL, "Block signal (R/Y/G)"},
+            {"Demolish", "X", TRACK_NONE, "Remove track/structure"}
         };
 
         int spacing = 10;
@@ -241,9 +245,14 @@ void UserInterface::DrawToolbar(
             DrawText(buttons[i].key, bx + 6, itemStartY + 8, 16, Color{255, 214, 0, 255});
             DrawText(buttons[i].name, bx + 4, itemStartY + 34, 15, textC);
 
-            // Hover highlight
+            // Hover highlight + tooltip
             if (!isSelected && CheckCollisionPointRec(GetMousePosition(), {(float)bx, (float)itemStartY, (float)itemBtnW, (float)itemBtnH})) {
                 DrawRectangleRounded(Rectangle{(float)bx, (float)itemStartY, (float)itemBtnW, (float)itemBtnH}, 0.2f, 4, Color{255, 255, 255, 18});
+                int tipW = MeasureText(buttons[i].tip, 11);
+                float tipX = bx + (itemBtnW - tipW) / 2.0f;
+                float tipY = itemStartY + itemBtnH + 4;
+                DrawRectangleRounded(Rectangle{tipX - 4, tipY, (float)(tipW + 8), 18.0f}, 0.4f, 3, Color{15, 23, 42, 240});
+                DrawText(buttons[i].tip, (int)tipX, (int)tipY + 3, 11, Color{203, 213, 225, 255});
             }
         }
     } else if (activeTab == CAT_INFRA) {
@@ -312,9 +321,17 @@ DrawText(buttons[i].key, bx + 6, itemStartY + 8, 16, Color{255, 214, 0, 255});
                 DrawText(TextFormat("$%d", buttons[i].cost), bx + 6, itemStartY + 62, 13, costC);
             }
 
-            // Hover highlight
+            // Hover highlight + tooltip
             if (!isSelected && CheckCollisionPointRec(GetMousePosition(), {(float)bx, (float)itemStartY, (float)itemBtnW, (float)itemBtnH})) {
                 DrawRectangleRounded(Rectangle{(float)bx, (float)itemStartY, (float)itemBtnW, (float)itemBtnH}, 0.2f, 4, Color{255, 255, 255, 18});
+                if (buttons[i].cost > 0) {
+                    const char* tipText = TextFormat("%s — $%d", buttons[i].name, buttons[i].cost);
+                    int tipW = MeasureText(tipText, 11);
+                    float tipX = bx + (itemBtnW - tipW) / 2.0f;
+                    float tipY = itemStartY + itemBtnH + 4;
+                    DrawRectangleRounded(Rectangle{tipX - 4, tipY, (float)(tipW + 8), 18.0f}, 0.4f, 3, Color{15, 23, 42, 240});
+                    DrawText(tipText, (int)tipX, (int)tipY + 3, 11, Color{255, 214, 0, 255});
+                }
             }
         }
     }
@@ -328,13 +345,21 @@ DrawText(buttons[i].key, bx + 6, itemStartY + 8, 16, Color{255, 214, 0, 255});
 
     // Buy Extra Train (RCT-style purchase) on the right side of the strip
     int exX = barX + barW - 176;
+    float exPulse = 0.5f + 0.5f * sinf(GetTime() * 3.0f);
     if (extraTrainCount >= Game::MaxExtraTrains()) {
         DrawRectangleRounded(Rectangle{(float)exX, (float)barY + ToolbarMetrics::BUY_Y - 2, 160.0f, (float)ToolbarMetrics::BUY_H}, 0.3f, 4, Color{74, 222, 128, 255});
         DrawText("FLEET AT MAX (4 EMU)", exX + 8, barY + ToolbarMetrics::BUY_Y + 2, 12, WHITE);
     } else {
         int nextCost = (int)Game::ExtraTrainCostP(extraTrainCount);
-        Color extraC = (balance >= nextCost) ? Color{56, 189, 248, 255} : Color{71, 85, 105, 255};
+        bool canAfford = balance >= nextCost;
+        Color extraC = canAfford ? Color{56, 189, 248, 255} : Color{71, 85, 105, 255};
+        if (canAfford) {
+            DrawRectangleRounded(Rectangle{(float)exX - 2, (float)barY + ToolbarMetrics::BUY_Y - 4, 164.0f, (float)ToolbarMetrics::BUY_H + 4}, 0.3f, 4, Color{56, 189, 248, (unsigned char)(40 + 30 * exPulse)});
+        }
         DrawRectangleRounded(Rectangle{(float)exX, (float)barY + ToolbarMetrics::BUY_Y - 2, 160.0f, (float)ToolbarMetrics::BUY_H}, 0.3f, 4, extraC);
+        if (canAfford) {
+            DrawRectangleRoundedLines(Rectangle{(float)exX, (float)barY + ToolbarMetrics::BUY_Y - 2, 160.0f, (float)ToolbarMetrics::BUY_H}, 0.3f, 4, Color{147, 197, 253, (unsigned char)(200 + 55 * exPulse)});
+        }
         DrawText(extraTrainCount > 0
                      ? TextFormat("EXTRA TRAIN #%d $%d", extraTrainCount + 1, nextCost)
                      : TextFormat("BUY EXTRA TRAIN $%d", nextCost),
@@ -345,6 +370,7 @@ DrawText(buttons[i].key, bx + 6, itemStartY + 8, 16, Color{255, 214, 0, 255});
     int auxX = barX + barW + 12;
 
     // Height Pill
+    DrawRectangleRounded(Rectangle{(float)auxX + 2, (float)barY + 2, (float)auxW, 34.0f}, 0.25f, 4, Color{0, 0, 0, 35});
     DrawRectangleRounded(Rectangle{(float)auxX, (float)barY, (float)auxW, 34.0f}, 0.25f, 4, Color{15, 23, 42, 245});
     DrawRectangleRoundedLines(Rectangle{(float)auxX, (float)barY, (float)auxW, 34.0f}, 0.25f, 4, Color{51, 65, 85, 255});
     DrawText("HEIGHT (E/Q)", auxX + 8, barY + 3, 12, Color{148, 163, 184, 255});
@@ -356,6 +382,7 @@ DrawText(buttons[i].key, bx + 6, itemStartY + 8, 16, Color{255, 214, 0, 255});
 
     // Heading / Orientation Pill
     const char* dirLabels[] = {"NORTH [^]", "EAST [>]", "SOUTH [v]", "WEST [<]"};
+    DrawRectangleRounded(Rectangle{(float)auxX + 2, (float)barY + 40, (float)auxW, 34.0f}, 0.25f, 4, Color{0, 0, 0, 35});
     DrawRectangleRounded(Rectangle{(float)auxX, (float)barY + 38, (float)auxW, 34.0f}, 0.25f, 4, Color{15, 23, 42, 245});
     DrawRectangleRoundedLines(Rectangle{(float)auxX, (float)barY + 38, (float)auxW, 34.0f}, 0.25f, 4, Color{51, 65, 85, 255});
     DrawText("HEADING [R]", auxX + 8, barY + 41, 12, Color{148, 163, 184, 255});
@@ -369,9 +396,16 @@ DrawText(buttons[i].key, bx + 6, itemStartY + 8, 16, Color{255, 214, 0, 255});
     Color carOk = (balance >= 800.0f) ? Color{56, 189, 248, 255} : Color{71, 85, 105, 255};
     Color landOk = (balance >= 600.0f) ? Color{74, 222, 128, 255} : Color{71, 85, 105, 255};
 
+    float buyPulse = 0.5f + 0.5f * sinf(GetTime() * 3.0f);
+    if (balance >= 800.0f) {
+        DrawRectangleRounded(Rectangle{(float)auxX + 2, (float)buyY - 2, 86.0f, (float)buyH + 4}, 0.3f, 4, Color{56, 189, 248, (unsigned char)(30 + 25 * buyPulse)});
+    }
     DrawRectangleRounded(Rectangle{(float)auxX + 4, (float)buyY, 82.0f, (float)buyH}, 0.3f, 4, carOk);
     DrawText(TextFormat("CAR+1 $%d", (int)800), auxX + 5, buyY + 4, 12, WHITE);
 
+    if (balance >= 600.0f) {
+        DrawRectangleRounded(Rectangle{(float)auxX + 88, (float)buyY - 2, 54.0f, (float)buyH + 4}, 0.3f, 4, Color{74, 222, 128, (unsigned char)(30 + 25 * buyPulse)});
+    }
     DrawRectangleRounded(Rectangle{(float)auxX + 90, (float)buyY, 50.0f, (float)buyH}, 0.3f, 4, landOk);
     DrawText(TextFormat("LAND $%d", (int)600), auxX + 91, buyY + 4, 12, WHITE);
 }
@@ -587,7 +621,7 @@ void UserInterface::DrawCommuterInspector(const Commuter* commuter) {
 
     // Name & Destination
     DrawText(commuter->name.c_str(), cardX + 72, cardY + 13, 13, WHITE);
-    DrawGameBoldText(TextFormat("Wants: %s STATION", GetShapeName(commuter->targetShape)), cardX + 72, cardY + 29, 10, sc);
+    DrawGameBoldText(TextFormat("Wants: %s station", GetShapeName(commuter->targetShape)), cardX + 72, cardY + 29, 10, sc);
     DrawText("[x]", cardX + cardW - 22, cardY + 10, 12, Color{148, 163, 184, 255});
 
     // Mood (RCT style: simple word + thin bar, no percentages or wallet noise)
@@ -687,16 +721,26 @@ void UserInterface::DrawTutorialPanel(bool visible, const TutorialStageInfo& sta
     float pulse = 0.5f + 0.5f * sinf(GetTime() * 5.0f);
 
     // ---- Compact arcade directive card (sits below the HUD) ----
+    // Drop shadow
+    DrawRectangleRounded(Rectangle{(float)cardX + 2, (float)cardY + 3, (float)cardW, (float)cardH}, 0.16f, 8, Color{0, 0, 0, 50});
     // Outer glow for prominence
     DrawRectangleRounded(Rectangle{(float)cardX - 2, (float)cardY - 2, (float)cardW + 4, (float)cardH + 4}, 0.16f, 8, Color{255, 214, 0, (unsigned char)(30 + 25 * pulse)});
     DrawRectangleRounded(Rectangle{(float)cardX, (float)cardY, (float)cardW, (float)cardH}, 0.16f, 8, Color{15, 23, 42, 242});
     DrawRectangleRoundedLines(Rectangle{(float)cardX, (float)cardY, (float)cardW, (float)cardH}, 0.16f, 8,
                               Color{(unsigned char)(200 + 55 * pulse), (unsigned char)(180 + 34 * pulse), 0, 255});
 
-    // Lesson chip
+    // Lesson chip (with type icon)
     DrawRectangleRounded(Rectangle{(float)cardX + 14, (float)cardY + 8, 130.0f, 20.0f}, 0.4f, 4, Color{220, 38, 38, 255});
-    DrawText(TextFormat("LESSON %d / %d", currentIdx + 1, total), cardX + 22, cardY + 12, 12, WHITE);
-    DrawText("(G = hide)", cardX + cardW - 78, cardY + 12, 10, Color{148, 163, 184, 255});
+    // Small lesson type icon (star for watch, arrow for build)
+    if (stage.focusTrain || (stage.focusGx < 0 && stage.focusGy < 0)) {
+        // Watch/observe lesson: star icon
+        DrawCircle(cardX + 22, cardY + 18, 4, Color{255, 214, 0, 255});
+    } else {
+        // Build lesson: arrow icon
+        DrawTriangle({(float)(cardX + 18), (float)(cardY + 13)}, {(float)(cardX + 18), (float)(cardY + 23)}, {(float)(cardX + 26), (float)(cardY + 18)}, Color{255, 214, 0, 255});
+    }
+    DrawText(TextFormat("LESSON %d / %d", currentIdx + 1, total), cardX + 32, cardY + 12, 12, WHITE);
+    DrawText("G = hide", cardX + cardW - 60, cardY + 12, 10, Color{148, 163, 184, 160});
 
     // Bold directive title (single line)
     DrawGameBoldText(stage.title, cardX + 14, cardY + 32, 18, Color{248, 250, 252, 255});
@@ -929,30 +973,54 @@ void UserInterface::DrawGameOver(int finalRidership, int stars, int best) {
     int screenW = GetScreenWidth();
     int screenH = GetScreenHeight();
 
-    DrawRectangle(0, 0, screenW, screenH, Color{0, 0, 0, 210});
+    DrawRectangle(0, 0, screenW, screenH, Color{0, 0, 0, 220});
 
-    int boxW = 480;
-    int boxH = 290;
+    // Warning spark particles
+    float t = GetTime();
+    for (int i = 0; i < 12; ++i) {
+        float px = fmodf(t * (15 + i * 4) + i * 197.3f, (float)screenW);
+        float py = fmodf(t * (10 + i * 3) + i * 113.7f, (float)screenH);
+        float sz = 1.5f + sinf(t * 4.0f + i) * 1.0f;
+        DrawCircle((int)px, (int)py, sz, Color{239, 68, 68, 150});
+    }
+
+    int boxW = 500;
+    int boxH = 300;
     int bx = (screenW - boxW) / 2;
     int by = (screenH - boxH) / 2;
 
-    DrawRectangleRounded(Rectangle{(float)bx, (float)by, (float)boxW, (float)boxH}, 0.15f, 6, Color{15, 23, 42, 255});
-    DrawRectangleRoundedLines(Rectangle{(float)bx, (float)by, (float)boxW, (float)boxH}, 0.15f, 6, Color{220, 38, 38, 255});
+    // Glowing red border
+    float glow = 0.5f + 0.5f * sinf(t * 4.0f);
+    DrawRectangleRounded(Rectangle{(float)bx - 3, (float)by - 3, (float)boxW + 6, (float)boxH + 6}, 0.15f, 6, Color{239, 68, 68, (unsigned char)(25 + 25 * glow)});
+    DrawRectangleRounded(Rectangle{(float)bx, (float)by, (float)boxW, (float)boxH}, 0.15f, 6, Color{15, 23, 42, 250});
+    DrawRectangleRoundedLines(Rectangle{(float)bx, (float)by, (float)boxW, (float)boxH}, 0.15f, 6, Color{239, 68, 68, 255});
 
-    float fl = 0.6f + 0.4f * sinf(GetTime() * 5.0f);
-    DrawGameBoldText("NETWORK GRIDLOCK: OVERCROWDING!", bx + 35, by + 26, 19, Color{239, 68, 68, (unsigned char)(255 * fl)});
-    DrawText("Overcrowding triage timers expired and the platforms collapsed.", bx + 35, by + 62, 12, Color{203, 213, 225, 255});
-    DrawGameBoldText(TextFormat("Total Commuters Transported: %d", finalRidership), bx + 100, by + 96, 16, Color{255, 214, 0, 255});
+    // Warning icon
+    float fl = 0.6f + 0.4f * sinf(t * 5.0f);
+    DrawTriangle({(float)(bx + boxW / 2), (float)(by + 12)}, {(float)(bx + boxW / 2 - 16), (float)(by + 44)}, {(float)(bx + boxW / 2 + 16), (float)(by + 44)}, Color{239, 68, 68, 255});
+    DrawText("!", bx + boxW / 2 - 3, by + 20, 18, WHITE);
 
-    // Arcade star rating earned this run
+    DrawGameBoldText("NETWORK GRIDLOCK", bx + 110, by + 56, 24, Color{239, 68, 68, (unsigned char)(255 * fl)});
+    DrawText("Platforms overcrowded and service collapsed.", bx + 100, by + 90, 12, Color{203, 213, 225, 255});
+
+    DrawGameBoldText(TextFormat("%d commuters transported", finalRidership), bx + 120, by + 118, 16, Color{255, 214, 0, 255});
+
+    // Star rating
     char starsStr[16];
-    for (int i = 0; i < 3; ++i) starsStr[i] = (i < stars) ? '*' : '-';
+    for (int i = 0; i < 3; ++i) starsStr[i] = (i < stars) ? '*' : ' ';
     starsStr[3] = '\0';
-    DrawGameBoldText(TextFormat("RATING: %s", starsStr), bx + 165, by + 130, 18, Color{255, 214, 0, 255});
-    DrawText(TextFormat("SESSION BEST: %d riders", best), bx + 140, by + 158, 12, Color{148, 163, 184, 255});
+    DrawGameBoldText(starsStr, bx + boxW / 2 - 30, by + 145, 28, Color{255, 214, 0, 255});
 
-    DrawRectangleRounded(Rectangle{(float)bx + 140, (float)by + 192, 200.0f, 45.0f}, 0.3f, 4, Color{220, 38, 38, 255});
-    DrawText("RESTART NETWORK", bx + 165, by + 206, 15, WHITE);
+    DrawText(TextFormat("session best: %d riders", best), bx + 155, by + 180, 12, Color{148, 163, 184, 255});
+
+    // Restart button (red glow)
+    int btnW = 220;
+    int btnH = 44;
+    int btnX = bx + (boxW - btnW) / 2;
+    int btnY = by + 210;
+    DrawRectangleRounded(Rectangle{(float)btnX - 2, (float)btnY - 2, (float)btnW + 4, (float)btnH + 4}, 0.3f, 4, Color{239, 68, 68, (unsigned char)(50 + 30 * glow)});
+    DrawRectangleRounded(Rectangle{(float)btnX, (float)btnY, (float)btnW, (float)btnH}, 0.3f, 4, Color{220, 38, 38, 255});
+    DrawGameBoldText("RESTART NETWORK", btnX + 28, btnY + 13, 16, WHITE);
 }
 
 void UserInterface::DrawVictory(int finalRidership, int weeks, int stars, float balance, int best) {
@@ -961,67 +1029,111 @@ void UserInterface::DrawVictory(int finalRidership, int weeks, int stars, float 
 
     DrawRectangle(0, 0, screenW, screenH, Color{0, 0, 0, 215});
 
-    int boxW = 600;
-    int boxH = 350;
+    // Celebration particles (confetti sparkles)
+    float t = GetTime();
+    for (int i = 0; i < 20; ++i) {
+        float px = fmodf(t * (30 + i * 7) + i * 137.5f, (float)screenW);
+        float py = fmodf(t * (20 + i * 5) + i * 89.3f, (float)screenH);
+        float sz = 2.0f + sinf(t * 3.0f + i) * 1.5f;
+        Color c = (i % 3 == 0) ? Color{255, 214, 0, 180} : ((i % 3 == 1) ? Color{34, 197, 94, 180} : Color{56, 189, 248, 180});
+        DrawCircle((int)px, (int)py, sz, c);
+    }
+
+    int boxW = 620;
+    int boxH = 360;
     int bx = (screenW - boxW) / 2;
     int by = (screenH - boxH) / 2;
 
-    DrawRectangleRounded(Rectangle{(float)bx, (float)by, (float)boxW, (float)boxH}, 0.15f, 6, Color{15, 23, 42, 255});
+    // Glowing border effect
+    float glow = 0.5f + 0.5f * sinf(t * 3.0f);
+    DrawRectangleRounded(Rectangle{(float)bx - 3, (float)by - 3, (float)boxW + 6, (float)boxH + 6}, 0.15f, 6, Color{34, 197, 94, (unsigned char)(30 + 30 * glow)});
+    DrawRectangleRounded(Rectangle{(float)bx, (float)by, (float)boxW, (float)boxH}, 0.15f, 6, Color{15, 23, 42, 250});
     DrawRectangleRoundedLines(Rectangle{(float)bx, (float)by, (float)boxW, (float)boxH}, 0.15f, 6, Color{34, 197, 94, 255});
 
-    float fl = 0.6f + 0.4f * sinf(GetTime() * 4.0f);
-    DrawGameBoldText("TRANSIT TRIUMPH! 500 COMMUTERS!", bx + 65, by + 24, 21, Color{34, 197, 94, (unsigned char)(255 * fl)});
-    DrawText("Your rapid transit network connected all district shapes flawlessly!", bx + 60, by + 60, 13, Color{203, 213, 225, 255});
-    DrawGameBoldText(TextFormat("Total Commuters Delivered: %d", finalRidership), bx + 160, by + 88, 17, Color{255, 214, 0, 255});
+    float fl = 0.6f + 0.4f * sinf(t * 4.0f);
+    // Trophy icon
+    DrawRectangle(bx + boxW / 2 - 20, by + 10, 40, 6, Color{255, 214, 0, 255});
+    DrawRectangle(bx + boxW / 2 - 12, by + 16, 24, 18, Color{255, 214, 0, 255});
+    DrawRectangle(bx + boxW / 2 - 4, by + 34, 8, 6, Color{255, 214, 0, 255});
+    DrawRectangle(bx + boxW / 2 - 10, by + 40, 20, 4, Color{255, 214, 0, 255});
 
-    // Big radiating arcade STAR RATING (★★★)
+    DrawGameBoldText("TRANSIT TRIUMPH!", bx + 160, by + 55, 26, Color{34, 197, 94, (unsigned char)(255 * fl)});
+    DrawGameBoldText(TextFormat("%d COMMUTERS DELIVERED!", finalRidership), bx + 140, by + 88, 18, Color{255, 214, 0, 255});
+    DrawText("Your rapid transit network connected all districts flawlessly!", bx + 70, by + 118, 12, Color{203, 213, 225, 255});
+
+    // Star rating
     char starsStr[16];
-    for (int i = 0; i < 3; ++i) starsStr[i] = (i < stars) ? '*' : '-';
+    for (int i = 0; i < 3; ++i) starsStr[i] = (i < stars) ? '*' : ' ';
     starsStr[3] = '\0';
-    DrawGameBoldText(starsStr, bx + 150, by + 118, 26, Color{255, 214, 0, 255});
-    DrawText(TextFormat("Run: %d riders in %d weeks | Budget: $%.0f | Session Best: %d", finalRidership, weeks, balance, best), bx + 60, by + 156, 12, Color{148, 163, 184, 255});
+    DrawGameBoldText(starsStr, bx + boxW / 2 - 30, by + 140, 30, Color{255, 214, 0, 255});
 
-    // 1. Continue in Endless Metropolis Mode button (Green glowing)
-    int btnW = 340;
+    DrawText(TextFormat("%d weeks | $%.0f budget | best: %d", weeks, balance, best), bx + 130, by + 180, 12, Color{148, 163, 184, 255});
+
+    // Continue button (green glow)
+    int btnW = 360;
     int btnH = 44;
     int btn1X = bx + (boxW - btnW) / 2;
-    int btn1Y = by + 186;
+    int btn1Y = by + 210;
+    DrawRectangleRounded(Rectangle{(float)btn1X - 2, (float)btn1Y - 2, (float)btnW + 4, (float)btnH + 4}, 0.3f, 4, Color{34, 197, 94, (unsigned char)(60 + 30 * glow)});
     DrawRectangleRounded(Rectangle{(float)btn1X, (float)btn1Y, (float)btnW, (float)btnH}, 0.3f, 4, Color{16, 185, 129, 255});
-    DrawText("CONTINUE IN ENDLESS MODE (LOOP)", btn1X + 22, btn1Y + 13, 15, WHITE);
+    DrawGameBoldText("CONTINUE IN ENDLESS MODE", btn1X + 50, btn1Y + 13, 16, WHITE);
 
-    // 2. Restart Network button
+    // Restart button
     int btn2W = 200;
     int btn2H = 32;
     int btn2X = bx + (boxW - btn2W) / 2;
-    int btn2Y = by + 252;
+    int btn2Y = by + 274;
     DrawRectangleRounded(Rectangle{(float)btn2X, (float)btn2Y, (float)btn2W, (float)btn2H}, 0.3f, 4, Color{51, 65, 85, 255});
-    DrawText("START NEW NETWORK", btn2X + 22, btn2Y + 8, 13, Color{203, 213, 225, 255});
+    DrawRectangleRoundedLines(Rectangle{(float)btn2X, (float)btn2Y, (float)btn2W, (float)btn2H}, 0.3f, 4, Color{71, 85, 105, 255});
+    DrawText("START NEW NETWORK", btn2X + 24, btn2Y + 8, 13, Color{203, 213, 225, 255});
 }
 
 void UserInterface::DrawPauseOverlay() {
     int screenW = GetScreenWidth();
     int screenH = GetScreenHeight();
-    DrawRectangle(0, 0, screenW, screenH, Color{2, 6, 23, 190});
-    float fl = 0.5f + 0.5f * sinf(GetTime() * 5.0f);
-    DrawGameBoldTextCentered("PAUSED", (float)screenW / 2.0f, (float)(screenH / 2 - 120), 58, Color{255, 214, 0, (unsigned char)(255 * fl)});
-    DrawText("THE CITY WAITS FOR YOU...", screenW / 2 - 105, screenH / 2 - 52, 14, Color{226, 232, 240, 255});
+    float t = GetTime();
+
+    // Dark overlay with subtle vignette
+    DrawRectangle(0, 0, screenW, screenH, Color{2, 6, 23, 200});
+    DrawRectangleGradientV(0, 0, screenW, 80, Color{2, 6, 23, 0}, Color{2, 6, 23, 120});
+    DrawRectangleGradientV(0, screenH - 80, screenW, 80, Color{2, 6, 23, 0}, Color{2, 6, 23, 120});
+
+    // Floating particles (gentle drift)
+    for (int i = 0; i < 8; ++i) {
+        float px = fmodf(t * (8 + i * 3) + i * 211.7f, (float)screenW);
+        float py = fmodf(t * (4 + i * 2) + i * 157.3f, (float)screenH);
+        DrawCircle((int)px, (int)py, 1.5f, Color{255, 214, 0, 60});
+    }
+
+    float fl = 0.5f + 0.5f * sinf(t * 3.0f);
+
+    // Decorative pause bars (big icon)
+    int barCX = screenW / 2;
+    int barCY = screenH / 2 - 140;
+    DrawRectangle(barCX - 16, barCY - 20, 10, 40, Color{255, 214, 0, (unsigned char)(200 + 55 * fl)});
+    DrawRectangle(barCX + 6, barCY - 20, 10, 40, Color{255, 214, 0, (unsigned char)(200 + 55 * fl)});
+
+    DrawGameBoldTextCentered("PAUSED", (float)screenW / 2.0f, (float)(screenH / 2 - 70), 42, Color{255, 214, 0, (unsigned char)(200 + 55 * fl)});
+    DrawText("THE CITY WAITS FOR YOU...", screenW / 2 - 110, screenH / 2 - 22, 13, Color{148, 163, 184, 200});
 
     int cx = screenW / 2;
-    int by = screenH / 2 + 8;
+    int by = screenH / 2 + 18;
 
-    // RESUME (primary)
+    // RESUME (primary, green glow)
+    float glow = 0.5f + 0.5f * sinf(t * 4.0f);
+    DrawRectangleRounded(Rectangle{(float)cx - 132, (float)by - 2, 264.0f, 48.0f}, 0.3f, 4, Color{34, 197, 94, (unsigned char)(40 + 30 * glow)});
     DrawRectangleRounded(Rectangle{(float)cx - 130, (float)by, 260.0f, 44.0f}, 0.3f, 4, Color{16, 185, 129, 255});
     DrawRectangleRoundedLines(Rectangle{(float)cx - 130, (float)by, 260.0f, 44.0f}, 0.3f, 4, Color{209, 250, 229, 255});
     DrawGameBoldTextCentered("RESUME  [ESC]", (float)cx, (float)by + 13, 18, WHITE);
 
     // RESTART + QUIT TO MENU (secondary)
-    DrawRectangleRounded(Rectangle{(float)cx - 155, (float)by + 56, 150.0f, 38.0f}, 0.3f, 4, Color{220, 38, 38, 220});
-    DrawText("RESTART RUN", cx - 138, by + 71, 13, WHITE);
+    DrawRectangleRounded(Rectangle{(float)cx - 155, (float)by + 56, 150.0f, 38.0f}, 0.3f, 4, Color{51, 65, 85, 255});
+    DrawRectangleRoundedLines(Rectangle{(float)cx - 155, (float)by + 56, 150.0f, 38.0f}, 0.3f, 4, Color{71, 85, 105, 255});
+    DrawText("RESTART", cx - 120, by + 68, 14, Color{203, 213, 225, 255});
 
     DrawRectangleRounded(Rectangle{(float)cx + 5, (float)by + 56, 150.0f, 38.0f}, 0.3f, 4, Color{51, 65, 85, 255});
-    DrawText("QUIT TO MENU", cx + 20, by + 71, 13, Color{226, 232, 240, 255});
-
-    DrawText("[WASD / window edges] Move view   [Right or Middle drag] Pan   [HOME] Recenter   [Wheel] Zoom   [M] Mute", screenW / 2 - 262, screenH / 2 + 126, 12, Color{56, 189, 248, 255});
+    DrawRectangleRoundedLines(Rectangle{(float)cx + 5, (float)by + 56, 150.0f, 38.0f}, 0.3f, 4, Color{71, 85, 105, 255});
+    DrawText("QUIT TO MENU", cx + 18, by + 68, 13, Color{203, 213, 225, 255});
 }
 
 int UserInterface::CheckPauseClick(Vector2 mousePos) const {
@@ -1055,13 +1167,39 @@ void UserInterface::DrawTitleScreen(int best) {
     int screenW = GetScreenWidth();
     int screenH = GetScreenHeight();
     int cx = screenW / 2;
+    float t = GetTime();
 
-    // 1. Dark background with subtle grid
+    // 1. Dark background with animated isometric grid
     DrawRectangle(0, 0, screenW, screenH, Color{15, 23, 42, 255});
+    // Animated diagonal grid lines (parallax drift)
+    float drift = fmodf(t * 15.0f, 80.0f);
     for (int x = -100; x < screenW + 300; x += 80)
-        DrawLine(x, 0, x - 180, screenH, Color{30, 41, 59, 50});
+        DrawLine(x - (int)drift, 0, x - 180 - (int)drift, screenH, Color{30, 41, 59, 50});
     for (int y = 0; y < screenH; y += 80)
         DrawLine(0, y, screenW, y + 40, Color{30, 41, 59, 40});
+
+    // Animated floating dots (commuter-like)
+    for (int i = 0; i < 12; ++i) {
+        float px = fmodf(t * (6 + i * 2) + i * 173.7f, (float)screenW);
+        float py = fmodf(t * (3 + i * 1.5f) + i * 127.3f, (float)screenH);
+        float sz = 1.0f + sinf(t * 2.0f + i) * 0.5f;
+        Color c = (i % 3 == 0) ? Color{34, 197, 94, 50} : ((i % 3 == 1) ? Color{255, 214, 0, 50} : Color{56, 189, 248, 50});
+        DrawCircle((int)px, (int)py, sz, c);
+    }
+
+    // Moving train silhouette across bottom
+    float trainX = fmodf(t * 60.0f, (float)(screenW + 200)) - 100;
+    float trainY = screenH - 60;
+    // Train body
+    DrawRectangle((int)trainX, (int)trainY, 60, 10, Color{220, 38, 38, 80});
+    DrawRectangle((int)trainX + 60, (int)trainY, 50, 10, Color{220, 38, 38, 60});
+    DrawRectangle((int)trainX + 110, (int)trainY, 50, 10, Color{220, 38, 38, 40});
+    // Windows
+    for (int w = 0; w < 4; ++w) {
+        DrawRectangle((int)trainX + 6 + w * 14, (int)trainY + 2, 8, 5, Color{255, 238, 88, 60});
+    }
+    // Track line
+    DrawLine(0, (int)trainY + 12, screenW, (int)trainY + 12, Color{51, 65, 85, 80});
 
     // Top accent bar
     DrawRectangle(0, 0, screenW, 4, Color{220, 38, 38, 255});
@@ -1076,7 +1214,7 @@ void UserInterface::DrawTitleScreen(int best) {
     DrawText("Urban Transit Tycoon", cx - 65, headerY + 30, 13, Color{148, 163, 184, 255});
 
     // 3. Tagline
-    float pulse = 0.5f + 0.5f * sinf(GetTime() * 2.0f);
+    float pulse = 0.5f + 0.5f * sinf(t * 2.0f);
     DrawGameBoldText("Build tracks. Run trains. Grow your city.", cx - 220, headerY + 65, 16,
                      Color{56, 189, 248, (unsigned char)(180 + 75 * pulse)});
 
@@ -1098,7 +1236,7 @@ void UserInterface::DrawTitleScreen(int best) {
         DrawText(rules[i], cx - 228, ruleY + i * ruleGap - 2, 14, Color{226, 232, 240, 255});
     }
 
-    // 5. Big START button
+    // 5. Big START button (with glow)
     int btnW = 320;
     int btnH = 52;
     int btnX = (screenW - btnW) / 2;
@@ -1107,6 +1245,8 @@ void UserInterface::DrawTitleScreen(int best) {
     Vector2 mousePos = GetMousePosition();
     bool isHovered = CheckCollisionPointRec(mousePos, Rectangle{(float)btnX, (float)btnY, (float)btnW, (float)btnH});
     Color btnBg = isHovered ? Color{239, 68, 68, 255} : Color{220, 38, 38, 255};
+    float btnGlow = isHovered ? 0.8f : (0.3f + 0.2f * sinf(t * 3.0f));
+    DrawRectangleRounded(Rectangle{(float)btnX - 3, (float)btnY - 3, (float)btnW + 6, (float)btnH + 6}, 0.3f, 6, Color{239, 68, 68, (unsigned char)(btnGlow * 100)});
     DrawRectangleRounded(Rectangle{(float)btnX, (float)btnY, (float)btnW, (float)btnH}, 0.3f, 6, btnBg);
     DrawRectangleRoundedLines(Rectangle{(float)btnX, (float)btnY, (float)btnW, (float)btnH}, 0.3f, 6, isHovered ? WHITE : Color{254, 202, 202, 255});
     DrawGameBoldText("START PLAYING", btnX + 80, btnY + 14, 20, WHITE);
