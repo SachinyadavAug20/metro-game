@@ -40,9 +40,9 @@ void DrawTile(int gx, int gy, int gz, GroundType type, Vector2 camOffset, float 
             rightColor = Color{112, 80, 62, 255};
             break;
         case GROUND_WATER:
-            topColor = Color{8, 120, 190, 220}; // Deep ocean blue
-            leftColor = Color{4, 95, 155, 240};
-            rightColor = Color{2, 75, 130, 240};
+            topColor = (gx % 2 == gy % 2) ? Color{16, 128, 185, 235} : Color{14, 115, 172, 235}; // Deep rich Caribbean turquoise blue
+            leftColor = Color{8, 85, 135, 245};
+            rightColor = Color{6, 70, 115, 245};
             break;
         case GROUND_PATH:
             topColor = Color{248, 250, 252, 255}; // Bright architectural concrete
@@ -78,7 +78,8 @@ void DrawTile(int gx, int gy, int gz, GroundType type, Vector2 camOffset, float 
     }
 
     // Depth thickness for elevated terrain
-    float cliffH = 16.0f * zoom;
+    // Elevated tiles (gz > 0) extend cliff down by (gz * HEIGHT_STEP * zoom + 4.0f * zoom) to seal all seams
+    float cliffH = (gz > 0) ? ((float)gz * (float)HEIGHT_STEP * zoom + 4.0f * zoom) : 4.0f * zoom;
     Vector2 leftBottom = {left.x, left.y + cliffH};
     Vector2 centerBottom = {bottom.x, bottom.y + cliffH};
     Vector2 rightBottom = {right.x, right.y + cliffH};
@@ -92,13 +93,12 @@ void DrawTile(int gx, int gy, int gz, GroundType type, Vector2 camOffset, float 
     DrawTriangle(bottom, rightBottom, right, rightColor);
 
     // Draw geological earth strata lines on cliff sides
-    if (cliffH > 6.0f) {
-        float strataY1 = 5.0f * zoom;
-        float strataY2 = 11.0f * zoom;
-        DrawLineEx({left.x, left.y + strataY1}, {bottom.x, bottom.y + strataY1}, 1.2f * zoom, Color{20, 60, 28, 200});
-        DrawLineEx({bottom.x, bottom.y + strataY1}, {right.x, right.y + strataY1}, 1.2f * zoom, Color{25, 75, 34, 200});
-        DrawLineEx({left.x, left.y + strataY2}, {bottom.x, bottom.y + strataY2}, 1.0f * zoom, Color{80, 55, 40, 180});
-        DrawLineEx({bottom.x, bottom.y + strataY2}, {right.x, right.y + strataY2}, 1.0f * zoom, Color{95, 65, 48, 180});
+    if (gz > 0 && cliffH > 10.0f) {
+        for (int zLevel = 1; zLevel <= gz; ++zLevel) {
+            float strataY = (float)zLevel * (float)HEIGHT_STEP * zoom * 0.5f;
+            DrawLineEx({left.x, left.y + strataY}, {bottom.x, bottom.y + strataY}, 1.2f * zoom, Color{20, 60, 28, 180});
+            DrawLineEx({bottom.x, bottom.y + strataY}, {right.x, right.y + strataY}, 1.2f * zoom, Color{25, 75, 34, 180});
+        }
     }
 
     // Draw top diamond face
@@ -138,20 +138,23 @@ void DrawTile(int gx, int gy, int gz, GroundType type, Vector2 camOffset, float 
         }
     }
 
-    // Water multi-wave animated caustics & sunlit glints
+    // Water multi-wave animated caustics & gentle sunlit glints
     if (type == GROUND_WATER) {
         float t = (float)GetTime();
-        float w1 = sinf((float)gx * 1.6f + (float)gy * 2.1f + t * 3.5f);
-        float w2 = cosf((float)gx * 2.4f - (float)gy * 1.8f + t * 2.8f);
-        float shimmer = (w1 + w2) * 0.5f;
+        // Ripple on selective tiles so the ocean surface looks tranquil and sparkling
+        unsigned int wh = ((unsigned int)gx * 2654435761u) ^ ((unsigned int)gy * 2246822519u);
+        if ((wh % 3) == 0) {
+            float w1 = sinf((float)gx * 1.4f + (float)gy * 1.8f + t * 2.5f);
+            float shimmer = 0.5f + 0.5f * w1;
 
-        Vector2 mid = { (top.x + bottom.x) * 0.5f, (top.y + bottom.y) * 0.5f };
-        Vector2 wStart = { mid.x - 7.0f * zoom, mid.y - 2.0f * zoom + shimmer * 1.5f * zoom };
-        Vector2 wEnd   = { mid.x + 7.0f * zoom, mid.y + 2.0f * zoom + shimmer * 1.5f * zoom };
-        DrawLineEx(wStart, wEnd, 1.8f * zoom, Color{255, 255, 255, (unsigned char)(110 + shimmer * 60)});
+            Vector2 mid = { (top.x + bottom.x) * 0.5f, (top.y + bottom.y) * 0.5f };
+            Vector2 wStart = { mid.x - 5.5f * zoom, mid.y - 1.2f * zoom + shimmer * 1.2f * zoom };
+            Vector2 wEnd   = { mid.x + 5.5f * zoom, mid.y + 1.2f * zoom + shimmer * 1.2f * zoom };
+            DrawLineEx(wStart, wEnd, 1.2f * zoom, Color{186, 230, 253, (unsigned char)(40 + shimmer * 45)});
 
-        if (shimmer > 0.35f) {
-            DrawCircle((int)(mid.x + 3.0f * zoom), (int)(mid.y - 1.0f * zoom), 1.6f * zoom, Color{255, 255, 255, 220});
+            if (shimmer > 0.82f && (wh % 6 == 0)) {
+                DrawCircle((int)(mid.x + 2.0f * zoom), (int)(mid.y - 0.5f * zoom), 1.2f * zoom, Color{255, 255, 255, 140});
+            }
         }
     }
 

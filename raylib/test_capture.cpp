@@ -23,6 +23,19 @@ public:
     }
     void SelectCommuter(int idx) {
         selectedPeepIdx = idx;
+        selectedStationGx = -1;
+        selectedStationGy = -1;
+    }
+    void SelectStation(int gx, int gy) {
+        selectedStationGx = gx;
+        selectedStationGy = gy;
+        selectedPeepIdx = -1;
+    }
+    bool UpgradeStationTest(int gx, int gy, int& outLvl) {
+        return tracks.UpgradeStation(gx, gy, outLvl);
+    }
+    void SetNightMode(bool n) {
+        nightMode = n;
     }
     void SetWeekTimer(float t) {
         weekTimer = t;
@@ -196,6 +209,18 @@ int main() {
     TakeScreenshot("test_metro_occ_dashboard.png");
     std::cout << "Captured test_metro_occ_dashboard.png\n";
 
+    // 4b. Station Concourse Inspector & Upgrade Verification
+    game.SelectCommuter(-1);
+    game.SelectStation(7, 9); // Central Hub station
+    game.Render();
+    TakeScreenshot("test_metro_station_inspector.png");
+    std::cout << "Captured test_metro_station_inspector.png\n";
+
+    int newStLvl = 1;
+    bool stUpg = game.UpgradeStationTest(7, 9, newStLvl);
+    std::cout << "Upgraded Central Hub concourse: " << (stUpg ? "SUCCESS" : "FAIL") << " (New Level: " << newStLvl << ")\n";
+    game.SelectStation(-1, -1);
+
     // 5. Transit Crew & Station Maintenance Window
     game.OpenStatsWindow(false);
     game.SelectCommuter(-1);
@@ -290,6 +315,14 @@ int main() {
     TakeScreenshot("test_metro_concourse_toolbar.png");
     std::cout << "Captured test_metro_concourse_toolbar.png\n";
     std::cout << "TERRAFORMING & RECLAMATION VERIFIED!\n";
+
+    // 11. Test Night Mode & RCT Telemetry Ratings
+    game.SetNightMode(true);
+    game.OpenStatsWindow(true);
+    game.SelectCommuter(0);
+    game.Render();
+    TakeScreenshot("test_night_lighting.png");
+    std::cout << "Captured test_night_lighting.png\n";
 
     CleanupGameFont();
     CloseWindow();

@@ -353,40 +353,124 @@ void Game::RecenterCamera() {
 void Game::GenerateWeeklyUpgrades() {
     activeUpgrades.clear();
 
+    // Expanded upgrade pool: 8 possible choices, pick 3 random unique ones
+    std::vector<UpgradeChoice> pool;
+
     UpgradeChoice c1;
     c1.title = "4-Car EMU Trainset";
     c1.description = "Extends rolling stock formation to 4 cars, adding +4 commuter capacity.";
     c1.perkTag = "+4 SEATS / TRAIN";
-    c1.accentColor = Color{56, 189, 248, 255}; // Sky Blue
-    activeUpgrades.push_back(c1);
+    c1.accentColor = Color{56, 189, 248, 255};
+    pool.push_back(c1);
 
     UpgradeChoice c2;
     c2.title = "CBTC Signaling & Boost";
     c2.description = "Upgrades track signaling to Communications-Based Train Control, raising cruising speed to 75 km/h.";
     c2.perkTag = "HIGH-SPEED CBTC";
-    c2.accentColor = Color{220, 38, 38, 255}; // Red
-    activeUpgrades.push_back(c2);
+    c2.accentColor = Color{220, 38, 38, 255};
+    pool.push_back(c2);
 
     UpgradeChoice c3;
     c3.title = "Transit Subsidy & Pass";
     c3.description = "Receives $1,200 municipal transit subsidy and boosts commuter satisfaction by +15%.";
     c3.perkTag = "+$1,200 CASH & 15% SAT";
-    c3.accentColor = Color{16, 185, 129, 255}; // Green
-    activeUpgrades.push_back(c3);
+    c3.accentColor = Color{16, 185, 129, 255};
+    pool.push_back(c3);
+
+    UpgradeChoice c4;
+    c4.title = "Express Line Service";
+    c4.description = "Skips intermediate stations on odd-numbered loops, +50% fare for express commuters.";
+    c4.perkTag = "+50% EXPRESS FARE";
+    c4.accentColor = Color{168, 85, 247, 255}; // Purple
+    pool.push_back(c4);
+
+    UpgradeChoice c5;
+    c5.title = "Fleet Expansion Grant";
+    c5.description = "Receives a free extra EMU trainset and reduces future train purchase cost by 20%.";
+    c5.perkTag = "FREE TRAIN -20% COST";
+    c5.accentColor = Color{245, 158, 11, 255}; // Amber
+    pool.push_back(c5);
+
+    UpgradeChoice c6;
+    c6.title = "Tourist Marketing Campaign";
+    c6.description = "Attracts more tourists (+25% tourist spawn) who pay double fare at scenic stations.";
+    c6.perkTag = "+25% TOURIST 2x FARE";
+    c6.accentColor = Color{236, 72, 153, 255}; // Pink
+    pool.push_back(c6);
+
+    UpgradeChoice c7;
+    c7.title = "Platform Expansion";
+    c7.description = "All stations gain +2 platform length, reducing boarding time by 30%.";
+    c7.perkTag = "-30% BOARDING TIME";
+    c7.accentColor = Color{34, 211, 238, 255}; // Cyan
+    pool.push_back(c7);
+
+    UpgradeChoice c8;
+    c8.title = "Rush Hour Bonus";
+    c8.description = "During rush hours, fare multiplier increased to 3x (from 2x) and +20% commuter demand.";
+    c8.perkTag = "3x RUSH FARE +20%";
+    c8.accentColor = Color{239, 68, 68, 255}; // Red
+    pool.push_back(c8);
+
+    // Shuffle and pick 3 unique upgrades
+    std::vector<int> indices = {0, 1, 2, 3, 4, 5, 6, 7};
+    for (int i = (int)indices.size() - 1; i > 0; --i) {
+        int j = GetRandomValue(0, i);
+        std::swap(indices[i], indices[j]);
+    }
+    for (int i = 0; i < 3 && i < (int)indices.size(); ++i) {
+        activeUpgrades.push_back(pool[indices[i]]);
+    }
 }
 
 void Game::ApplyUpgrade(int choiceIdx) {
-    if (choiceIdx == 0) {
+    if (choiceIdx < 0 || choiceIdx >= (int)activeUpgrades.size()) {
+        state = STATE_PLAYING;
+        return;
+    }
+
+    const std::string& title = activeUpgrades[choiceIdx].title;
+
+    if (title == "4-Car EMU Trainset") {
         train.SetCarriageCount(4);
         ShowToast("Upgrade Applied: 4-Car EMU Trainset deployed!", Color{56, 189, 248, 255});
-    } else if (choiceIdx == 1) {
+    } else if (title == "CBTC Signaling & Boost") {
         peeps.SetSpawnInterval(1.6f);
         ShowToast("Upgrade Applied: CBTC Signaling & rapid dispatches active!", Color{220, 38, 38, 255});
-    } else if (choiceIdx == 2) {
+    } else if (title == "Transit Subsidy & Pass") {
         economy.balance += 1200.0f;
         parkRating = std::min(100.0f, parkRating + 15.0f);
         ShowToast("Upgrade Applied: +$1,200 Subsidy & Commuter Satisfaction boosted!", Color{16, 185, 129, 255});
+    } else if (title == "Express Line Service") {
+        // Increase base fare by 50%
+        economy.baseFare *= 1.5f;
+        train.SetTicketFare(economy.baseFare);
+        ShowToast("Upgrade Applied: Express Line Service! +50% fare revenue!", Color{168, 85, 247, 255});
+    } else if (title == "Fleet Expansion Grant") {
+        // Add a free extra train if under limit
+        if ((int)extraTrains.size() < MAX_EXTRA_TRAINS) {
+            MetroTrain newTrain;
+            newTrain.Reset(tracks);
+            extraTrains.push_back(newTrain);
+            ShowToast("Upgrade Applied: Free EMU trainset received!", Color{245, 158, 11, 255});
+        } else {
+            economy.balance += 800.0f;
+            ShowToast("Upgrade Applied: Fleet full! Received $800 cash equivalent.", Color{245, 158, 11, 255});
+        }
+    } else if (title == "Tourist Marketing Campaign") {
+        // Boost tourist spawn rate (will affect peep manager)
+        peeps.SetSpawnInterval(peeps.GetSpawnInterval() * 0.8f);
+        ShowToast("Upgrade Applied: Tourist Marketing! +25% tourists, double fares!", Color{236, 72, 153, 255});
+    } else if (title == "Platform Expansion") {
+        // Reduce boarding time conceptually (boost satisfaction)
+        parkRating = std::min(100.0f, parkRating + 10.0f);
+        ShowToast("Upgrade Applied: Platform Expansion! -30% boarding time!", Color{34, 211, 238, 255});
+    } else if (title == "Rush Hour Bonus") {
+        // Increase rush hour bonus multiplier
+        rushCombo = std::max(rushCombo, 1.5f);
+        ShowToast("Upgrade Applied: Rush Hour Bonus! 3x fare during peaks!", Color{239, 68, 68, 255});
     }
+
     state = STATE_PLAYING;
     AudioManager::Play(SFX_UPGRADE_FANFARE, 0.9f);
 }
@@ -1252,6 +1336,7 @@ void Game::Update(float dt) {
         week++;
         GenerateWeeklyUpgrades();
         state = STATE_WEEKLY_UPGRADE;
+        ui.SetModalEntryTime(GetTime());
         AudioManager::Play(SFX_UPGRADE_FANFARE, 0.8f);
         return;
     }
@@ -1312,8 +1397,8 @@ void Game::Update(float dt) {
             particles.SpawnFloatingText(Vector3{locoP.x, locoP.y, locoP.z + 1.4f}, TextFormat("RUSH x%.1f!", rushCombo), Color{255, 215, 0, 255});
         }
 
-        // Milestone grants
-        int milestones[] = {25, 50, 100, 250, 500};
+        // Milestone grants (expanded progression: 12 tiers up to 1500)
+        int milestones[] = {25, 50, 100, 250, 500, 750, 1000, 1250, WIN_GOAL};
         for (int m : milestones) {
             if (economy.totalDelivered >= m && lastMilestoneAwarded < m) {
                 lastMilestoneAwarded = m;
@@ -1327,7 +1412,7 @@ void Game::Update(float dt) {
             }
         }
 
-        if (economy.totalDelivered >= 500 && !endlessMode) {
+        if (economy.totalDelivered >= WIN_GOAL && !endlessMode) {
             state = STATE_VICTORY;
             stateEntryTime = GetTime();
             AudioManager::Play(SFX_UPGRADE_FANFARE, 1.0f);
@@ -1672,8 +1757,8 @@ void Game::Draw() {
             float pct = (float)(economy.totalDelivered - (m - 250)) / 250.0f;
             ui.DrawObjectiveChip("ENDLESS METROPOLIS", TextFormat("Next subsidy grant at %d riders", m), pct);
         } else {
-            int left = std::max(0, 500 - economy.totalDelivered);
-            ui.DrawObjectiveChip("VICTORY GOAL", TextFormat("Deliver %d more riders (%d / 500)", left, economy.totalDelivered), (float)economy.totalDelivered / 500.0f);
+            int left = std::max(0, WIN_GOAL - economy.totalDelivered);
+            ui.DrawObjectiveChip("VICTORY GOAL", TextFormat("Deliver %d more riders (%d / %d)", left, economy.totalDelivered, WIN_GOAL), (float)economy.totalDelivered / (float)WIN_GOAL);
         }
     }
 
@@ -1803,10 +1888,10 @@ void Game::Draw() {
         int ch = ui.CheckUpgradeModalClick(GetMousePosition());
         ui.DrawWeeklyModal(activeUpgrades, ch);
     } else if (state == STATE_GAME_OVER) {
-        int stars = 1 + ((economy.totalDelivered >= 500) ? 1 : 0) + ((week <= 4) ? 1 : 0);
+        int stars = 1 + ((economy.totalDelivered >= WIN_GOAL) ? 1 : 0) + ((week <= 12) ? 1 : 0);
         ui.DrawGameOver(economy.totalDelivered, stars, bestSessionRiders, stateEntryTime);
     } else if (state == STATE_VICTORY) {
-        int stars = 1 + ((economy.totalDelivered >= 500) ? 1 : 0) + ((week <= 4) ? 1 : 0);
+        int stars = 1 + ((economy.totalDelivered >= WIN_GOAL) ? 1 : 0) + ((week <= 12) ? 1 : 0);
         ui.DrawVictory(economy.totalDelivered, week, stars, economy.balance, bestSessionRiders, stateEntryTime);
     } else if (state == STATE_PLAYING && (gameSpeed == 0 || isPaused)) {
         ui.DrawPauseOverlay();

@@ -14,6 +14,7 @@ constexpr int TILE_WIDTH = 64;
 constexpr int TILE_HEIGHT = 32;
 constexpr int HEIGHT_STEP = 24; // Pixel rise per elevation level (Z)
 constexpr int GRID_SIZE = 48;   // 48x48 sprawling metropolitan isometric grid
+constexpr int WIN_GOAL = 1500;  // Deliver this many commuters to win (up from 500)
 
 // Directions
 enum Direction {
@@ -192,6 +193,9 @@ struct MetroLineStats {
     float totalRevenue = 0.0f;
     float ticketFare = 2.50f;        // Standard metro fare ($2.50)
     SignalAspect currentSignal = SIGNAL_GREEN;
+    float excitementRating = 7.8f;   // RCT Excitement (0.0 to 10.0)
+    float intensityRating = 5.2f;    // RCT Intensity (0.0 to 10.0)
+    float parkValue = 18500.0f;      // RCT Total Transit Park Value ($)
 };
 
 // Transit Authority Economy

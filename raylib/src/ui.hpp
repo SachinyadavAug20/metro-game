@@ -125,6 +125,7 @@ public:
     bool CheckRestartClick(Vector2 mousePos) const;
     bool CheckVictoryContinueClick(Vector2 mousePos) const;
     bool CheckTitleStartClick(Vector2 mousePos) const;
+    void SetModalEntryTime(float t) { modalEntryTime = t; }
 
 private:
     float pulseAnim = 0.0f;
@@ -132,5 +133,6 @@ private:
     float pressScale = 1.0f; // toolbar button press scale (1.0 = normal, 0.92 = pressed)
     float cashFlashTimer = 0.0f; // green flash on cash when money earned
     float prevBalance = 0.0f;    // detect balance increases for flash
+    float modalEntryTime = 0.0f; // GetTime() when modal last opened (for slide-in)
 };
 

@@ -34,6 +34,7 @@ public:
     void AddCarriage();
 
     Vector3 GetLocomotivePos() const { return cars.empty() ? Vector3{0,0,0} : cars[0].pos; }
+    Vector3 GetLocomotiveForward() const { return cars.empty() ? Vector3{1,0,0} : cars[0].forward; }
     MetroLineStats GetStats(const TrackSystem& tracks) const;
     void RecordPassengerDelivery(int count) { totalTransported += count; }
     void SetTrainTheme(Color c) { themeColor = c; }

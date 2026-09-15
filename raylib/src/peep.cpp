@@ -59,6 +59,15 @@ void CommuterManager::SpawnCommuter() {
     c.metroPassBalance = 20.0f + (float)(rand() % 40);
     c.hasBriefcase = (c.type == COMMUTER_WORKER || c.type == COMMUTER_EXECUTIVE);
     c.hasCoffee = (rand() % 100 < 30);
+    c.hasBalloon = (rand() % 100 < 36);
+    Color bColors[] = {
+        Color{239, 68, 68, 255},  // Crimson Red
+        Color{59, 130, 246, 255}, // Sky Blue
+        Color{245, 158, 11, 255}, // Golden Amber
+        Color{16, 185, 129, 255}, // Emerald Green
+        Color{168, 85, 247, 255}  // Royal Purple
+    };
+    c.balloonColor = bColors[rand() % 5];
 
     // Assign Mini Metro Destination Shape (Circle, Triangle, Square, Cross)
     int rShape = 1 + (rand() % 4);
@@ -99,9 +108,12 @@ void CommuterManager::AlightPassengers(int count, Vector2 stationPos) {
                 "Stunning view of the river from the viaduct!",
                 "Quick and comfortable commute!",
                 "Metro Grid is running like clockwork!",
-                "Great value for money, arrived right on time!"
+                "Great value for money, arrived right on time!",
+                "The drops on the viaduct give +8.5 excitement!",
+                "The view from the Summit Station is like Minecraft far render distance!",
+                "Terraria minecart rails have nothing on this EMU!"
             };
-            c.thought = thoughts[rand() % 5];
+            c.thought = thoughts[rand() % 8];
             leftToAlight--;
         }
     }
@@ -342,6 +354,18 @@ void CommuterManager::Draw(Vector2 camOffset, float zoom) const {
             DrawRectangle((int)bagPos.x, (int)bagPos.y, (int)(3.5f * zoom), (int)(2.8f * zoom), Color{120, 53, 15, 255}); // Leather briefcase
         }
 
+        // RollerCoaster Tycoon Bobbing Balloon
+        if (c.hasBalloon) {
+            float balloonFloat = sinf(c.walkTimer * 3.5f + c.pos.x * 2.1f + c.pos.y * 3.4f) * 2.8f * zoom;
+            Vector2 handPos = { sPos.x - 3.2f * zoom, sPos.y - bodyH * 0.45f + bob };
+            Vector2 balloonPos = { sPos.x - 5.5f * zoom, sPos.y - bodyH - 15.0f * zoom + balloonFloat };
+
+            DrawLineEx(handPos, balloonPos, 0.9f * zoom, Color{100, 116, 139, 210});
+            DrawCircle((int)balloonPos.x, (int)balloonPos.y, 4.0f * zoom, c.balloonColor);
+            DrawCircle((int)(balloonPos.x - 1.2f * zoom), (int)(balloonPos.y - 1.2f * zoom), 1.2f * zoom, Color{255, 255, 255, 220});
+            DrawTriangle({balloonPos.x, balloonPos.y + 4.0f * zoom}, {balloonPos.x - 1.2f * zoom, balloonPos.y + 5.5f * zoom}, {balloonPos.x + 1.2f * zoom, balloonPos.y + 5.5f * zoom}, c.balloonColor);
+        }
+
         // Floating Thought & Destination Shape Speech Bubble
         float floatY = sinf(c.walkTimer * 2.0f) * 1.5f * zoom;
         Vector2 badgePos = { sPos.x, sPos.y - bodyH - 12.0f * zoom + bob + floatY };
@@ -403,4 +427,12 @@ int CommuterManager::FindCommuterAtScreenPos(Vector2 mouseScreen, Vector2 camOff
         }
     }
     return -1;
+}
+
+int CommuterManager::GetCommutersWantingShape(StationShape shape) const {
+    int count = 0;
+    for (const auto& c : commuters) {
+        if (c.targetShape == shape) count++;
+    }
+    return count;
 }

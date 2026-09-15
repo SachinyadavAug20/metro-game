@@ -68,6 +68,7 @@ public:
     StationShape GetStationShapeAt(int gx, int gy) const;
     bool GetNextStationAhead(float currentDist, float& outDistToStation, StationInfo& outStation) const;
     void RecordStationAlight(int gx, int gy, int count, bool& outLeveledUp, int& outNewLevel);
+    bool UpgradeStation(int gx, int gy, int& outNewLevel);
 
     // Dynamic Wayside Signaling
     void UpdateSignals(float trainDistance);

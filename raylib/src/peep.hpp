@@ -23,6 +23,8 @@ struct Commuter {
     bool isAngry = false;
     bool hasCoffee = false;
     bool hasBriefcase = true;
+    bool hasBalloon = false;
+    Color balloonColor = Color{239, 68, 68, 255};
     std::string thought = "Tapped my transit card, waiting for Line 1!";
 };
 
@@ -47,9 +49,11 @@ public:
         if (index >= 0 && index < (int)commuters.size()) return &commuters[index];
         return nullptr;
     }
+    int GetCommutersWantingShape(StationShape shape) const;
 
     void SpawnCommuter();
     void SetSpawnInterval(float seconds) { spawnInterval = seconds; }
+    float GetSpawnInterval() const { return spawnInterval; }
     void AlightPassengers(int count, Vector2 stationPos);
 
     // Compatibility aliases

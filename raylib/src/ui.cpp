@@ -83,11 +83,10 @@ void UserInterface::DrawHUD(
     DrawRectangleRoundedLines(Rectangle{(float)scoreX, 8.0f, 155.0f, 36.0f}, 0.25f, 4, Color{51, 65, 85, 220});
     DrawText("RIDERS", scoreX + 8, 11, 9, Color{148, 163, 184, 255});
     DrawGameBoldText(TextFormat("%d", ridership), scoreX + 8, 22, 16, Color{255, 214, 0, 255});
-    const int GOAL = 500;
-    float goalPct = std::max(0.0f, std::min(1.0f, (float)ridership / (float)GOAL));
+    float goalPct = std::max(0.0f, std::min(1.0f, (float)ridership / (float)WIN_GOAL));
     DrawRectangle(scoreX + 56, 24, 48, 6, Color{51, 65, 85, 255});
     DrawRectangle(scoreX + 56, 24, (int)(48.0f * goalPct), 6, Color{255, 214, 0, 255});
-    DrawText(TextFormat("%d/%d", ridership, GOAL), scoreX + 108, 22, 10, Color{148, 163, 184, 255});
+    DrawText(TextFormat("%d/%d", ridership, WIN_GOAL), scoreX + 108, 22, 10, Color{148, 163, 184, 255});
 
     // 3b. Tycoon Transit Rating (RollerCoaster Tycoon style rating)
     int rateX = 411;
@@ -953,7 +952,7 @@ void UserInterface::DrawTransitOperationsManual() {
     DrawText("* CAR+1: Increases train passenger capacity.", card3X + 10, c3y, 10, Color{56, 189, 248, 255}); c3y += 16;
     DrawText("* EXTRA TRAIN: Dispatches extra EMU trains", card3X + 10, c3y, 10, Color{56, 189, 248, 255}); c3y += 14;
     DrawText("on the circuit to handle peak rush hours!", card3X + 10, c3y, 10, Color{56, 189, 248, 255}); c3y += 18;
-    DrawText("* Deliver 500 riders to win, then keep", card3X + 10, c3y, 10, Color{74, 222, 128, 255}); c3y += 14;
+    DrawText("* Deliver 1500 riders to win, then keep", card3X + 10, c3y, 10, Color{74, 222, 128, 255}); c3y += 14;
     DrawText("growing in Endless Sandbox Tycoon mode!", card3X + 10, c3y, 10, Color{74, 222, 128, 255});
 
     // BOTTOM SHORTCUTS BOX
@@ -997,12 +996,17 @@ void UserInterface::DrawWeeklyModal(const std::vector<UpgradeChoice>& choices, i
     int screenW = GetScreenWidth();
     int screenH = GetScreenHeight();
 
-    DrawRectangle(0, 0, screenW, screenH, Color{0, 0, 0, 200});
+    // Entrance animation
+    float elapsed = GetTime() - modalEntryTime;
+    float fadeIn = std::min(1.0f, elapsed / 0.3f);
+    float slideUp = 30.0f * (1.0f - fadeIn);
+
+    DrawRectangle(0, 0, screenW, screenH, Color{0, 0, 0, (unsigned char)(200 * fadeIn)});
 
     int modalW = 700;
     int modalH = 340;
     int mx = (screenW - modalW) / 2;
-    int my = (screenH - modalH) / 2;
+    int my = (int)((screenH - modalH) / 2 + slideUp);
 
     DrawRectangleRounded(Rectangle{(float)mx, (float)my, (float)modalW, (float)modalH}, 0.1f, 8, Color{15, 23, 42, 255});
     DrawRectangleRoundedLines(Rectangle{(float)mx, (float)my, (float)modalW, (float)modalH}, 0.1f, 8, Color{220, 38, 38, 255});
@@ -1193,10 +1197,18 @@ void UserInterface::DrawPauseOverlay() {
     int screenH = GetScreenHeight();
     float t = GetTime();
 
-    // Dark overlay with subtle vignette
+    // Dark overlay with subtle vignette + floating particles
     DrawRectangle(0, 0, screenW, screenH, Color{2, 6, 23, 230});
     DrawRectangleGradientV(0, 0, screenW, 80, Color{2, 6, 23, 0}, Color{2, 6, 23, 140});
     DrawRectangleGradientV(0, screenH - 80, screenW, 80, Color{2, 6, 23, 0}, Color{2, 6, 23, 140});
+    // Floating particles
+    for (int i = 0; i < 20; ++i) {
+        float px = fmodf(t * (5 + i * 1.3f) + i * 143.7f, (float)screenW);
+        float py = fmodf(t * (3 + i * 0.8f) + i * 97.3f, (float)screenH);
+        float sz = 1.0f + sinf(t * 1.5f + i * 0.7f) * 0.5f;
+        Color c = (i % 3 == 0) ? Color{56, 189, 248, 30} : ((i % 3 == 1) ? Color{255, 214, 0, 25} : Color{239, 68, 68, 20});
+        DrawCircle((int)px, (int)py, sz, c);
+    }
 
     float fl = 0.5f + 0.5f * sinf(t * 3.0f);
     int cx = screenW / 2;
@@ -1378,7 +1390,7 @@ void UserInterface::DrawTitleScreen(int best) {
     const char* rules[] = {
         "Build closed loops so your train runs automatically",
         "Riders board at matching shape stations  (square / circle / cross)",
-        "Deliver 500 commuters to win, then keep growing"
+        "Deliver 1500 commuters to win, then keep growing"
     };
     Color ruleColors[] = {
         Color{34, 197, 94, 255},

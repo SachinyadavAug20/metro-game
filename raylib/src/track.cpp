@@ -137,6 +137,32 @@ bool TrackSystem::AddPiece(int gx, int gy, int gz, TrackType type, Direction inD
         node.endZ = gz;
     }
 
+    if (type == TRACK_STATION) {
+        int existingStations = 0;
+        for (const auto& p : pieces) {
+            if (p.type == TRACK_STATION) existingStations++;
+        }
+        node.stationLevel = 1;
+        node.stationShape = (StationShape)((existingStations % 4) + 1);
+
+        if (gx >= 24 && gz >= 1) {
+            const char* mNames[] = {"Highland Summit", "Alpine Ridge", "Slate Peak", "Pine Crest"};
+            node.stationName = mNames[existingStations % 4];
+        } else if (gy >= 26) {
+            const char* cNames[] = {"Marina Bay", "Waterfront Promenade", "Bayside Pier", "Harbor Gate"};
+            node.stationName = cNames[existingStations % 4];
+        } else if (gx <= 10) {
+            const char* wNames[] = {"Westside Gardens", "Sunset Meadow", "Emerald Lake", "Meadow Brook"};
+            node.stationName = wNames[existingStations % 4];
+        } else if (gy <= 8) {
+            const char* nNames[] = {"Northgate Concourse", "Metropolis Central", "Boulevard Way", "Civic Center"};
+            node.stationName = nNames[existingStations % 4];
+        } else {
+            const char* dNames[] = {"Grand Central", "Market Street", "Union Square", "Park Concourse"};
+            node.stationName = dNames[existingStations % 4];
+        }
+    }
+
     GenerateTileSpline(node);
     pieces.push_back(node);
     RecalculateCircuit();
@@ -482,6 +508,16 @@ void TrackSystem::RecordStationAlight(int gx, int gy, int count, bool& outLevele
         outLeveledUp = true;
         outNewLevel = n->stationLevel;
     }
+}
+
+bool TrackSystem::UpgradeStation(int gx, int gy, int& outNewLevel) {
+    TrackNode* n = GetPiece(gx, gy);
+    if (n && n->type == TRACK_STATION && n->stationLevel < 3) {
+        n->stationLevel++;
+        outNewLevel = n->stationLevel;
+        return true;
+    }
+    return false;
 }
 
 bool TrackSystem::GetNextStationAhead(float currentDist, float& outDistToStation, StationInfo& outStation) const {

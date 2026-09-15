@@ -140,6 +140,11 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
             velocity = 2.5f;
             distance += 0.35f; // Nudge past platform stop threshold
             if (distance >= circuitLen) distance = fmodf(distance, circuitLen);
+            // Departure whoosh — burst of smoke from rear
+            if (cars.size() > 0) {
+                Vector3 rear = {cars.back().pos.x - cars.back().forward.x * 0.4f, cars.back().pos.y - cars.back().forward.y * 0.4f, cars.back().pos.z + 0.2f};
+                particles.SpawnSmoke(rear, 8);
+            }
         }
     } else {
         // Train is in motion
@@ -162,6 +167,8 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
             stationTimer = 3.2f;
             doorsOpen = true;
             doorProgress = 0.0f;
+            // Arrival celebration — burst of confetti at station
+            particles.SpawnConfetti(Vector3{(float)nextStation.gx + 0.5f, (float)nextStation.gy + 0.5f, 0.8f}, 8);
 
             AudioManager::Play(SFX_AIR_BRAKE, 0.6f);
             AudioManager::Play(SFX_STATION_BELL, 0.7f);
@@ -219,6 +226,11 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
             state = TRAIN_CRUISING;
             if (velocity < targetVelocity) {
                 velocity = std::min(targetVelocity, velocity + 6.0f * dt);
+                // Exhaust puff when accelerating
+                if (cars.size() > 0 && (rand() % 100) < 15) {
+                    Vector3 rear = {cars.back().pos.x - cars.back().forward.x * 0.3f, cars.back().pos.y - cars.back().forward.y * 0.3f, cars.back().pos.z + 0.2f};
+                    particles.SpawnSmoke(rear, 3);
+                }
             } else if (velocity > targetVelocity) {
                 velocity = std::max(targetVelocity, velocity - 8.0f * dt);
             }
@@ -438,6 +450,16 @@ MetroLineStats MetroTrain::GetStats(const TrackSystem& tracks) const {
     // High performance punctuality based on speed and station coverage
     stats.onTimeRate = std::min(99.8f, 95.0f + (stats.currentSpeedKmh > 20.0f ? 4.2f : 1.0f));
     stats.commuterSatisfaction = std::min(98.5f, 90.0f + (float)stats.fleetCars * 1.5f);
+
+    // RCT Excitement & Intensity Ratings:
+    float trackFactor = std::min(3.5f, stats.trackLengthM / 180.0f);
+    float speedFactor = std::min(3.0f, stats.maxSpeedKmh / 35.0f);
+    float stationFactor = std::min(2.0f, (float)stats.stationCount * 0.6f);
+    float carFactor = std::min(1.5f, (float)stats.fleetCars * 0.35f);
+    stats.excitementRating = std::min(10.0f, 2.8f + trackFactor + speedFactor + stationFactor + carFactor);
+
+    stats.intensityRating = std::min(9.9f, 2.2f + (stats.maxSpeedKmh / 28.0f) + (stats.trackLengthM > 400.0f ? 1.4f : 0.6f));
+    stats.parkValue = 18500.0f;
 
     return stats;
 }
