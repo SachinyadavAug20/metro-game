@@ -3,6 +3,8 @@
 #include "common.hpp"
 #include "peep.hpp"
 
+struct TrackNode;
+
 struct UpgradeChoice {
     std::string title;
     std::string description;
@@ -23,7 +25,7 @@ struct ToolbarMetrics {
     static constexpr int BUY_H = 24;        // CAR/LAND/EXTRA TRAIN purchase buttons
     static constexpr int BUY_Y = 74;        // purchase row offset from bar top
     static constexpr int ITEM_Y = 14;       // tool button row offset from bar top
-    static constexpr int DOCK_H = 10;       // clearances (barY = screenH - BAR_H - DOCK_H)
+    static constexpr int DOCK_H = 14;       // clearances (barY = screenH - BAR_H - DOCK_H)
     static int BarX(int screenW) { return std::max(10, (screenW - (BAR_W + GAP + AUX_W)) / 2); }
     static int BarY(int screenH) { return screenH - BAR_H - DOCK_H; }
     static int AuxX(int screenW)  { return BarX(screenW) + BAR_W + GAP; }
@@ -74,6 +76,7 @@ public:
     void DrawLineOperations(const MetroLineStats& stats);
     void DrawTransitCrewWindow(const std::vector<StaffMember>& staff, float cleanliness, float balance);
     void DrawCommuterInspector(const Commuter* commuter);
+    void DrawStationInspector(const TrackNode* station, int waitingCommuters, float balance);
     void DrawToast(const ToastMessage& toast);
     void DrawQuickTipBanner(const std::string& tip);
     void DrawTransitOperationsManual();
@@ -114,6 +117,9 @@ public:
     bool CheckStatsWindowClick(Vector2 mousePos, float& outTicketPriceDelta, int& outColorChoice, int& outModeChange, int& outCarDelta, bool& outClose) const;
     bool CheckStaffWindowClick(Vector2 mousePos, bool& outHireHandyman, bool& outHireMechanic, bool& outClose) const;
     bool CheckPeepInspectorCloseClick(Vector2 mousePos) const;
+    bool IsMouseInPeepInspector(Vector2 mousePos) const;
+    bool CheckStationInspectorClick(Vector2 mousePos, const TrackNode* station, bool& outUpgrade, bool& outClose) const;
+    bool IsMouseInStationInspector(Vector2 mousePos) const;
     bool CheckHelpOverlayClick(Vector2 mousePos) const;
     int CheckUpgradeModalClick(Vector2 mousePos) const;
     bool CheckRestartClick(Vector2 mousePos) const;
@@ -123,5 +129,8 @@ public:
 private:
     float pulseAnim = 0.0f;
     float animTabX = 0.0f;  // smooth-sliding X position for active tab indicator
+    float pressScale = 1.0f; // toolbar button press scale (1.0 = normal, 0.92 = pressed)
+    float cashFlashTimer = 0.0f; // green flash on cash when money earned
+    float prevBalance = 0.0f;    // detect balance increases for flash
 };
 

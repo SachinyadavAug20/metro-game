@@ -47,13 +47,15 @@ void Game::Init() {
     comboTimer = 0.0f;
     comboStreak = 0;
     endlessMode = false;
-    buildRadius = 16;
+    buildRadius = 38;
 
     statsWindowOpen = false;
     staffWindowOpen = false;
     rideCamActive = false;
     helpOverlayOpen = false;
     selectedPeepIdx = -1;
+    selectedStationGx = -1;
+    selectedStationGy = -1;
 
     // Staff & Cleanliness
     staff.clear();
@@ -91,7 +93,7 @@ bool Game::IsBuildable(int gx, int gy) const {
 }
 
 void Game::ReclaimLand() {
-    buildRadius = std::min(GRID_SIZE, buildRadius + 8);
+    buildRadius = std::min(100, buildRadius + 16);
 
     // Physically reclaim coastal water cells in the newly expanded territory into buildable land!
     int reclaimedCount = 0;
@@ -100,23 +102,10 @@ void Game::ReclaimLand() {
             int d = std::abs(x - LAND_CENTER_X) + std::abs(y - LAND_CENTER_Y);
             if (d <= buildRadius && terrain[x][y] == GROUND_WATER) {
                 // Determine if this cell is on the outer boundary (create sand beach) or inner (emerald grass)
-                bool outerShore = false;
-                for (int dx = -1; dx <= 1; ++dx) {
-                    for (int dy = -1; dy <= 1; ++dy) {
-                        int nx = x + dx, ny = y + dy;
-                        if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
-                            if (std::abs(nx - LAND_CENTER_X) + std::abs(ny - LAND_CENTER_Y) > buildRadius) {
-                                outerShore = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (outerShore) break;
-                }
-
+                bool outerShore = (d >= buildRadius - 2);
                 terrain[x][y] = outerShore ? GROUND_SAND : GROUND_GRASS;
                 reclaimedCount++;
-                if ((reclaimedCount % 5) == 0) {
+                if ((reclaimedCount % 4) == 0) {
                     particles.SpawnConfetti(Vector3{(float)x + 0.5f, (float)y + 0.5f, 0.5f}, 6);
                 }
             }
@@ -131,7 +120,7 @@ void Game::ReclaimLand() {
         "Northgate Pine Plateau",
         "Grand Metropolis Megalopolis"
     };
-    int distIdx = std::min(5, (buildRadius - 16) / 8);
+    int distIdx = std::min(5, (buildRadius - 36) / 12);
     const char* distName = districtNames[std::max(0, distIdx)];
 
     particles.SpawnConfetti(Vector3{(float)LAND_CENTER_X, (float)LAND_CENTER_Y, 1.0f}, 40);
@@ -151,40 +140,65 @@ void Game::SetupInitialPark() {
         }
     }
 
-    // 1. Natural Winding River Canal (passes under Marina Viaduct at x=12, 13)
-    for (int y = 0; y < 26; ++y) {
+    // 1. Natural Scenic Winding River Canal
+    // Passes under the Marina Viaduct elevated bridge at (12, 9) & (13, 9)
+    // and over the University subway tunnel at (12, 16) & (13, 16)
+    for (int y = 0; y <= 25; ++y) {
         terrain[12][y] = GROUND_WATER;
         terrain[13][y] = GROUND_WATER;
+        // Natural golden sand beaches along both banks of the river
+        if (terrain[11][y] == GROUND_GRASS) terrain[11][y] = GROUND_SAND;
+        if (terrain[14][y] == GROUND_GRASS) terrain[14][y] = GROUND_SAND;
     }
-    // Grand Southern Coastal Bay / Ocean at y >= 28, x >= 14
-    for (int x = 14; x < GRID_SIZE; ++x) {
-        for (int y = 28; y < GRID_SIZE; ++y) {
-            // Leave a scenic offshore island at (30..36, 34..40)
-            bool isIsland = (x >= 30 && x <= 36 && y >= 34 && y <= 40);
-            if (!isIsland) {
+
+    // 2. Grand Southern Coastal Ocean & Sandy Bay (Scalloped natural shoreline)
+    for (int x = 12; x < GRID_SIZE; ++x) {
+        float coastY = 28.0f - 1.8f * sinf((float)x * 0.42f);
+        for (int y = (int)coastY - 2; y < GRID_SIZE; ++y) {
+            bool isIsland = (x >= 31 && x <= 37 && y >= 33 && y <= 39);
+            if (isIsland) {
+                // Offshore Island: lush green center surrounded by sandy beach
+                bool shore = (x == 31 || x == 37 || y == 33 || y == 39);
+                terrain[x][y] = shore ? GROUND_SAND : GROUND_GRASS;
+            } else if ((float)y >= coastY) {
                 terrain[x][y] = GROUND_WATER;
+            } else if ((float)y >= coastY - 1.8f) {
+                terrain[x][y] = GROUND_SAND; // Coastal sand beach
             }
         }
     }
-    // Inland Freshwater Lake in the Western Suburbs at (3..8, 28..33)
-    for (int x = 3; x <= 8; ++x) {
-        for (int y = 28; y <= 33; ++y) {
-            terrain[x][y] = GROUND_WATER;
+
+    // 3. Western Suburbs Freshwater Lake (Natural rounded oval with sand perimeter)
+    for (int x = 2; x <= 10; ++x) {
+        for (int y = 26; y <= 34; ++y) {
+            float dx = (float)(x - 6);
+            float dy = (float)(y - 30);
+            float d = sqrtf(dx * dx + dy * dy);
+            if (d <= 3.2f) {
+                terrain[x][y] = GROUND_WATER;
+            } else if (d <= 4.2f && terrain[x][y] == GROUND_GRASS) {
+                terrain[x][y] = GROUND_SAND; // Lake shoreline
+            }
         }
     }
 
-    // 2. Highland Mountains & Rolling Hills (Elevation Z=1 and Z=2) in the East
-    for (int x = 26; x < GRID_SIZE; ++x) {
-        for (int y = 2; y <= 24; ++y) {
-            groundZ[x][y] = 1;
-            // High peak ridge at Z=2
-            if (x >= 33 && x <= 43 && y >= 6 && y <= 18) {
+    // 4. Highland Mountains & Rolling Hills (Elevation Z=1 and Z=2) in the East
+    // Natural organic rounded massif with rolling green foothills and rocky slate summits
+    for (int x = 24; x < GRID_SIZE; ++x) {
+        for (int y = 2; y <= 26; ++y) {
+            float dx = (float)(x - 36) / 10.0f;
+            float dy = (float)(y - 14) / 10.0f;
+            float distSq = dx * dx + dy * dy;
+            if (distSq < 0.38f && x >= 32 && y >= 6 && y <= 20) {
                 groundZ[x][y] = 2;
+                terrain[x][y] = GROUND_STONE; // High alpine slate summit
+            } else if (distSq < 1.05f && x >= 26) {
+                groundZ[x][y] = 1; // Rolling foothills
             }
         }
     }
 
-    // 3. Pedestrian sidewalks connecting entrance plaza to Central Hub Station
+    // 5. Pedestrian sidewalks connecting entrance plaza to Central Hub Station
     for (int x = 0; x <= 5; ++x) {
         terrain[x][9] = GROUND_PATH;
     }
@@ -210,22 +224,34 @@ void Game::SetupInitialPark() {
         terrain[x][17] = GROUND_PATH;
     }
 
-    // 4. Urban Transit Station Amenities & Scenery
+    // Landscaped Central Park Plaza inside the transit loop (x=8..10, y=11..14)
+    for (int x = 8; x <= 10; ++x) {
+        for (int y = 11; y <= 14; ++y) {
+            if (terrain[x][y] == GROUND_GRASS) terrain[x][y] = GROUND_PLAZA;
+        }
+    }
+
+    // 6. Urban Transit Station Amenities & Scenery
     scenery[0][9] = SCENERY_METRO_ENTRANCE; // Grand subway portal entrance
     scenery[2][9] = SCENERY_TURNSTILE_GATE; // Contactless fare gates & TVM ticket machine
     scenery[3][8] = SCENERY_MAP_KIOSK;      // Harry Beck style schematic transit map board
     scenery[5][7] = SCENERY_NEWSSTAND;      // Platform Metro Cafe & refreshments
     scenery[1][10] = SCENERY_BIKE_RACK;     // Metro bike share docking rack
     scenery[4][7] = SCENERY_FOUNTAIN;       // Splashing park water fountain
+    scenery[9][12] = SCENERY_FOUNTAIN;      // Central park ornamental fountain
 
     // Platform Benches
     scenery[6][8] = SCENERY_BENCH;
     scenery[8][8] = SCENERY_BENCH;
+    scenery[8][11] = SCENERY_BENCH;
+    scenery[10][11] = SCENERY_BENCH;
 
     // High-Efficiency Municipal LED Streetlamps
     scenery[3][8] = SCENERY_LAMP_POST;
     scenery[8][10] = SCENERY_LAMP_POST;
     scenery[5][12] = SCENERY_LAMP_POST;
+    scenery[8][14] = SCENERY_LAMP_POST;
+    scenery[10][14] = SCENERY_LAMP_POST;
 
     // Manicured Trees & Botanical Flower Beds
     scenery[1][8] = SCENERY_STREET_TREE;
@@ -233,6 +259,8 @@ void Game::SetupInitialPark() {
     scenery[5][10] = SCENERY_STREET_TREE;
     scenery[4][10] = SCENERY_FLOWER_BED;
     scenery[6][7]  = SCENERY_FLOWER_BED;
+    scenery[9][11] = SCENERY_FLOWER_BED;
+    scenery[9][14] = SCENERY_FLOWER_BED;
 
     // Metropolitan Park Pine Trees across the canal
     scenery[17][8]  = SCENERY_PINE_TREE;
@@ -240,11 +268,14 @@ void Game::SetupInitialPark() {
     scenery[17][16] = SCENERY_PINE_TREE;
     scenery[15][18] = SCENERY_PINE_TREE;
 
-    // Natural Pine Forests on the Highland Mountains
-    for (int px = 28; px < 46; px += 3) {
-        for (int py = 4; py < 22; py += 3) {
-            if (terrain[px][py] != GROUND_WATER && scenery[px][py] == SCENERY_NONE) {
-                scenery[px][py] = SCENERY_PINE_TREE;
+    // Natural Organic Pine Forests on the Highland Mountains (Clustered)
+    for (int px = 26; px < GRID_SIZE - 2; ++px) {
+        for (int py = 3; py < 25; ++py) {
+            if (terrain[px][py] != GROUND_WATER && groundZ[px][py] >= 1 && scenery[px][py] == SCENERY_NONE) {
+                unsigned int th = ((unsigned int)px * 1597334677u) ^ ((unsigned int)py * 3812015801u);
+                if ((th % 4) == 0) {
+                    scenery[px][py] = SCENERY_PINE_TREE;
+                }
             }
         }
     }
@@ -254,7 +285,14 @@ void Game::SetupInitialPark() {
     scenery[2][32] = SCENERY_STREET_TREE;
     scenery[9][30] = SCENERY_STREET_TREE;
     scenery[9][33] = SCENERY_STREET_TREE;
-    scenery[6][27] = SCENERY_BENCH;
+    scenery[6][26] = SCENERY_BENCH;
+    scenery[6][34] = SCENERY_BENCH;
+    scenery[6][30] = SCENERY_FOUNTAIN; // Splashing lake fountain
+
+    // Offshore Island Scenery
+    scenery[34][36] = SCENERY_FOUNTAIN;
+    scenery[33][35] = SCENERY_STREET_TREE;
+    scenery[35][37] = SCENERY_PINE_TREE;
 }
 
 void Game::ResetPark() {
@@ -431,6 +469,11 @@ void Game::HandleInput() {
     // Hotkeys
     if (IsKeyPressed(KEY_C) || IsKeyPressed(KEY_HOME)) {
         RecenterCamera();
+    }
+    if (IsKeyPressed(KEY_N)) {
+        nightMode = !nightMode;
+        ShowToast(nightMode ? "NIGHT VISTA: City lights active [Press N to toggle]" : "DAYLIGHT: Standard view", nightMode ? Color{147, 197, 253, 255} : Color{250, 204, 21, 255}, 2.0f);
+        AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_B)) {
         if (!tracks.IsCircuitClosed()) {
@@ -770,11 +813,54 @@ void Game::HandleInput() {
             }
         }
 
-        // Peep Inspector Close Click
-        if (selectedPeepIdx != -1 && ui.CheckPeepInspectorCloseClick(mousePos)) {
-            selectedPeepIdx = -1;
-            AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
-            return;
+        // Peep Inspector Close Click or Body Click
+        if (selectedPeepIdx != -1) {
+            if (ui.CheckPeepInspectorCloseClick(mousePos)) {
+                selectedPeepIdx = -1;
+                AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
+                return;
+            }
+            if (ui.IsMouseInPeepInspector(mousePos)) {
+                return; // consume click on commuter card
+            }
+        }
+
+        // Station Inspector Close Click or Upgrade Click
+        if (selectedStationGx != -1 && selectedStationGy != -1) {
+            const TrackNode* stNode = tracks.GetStationAt(selectedStationGx, selectedStationGy);
+            if (stNode) {
+                bool doUpgrade = false;
+                bool doClose = false;
+                if (ui.CheckStationInspectorClick(mousePos, stNode, doUpgrade, doClose)) {
+                    if (doClose) {
+                        selectedStationGx = -1;
+                        selectedStationGy = -1;
+                        AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
+                        return;
+                    }
+                    if (doUpgrade) {
+                        float cost = (stNode->stationLevel == 1) ? 250.0f : 500.0f;
+                        if (economy.balance >= cost) {
+                            int newLvl = 1;
+                            if (tracks.UpgradeStation(selectedStationGx, selectedStationGy, newLvl)) {
+                                economy.balance -= cost;
+                                AudioManager::Play(SFX_UPGRADE_FANFARE, 1.0f);
+                                Vector3 stPos = {(float)selectedStationGx + 0.5f, (float)selectedStationGy + 0.5f, (float)stNode->gz + 1.0f};
+                                particles.SpawnConfetti(stPos, 36);
+                                particles.SpawnFloatingText(stPos, (newLvl == 2 ? "+LV2 MODERN CONCOURSE!" : "+LV3 GRAND TERMINAL!"), Color{250, 204, 21, 255});
+                                ShowToast(TextFormat("Station %s upgraded to Level %d Concourse! (+%d%% fare bonus)", stNode->stationName.c_str(), newLvl, newLvl == 2 ? 25 : 50), Color{34, 197, 94, 255}, 4.0f);
+                            }
+                        } else {
+                            ShowToast(TextFormat("Need $%.0f to upgrade station concourse!", cost), Color{239, 68, 68, 255}, 2.5f);
+                        }
+                        return;
+                    }
+                    return; // consume click on station inspector card
+                }
+            } else {
+                selectedStationGx = -1;
+                selectedStationGy = -1;
+            }
         }
 
         // Toolbar Category Tab Click
@@ -906,13 +992,36 @@ void Game::HandleInput() {
     }
 
     // 3. Commuter Inspection or Placement
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && mousePos.y > 60 && mousePos.y < GetScreenHeight() - 150) {
+    int screenW = GetScreenWidth();
+    int screenH = GetScreenHeight();
+    bool clickBlockedByUI = (mousePos.y <= 56 || mousePos.y >= screenH - 150);
+    if (statsWindowOpen && mousePos.x >= screenW - 360 && mousePos.y >= 58 && mousePos.y <= 540) clickBlockedByUI = true;
+    if (staffWindowOpen && mousePos.x >= screenW - 360 && mousePos.y >= 58 && mousePos.y <= 420) clickBlockedByUI = true;
+    if (selectedPeepIdx != -1 && ui.IsMouseInPeepInspector(mousePos)) clickBlockedByUI = true;
+    if (selectedStationGx != -1 && ui.IsMouseInStationInspector(mousePos)) clickBlockedByUI = true;
+    if (mousePos.x <= 270 && mousePos.y >= 58 && mousePos.y <= 120) clickBlockedByUI = true;
+
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !clickBlockedByUI) {
         // Check if clicking on a commuter
         int peepUnderMouse = peeps.FindCommuterAtScreenPos(mousePos, cameraPos, zoom);
         if (peepUnderMouse != -1) {
             selectedPeepIdx = peepUnderMouse;
+            selectedStationGx = -1;
+            selectedStationGy = -1;
             AudioManager::Play(SFX_BUTTON_CLICK, 0.7f);
             return;
+        }
+
+        // Check if clicking on an existing station platform to inspect concourse
+        if (insideGrid && !isBulldozing && currentTrack != TRACK_STATION) {
+            const TrackNode* stClicked = tracks.GetStationAt(hoveredGx, hoveredGy);
+            if (stClicked) {
+                selectedStationGx = hoveredGx;
+                selectedStationGy = hoveredGy;
+                selectedPeepIdx = -1;
+                AudioManager::Play(SFX_BUTTON_CLICK, 0.7f);
+                return;
+            }
         }
 
         if (insideGrid) {
@@ -949,15 +1058,33 @@ void Game::HandleInput() {
                 }
             } else {
                 // Active placement based on Tab
+                // Territory expansion check: auto-expand if outside current bounds and funds permit
+                if (!IsBuildable(hoveredGx, hoveredGy)) {
+                    if (economy.balance >= LAND_EXPAND_COST) {
+                        economy.balance -= LAND_EXPAND_COST;
+                        ReclaimLand();
+                        ShowToast("Boundary expanded to encompass new territory! (-$500)", Color{34, 197, 94, 255}, 3.0f);
+                    } else {
+                        ShowToast("Outside territory! Click EXPAND ($500) on toolbar to expand bounds.", Color{239, 68, 68, 255}, 3.0f);
+                        return;
+                    }
+                }
+
+                // Water cell auto-removal: Building tracks or scenery over water converts water to solid land!
                 if (terrain[hoveredGx][hoveredGy] == GROUND_WATER && activeTab != CAT_INFRA) {
                     bool elevatedTrack = (activeTab == CAT_TRACK && (currentZ > 0 || currentTrack == TRACK_VIADUCT_ELEVATED || currentTrack == TRACK_VIADUCT_SLOPE));
                     if (!elevatedTrack) {
-                        if (IsBuildable(hoveredGx, hoveredGy)) {
-                            ShowToast("Water canal! Select Concourse [4] Reclaim or [4] Track Viaduct.", Color{239, 68, 68, 255}, 3.0f);
+                        float reclaimCost = 25.0f;
+                        if (economy.balance >= reclaimCost + 20.0f) {
+                            terrain[hoveredGx][hoveredGy] = GROUND_GRASS;
+                            economy.balance -= reclaimCost;
+                            particles.SpawnConfetti(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, 0.5f}, 10);
+                            particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, 0.7f}, "-$25 (Land Reclaimed)", Color{34, 197, 94, 255});
+                            ShowToast("Water cell reclaimed to solid land foundation!", Color{34, 197, 94, 255}, 2.0f);
                         } else {
-                            ShowToast("Outside territory! Click EXPAND ($500) on toolbar to expand bounds.", Color{239, 68, 68, 255}, 3.0f);
+                            ShowToast("Need $25 land reclamation fee to build over water canal!", Color{239, 68, 68, 255}, 2.5f);
+                            return;
                         }
-                        return;
                     }
                 }
                 if (activeTab == CAT_TRACK) {
@@ -969,12 +1096,13 @@ void Game::HandleInput() {
                             economy.balance -= 40.0f;
                             shakeTimer = 0.15f; // subtle screen shake
                             AudioManager::Play(SFX_CONSTRUCTION, 0.8f);
-                            particles.SpawnSparks(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 8);
+                            particles.SpawnSparks(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 14);
                             particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ + 0.6f}, "-$40", Color{239, 68, 68, 255});
 
                             if (!wasClosed && tracks.IsCircuitClosed()) {
                                 ShowToast("[CIRCUIT] Transit Loop Closed! Regular EMU Schedule Active!", Color{34, 197, 94, 255}, 4.0f);
                                 AudioManager::Play(SFX_UPGRADE_FANFARE, 0.8f);
+                                circuitFlashTimer = 0.8f;
                             } else if (wasClosed && !tracks.IsCircuitClosed()) {
                                 ShowToast("[CIRCUIT] Loop broken! Reconnect the track to make a closed loop.", Color{239, 68, 68, 255}, 4.0f);
                             }
@@ -1100,6 +1228,7 @@ void Game::Update(float dt) {
     } else {
         shakeIntensity = 0.0f;
     }
+    if (circuitFlashTimer > 0.0f) circuitFlashTimer -= dt;
 
     ui.Update(GetMousePosition(), IsMouseButtonPressed(MOUSE_BUTTON_LEFT));
 
@@ -1350,11 +1479,16 @@ void Game::Update(float dt) {
 
     // 7. Refresh Telemetry Statistics
     cachedStats = train.GetStats(tracks);
+    float investedTracks = (float)tracks.GetTrackCount() * 40.0f;
+    float investedStations = (float)tracks.GetStationCount() * 150.0f;
+    float investedCars = (float)train.GetCarriageCount() * 600.0f;
+    float investedTrains = (float)GetExtraTrainCount() * 1200.0f;
+    cachedStats.parkValue = economy.balance + investedTracks + investedStations + investedCars + investedTrains + (float)economy.totalDelivered * 5.0f;
 }
 
 void Game::Draw() {
     BeginDrawing();
-    ClearBackground(Color{241, 245, 249, 255}); // Slate 100 soft architectural canvas
+    ClearBackground(nightMode ? Color{15, 23, 42, 255} : Color{241, 245, 249, 255}); // Slate 900 night vs Slate 100 soft architectural canvas
 
     if (state == STATE_TITLE) {
         ui.DrawTitleScreen(bestSessionRiders);
@@ -1408,7 +1542,14 @@ void Game::Draw() {
 
     // 10. Draw Ghost Placement Preview
     Vector2 mousePos = GetMousePosition();
-    bool overUI = (mousePos.y <= 56 || mousePos.y >= GetScreenHeight() - 150);
+    int screenW = GetScreenWidth();
+    int screenH = GetScreenHeight();
+    bool overUI = (mousePos.y <= 56 || mousePos.y >= screenH - 150);
+    if (statsWindowOpen && mousePos.x >= screenW - 360 && mousePos.y >= 58 && mousePos.y <= 540) overUI = true;
+    if (staffWindowOpen && mousePos.x >= screenW - 360 && mousePos.y >= 58 && mousePos.y <= 420) overUI = true;
+    if (selectedPeepIdx != -1 && ui.IsMouseInPeepInspector(mousePos)) overUI = true;
+    if (selectedStationGx != -1 && ui.IsMouseInStationInspector(mousePos)) overUI = true;
+    if (mousePos.x <= 270 && mousePos.y >= 58 && mousePos.y <= 120) overUI = true;
     if (!overUI && hoveredGx >= 0 && hoveredGx < GRID_SIZE && hoveredGy >= 0 && hoveredGy < GRID_SIZE) {
         if (isBulldozing) {
             Iso::DrawCursor(hoveredGx, hoveredGy, currentZ, drawCam, zoom, Color{239, 68, 68, 220});
@@ -1416,11 +1557,7 @@ void Game::Draw() {
             if (activeTab == CAT_TRACK) {
                 Direction inDir, outDir;
                 GetTrackPieceDirs(currentTrack, buildHeading, inDir, outDir);
-                bool canPlace = IsBuildable(hoveredGx, hoveredGy);
-                if (terrain[hoveredGx][hoveredGy] == GROUND_WATER) {
-                    bool elevated = (currentZ > 0 || currentTrack == TRACK_VIADUCT_ELEVATED || currentTrack == TRACK_VIADUCT_SLOPE);
-                    if (!elevated) canPlace = false;
-                }
+                bool canPlace = (hoveredGx >= 0 && hoveredGx < GRID_SIZE && hoveredGy >= 0 && hoveredGy < GRID_SIZE);
                 tracks.DrawGhostPiece(hoveredGx, hoveredGy, currentZ, currentTrack, inDir, outDir, drawCam, zoom, canPlace);
             } else if (activeTab == CAT_INFRA) {
                 if (isTerraformingRaise) {
@@ -1474,40 +1611,39 @@ void Game::Draw() {
 
 
     // 12. Atmospheric Day / Sunset / Night Rush Hour Lighting
-    float weekPhase = fmodf(weekTimer, WEEK_DURATION);
-    if (weekPhase >= 36.0f && weekPhase < 48.0f) {
-        // Sunset golden hour
-        float alpha = (weekPhase - 36.0f) / 12.0f;
-        DrawRectangle(0, 54, GetScreenWidth(), GetScreenHeight() - 54, Color{255, 140, 0, (unsigned char)(alpha * 35.0f)});
-    } else if (weekPhase >= 48.0f) {
-        // Twilight evening rush hour
-        float alpha = (weekPhase - 48.0f) / 12.0f;
-        DrawRectangle(0, 54, GetScreenWidth(), GetScreenHeight() - 54, Color{15, 23, 42, (unsigned char)(45.0f + alpha * 65.0f)});
-
-        // Streetlamp glowing illumination pools on platforms
+    if (nightMode) {
+        // Deep nocturnal vista
+        DrawRectangle(0, 54, GetScreenWidth(), GetScreenHeight() - 54, Color{15, 23, 42, 90});
         for (int y = 0; y < GRID_SIZE; ++y) {
             for (int x = 0; x < GRID_SIZE; ++x) {
                 if (scenery[x][y] == SCENERY_LAMP_POST) {
-                    Vector2 sPos = Iso::GridToScreen((float)x, (float)y, 0.0f, drawCam, zoom);
-                    DrawCircleGradient(sPos, 40.0f * zoom, Color{255, 238, 88, 120}, Color{255, 238, 88, 0});
+                    Vector2 sPos = Iso::GridToScreen((float)x + 0.5f, (float)y + 0.5f, (float)groundZ[x][y] + 0.85f, drawCam, zoom);
+                    DrawCircleGradient(sPos, 48.0f * zoom, Color{254, 240, 138, 140}, Color{254, 240, 138, 0});
+                    DrawCircle((int)sPos.x, (int)sPos.y, 4.0f * zoom, Color{255, 255, 255, 240});
                 }
             }
         }
-    }
+    } else {
+        float weekPhase = fmodf(weekTimer, WEEK_DURATION);
+        if (weekPhase >= 36.0f && weekPhase < 48.0f) {
+            // Sunset golden hour
+            float alpha = (weekPhase - 36.0f) / 12.0f;
+            DrawRectangle(0, 54, GetScreenWidth(), GetScreenHeight() - 54, Color{255, 140, 0, (unsigned char)(alpha * 35.0f)});
+        } else if (weekPhase >= 48.0f) {
+            // Twilight evening rush hour
+            float alpha = (weekPhase - 48.0f) / 12.0f;
+            DrawRectangle(0, 54, GetScreenWidth(), GetScreenHeight() - 54, Color{15, 23, 42, (unsigned char)(45.0f + alpha * 65.0f)});
 
-    // 11b. Subtle screen-edge vignette for cinematic depth
-    {
-        int sw = GetScreenWidth();
-        int sh = GetScreenHeight();
-        int vSize = 80;
-        // Top edge
-        DrawRectangleGradientV(0, 52, sw, vSize, Color{0, 0, 0, 35}, Color{0, 0, 0, 0});
-        // Bottom edge
-        DrawRectangleGradientV(0, sh - vSize - 150, sw, vSize, Color{0, 0, 0, 35}, Color{0, 0, 0, 0});
-        // Left edge
-        DrawRectangleGradientH(0, 52, vSize, sh - 52 - 150, Color{0, 0, 0, 25}, Color{0, 0, 0, 0});
-        // Right edge
-        DrawRectangleGradientH(sw - vSize, 52, vSize, sh - 52 - 150, Color{0, 0, 0, 25}, Color{0, 0, 0, 0});
+            // Streetlamp glowing illumination pools on platforms
+            for (int y = 0; y < GRID_SIZE; ++y) {
+                for (int x = 0; x < GRID_SIZE; ++x) {
+                    if (scenery[x][y] == SCENERY_LAMP_POST) {
+                        Vector2 sPos = Iso::GridToScreen((float)x + 0.5f, (float)y + 0.5f, (float)groundZ[x][y] + 0.85f, drawCam, zoom);
+                        DrawCircleGradient(sPos, 40.0f * zoom, Color{255, 238, 88, 120}, Color{255, 238, 88, 0});
+                    }
+                }
+            }
+        }
     }
 
     // 12. Draw Operations Control Center (OCC) Main HUD
@@ -1575,6 +1711,16 @@ void Game::Draw() {
         }
     }
 
+    // 12a+. Circuit closed green celebration flash
+    if (circuitFlashTimer > 0.0f) {
+        unsigned char cfAlpha = (unsigned char)(60 * (circuitFlashTimer / 0.8f));
+        int sw = GetScreenWidth(), sh = GetScreenHeight();
+        DrawRectangle(0, 0, sw, 10, Color{34, 197, 94, cfAlpha});
+        DrawRectangle(0, sh - 10, sw, 10, Color{34, 197, 94, cfAlpha});
+        DrawRectangle(0, 0, 10, sh, Color{34, 197, 94, cfAlpha});
+        DrawRectangle(sw - 10, 0, 10, sh, Color{34, 197, 94, cfAlpha});
+    }
+
     // 12b. Draw Contextual Quick Tip Banner
     {
         std::string quickTip;
@@ -1629,6 +1775,18 @@ void Game::Draw() {
             ui.DrawCommuterInspector(p);
         } else {
             selectedPeepIdx = -1;
+        }
+    }
+
+    // 16b. Draw Station Concourse Inspector
+    if (selectedStationGx != -1 && selectedStationGy != -1) {
+        const TrackNode* stNode = tracks.GetStationAt(selectedStationGx, selectedStationGy);
+        if (stNode) {
+            int waiting = peeps.GetCommutersWantingShape(stNode->stationShape);
+            ui.DrawStationInspector(stNode, waiting, economy.balance);
+        } else {
+            selectedStationGx = -1;
+            selectedStationGy = -1;
         }
     }
 

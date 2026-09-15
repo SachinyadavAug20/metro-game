@@ -58,6 +58,7 @@ protected:
     int currentZ = 0;
     bool isBulldozing = false;
     bool isTerraformingRaise = false;
+    bool nightMode = false;
     int currentLineId = 1; // Line 1 to 5 (Tokyo Red, London Blue, etc.)
     int hoveredGx = -1;
     int hoveredGy = -1;
@@ -78,6 +79,8 @@ protected:
     bool staffWindowOpen = false;
     bool helpOverlayOpen = false;
     int selectedPeepIdx = -1;
+    int selectedStationGx = -1;
+    int selectedStationGy = -1;
     ToastMessage activeToast;
 
     // Staff & Station Maintenance
@@ -107,7 +110,7 @@ protected:
     static constexpr float LAND_EXPAND_COST = 500.0f;
     static constexpr float EXTRA_TRAIN_BASE_COST = 1200.0f;
     static constexpr int MAX_EXTRA_TRAINS = 6;
-    int buildRadius = 16;  // Manhattan ring of developable land
+    int buildRadius = 36;  // Manhattan ring of developable land
     bool IsBuildable(int gx, int gy) const;
     void ReclaimLand();
 
@@ -119,6 +122,7 @@ protected:
     float rushHourTimer = 0.0f;
     bool rushHourActive = false;
     float rushHourFlashTimer = 0.0f;  // screen-edge red flash when rush hour starts
+    float circuitFlashTimer = 0.0f;   // green flash when circuit is first closed
 
     // Audio roar / chain click timers
     float chainSoundTimer = 0.0f;
