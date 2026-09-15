@@ -10,6 +10,7 @@ struct UpgradeChoice {
     std::string description;
     std::string perkTag;
     Color accentColor;
+    UpgradeID id;
 };
 
 // Shared toolbar geometry - ONE source of truth so the draw code
@@ -53,7 +54,9 @@ public:
         bool crewOpen,
         bool cabCamActive,
         bool helpOpen,
-        float rushCombo = 1.0f
+        float rushCombo = 1.0f,
+        const char* rank = "Apprentice",
+        Color rankColor = Color{148, 163, 184, 255}
     );
 
     // Categorized Toolbar (Track, Concourse, Scenery)
@@ -86,6 +89,8 @@ public:
     void DrawTitleScreen(int best);
     void DrawPauseOverlay();
     void DrawObjectiveChip(const char* title, const char* sub, float progressPct);
+    void DrawAdvisorSuggestion(const char* icon, const char* title, const char* hint, Color accentCol, float showTime);
+    bool CheckAdvisorDismissClick(Vector2 mousePos, float showTime);
 
     // Arcade pause menu. Returns: 0 = RESUME, 1 = RESTART, 2 = QUIT TO MENU, -1 = none.
     int CheckPauseClick(Vector2 mousePos) const;
@@ -134,5 +139,6 @@ private:
     float cashFlashTimer = 0.0f; // green flash on cash when money earned
     float prevBalance = 0.0f;    // detect balance increases for flash
     float modalEntryTime = 0.0f; // GetTime() when modal last opened (for slide-in)
+    float advisorDismissY = 0.0f; // Y offset for dismiss button hit-test
 };
 

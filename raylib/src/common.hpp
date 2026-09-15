@@ -230,3 +230,16 @@ struct StationMess {
     float timer = 0.0f;
 };
 
+// Weekly Upgrade IDs (deterministic matching)
+enum UpgradeID {
+    UPGRADE_4CAR_EMU = 0,
+    UPGRADE_CBTC_SIGNALING,
+    UPGRADE_TRANSIT_SUBSIDY,
+    UPGRADE_EXPRESS_LINE,
+    UPGRADE_FLEET_GRANT,
+    UPGRADE_TOURIST_MARKETING,
+    UPGRADE_PLATFORM_EXPANSION,
+    UPGRADE_RUSH_HOUR_BONUS,
+    UPGRADE_COUNT
+};
+

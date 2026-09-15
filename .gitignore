@@ -6,3 +6,5 @@ raylib/metro_grid
 raylib/test_capture
 build/
 .cache/
+build_web/
+*.zip

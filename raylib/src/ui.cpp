@@ -27,7 +27,9 @@ void UserInterface::DrawHUD(
     bool crewOpen,
     bool cabCamActive,
     bool helpOpen,
-    float rushCombo
+    float rushCombo,
+    const char* rank,
+    Color rankColor
 ) {
     (void)satisfaction; (void)week;
     (void)signalAspect;
@@ -111,8 +113,22 @@ void UserInterface::DrawHUD(
     DrawText("TRAIN SPEED", spdX + 8, 11, 9, Color{148, 163, 184, 255});
     DrawText(TextFormat("%.0f km/h", speedKmh), spdX + 8, 22, 15, spdColor);
 
-    // 4b. Circuit status badge (OPEN TRACK = red pulsing, LOOP CLOSED = green)
-    int badgeX = 607;
+    // 4b. Week counter + upgrade progress (between speed and circuit badge)
+    int weekX = spdX + 96;
+    DrawRectangleRounded(Rectangle{(float)weekX, 8.0f, 72.0f, 36.0f}, 0.25f, 4, Color{30, 41, 59, 200});
+    DrawRectangleRoundedLines(Rectangle{(float)weekX, 8.0f, 72.0f, 36.0f}, 0.25f, 4, Color{51, 65, 85, 220});
+    DrawText("WEEK", weekX + 8, 11, 9, Color{148, 163, 184, 255});
+    DrawGameBoldText(TextFormat("%d", week), weekX + 8, 22, 16, Color{250, 204, 21, 255});
+
+    // 4b2. Transit Rank badge (progression prestige)
+    int rankX = weekX + 80;
+    DrawRectangleRounded(Rectangle{(float)rankX, 8.0f, 105.0f, 36.0f}, 0.25f, 4, Color{30, 41, 59, 200});
+    DrawRectangleRoundedLines(Rectangle{(float)rankX, 8.0f, 105.0f, 36.0f}, 0.25f, 4, rankColor);
+    DrawText("RANK", rankX + 8, 11, 9, Color{148, 163, 184, 255});
+    DrawGameBoldText(rank, rankX + 8, 22, 10, rankColor);
+
+    // 4c. Circuit status badge (OPEN TRACK = red pulsing, LOOP CLOSED = green)
+    int badgeX = rankX + 113;
     float pulse = 0.5f + 0.5f * sinf(GetTime() * 3.0f);
     if (circuitClosed) {
         // LOOP CLOSED: solid green, calm
@@ -575,6 +591,14 @@ void UserInterface::DrawLineOperations(const MetroLineStats& stats) {
     // Punctuality / On-Time
     DrawText("On-Time Punctuality:", winX + 15, rowY, 11, Color{148, 163, 184, 255});
     DrawText(TextFormat("%.1f%% (Tokyo Grade)", stats.onTimeRate), winX + 155, rowY, 11, Color{74, 222, 128, 255});
+    rowY += rowH;
+
+    // Line Efficiency Rating (composite score)
+    float efficiency = stats.commuterSatisfaction * 0.4f + stats.onTimeRate * 0.4f + (stats.excitementRating * 10.0f) * 0.2f;
+    const char* effLabel = (efficiency >= 85.0f) ? "Excellent" : (efficiency >= 70.0f) ? "Good" : (efficiency >= 50.0f) ? "Fair" : "Poor";
+    Color effCol = (efficiency >= 85.0f) ? Color{52, 211, 153, 255} : (efficiency >= 70.0f) ? Color{56, 189, 248, 255} : (efficiency >= 50.0f) ? Color{234, 179, 8, 255} : Color{239, 68, 68, 255};
+    DrawText("Line Efficiency:", winX + 15, rowY, 11, Color{148, 163, 184, 255});
+    DrawText(TextFormat("%.0f%% (%s)", efficiency, effLabel), winX + 155, rowY, 11, effCol);
     rowY += rowH;
 
     // Commuter Satisfaction
@@ -1826,4 +1850,70 @@ bool UserInterface::CheckVictoryContinueClick(Vector2 mousePos) const {
     int btn1X = bx + (boxW - btnW) / 2;
     int btn1Y = by + 150;
     return CheckCollisionPointRec(mousePos, Rectangle{(float)btn1X, (float)btn1Y, (float)btnW, (float)btnH});
+}
+
+void UserInterface::DrawAdvisorSuggestion(const char* icon, const char* title, const char* hint, Color accentCol, float showTime) {
+    if (showTime <= 0.0f) return;
+
+    int screenW = GetScreenWidth();
+    int cardW = 320;
+    int cardH = 68;
+    int cardX = (screenW - cardW) / 2;
+    int cardY = 134; // below rush hour banner area
+    float t = GetTime();
+
+    // Slide-in from top
+    float elapsed = t - showTime;
+    float slideIn = std::min(1.0f, elapsed / 0.4f);
+    float yOffset = -40.0f * (1.0f - slideIn);
+    float alpha = slideIn;
+    unsigned char a = (unsigned char)(245 * alpha);
+
+    // Fade out after 8 seconds
+    float age = t - showTime;
+    if (age > 7.0f) {
+        float fadeOut = 1.0f - (age - 7.0f);
+        if (fadeOut <= 0.0f) return;
+        alpha *= fadeOut;
+        a = (unsigned char)(245 * alpha);
+    }
+
+    int cy = cardY + (int)yOffset;
+
+    // Drop shadow
+    DrawRectangleRounded(Rectangle{(float)cardX + 3, (float)cy + 4, (float)cardW, (float)cardH}, 0.15f, 6, Color{0, 0, 0, (unsigned char)(50 * alpha)});
+    // Card background
+    DrawRectangleRounded(Rectangle{(float)cardX, (float)cy, (float)cardW, (float)cardH}, 0.15f, 6, Color{15, 23, 42, a});
+    // Left accent stripe
+    DrawRectangleRounded(Rectangle{(float)cardX, (float)cy, 5.0f, (float)cardH}, 0.15f, 3, Color{accentCol.r, accentCol.g, accentCol.b, a});
+    // Border
+    DrawRectangleRoundedLines(Rectangle{(float)cardX, (float)cy, (float)cardW, (float)cardH}, 0.15f, 6, Color{accentCol.r, accentCol.g, accentCol.b, (unsigned char)(180 * alpha)});
+
+    // Icon circle
+    DrawCircle(cardX + 28, cy + cardH / 2, 16, Color{accentCol.r, accentCol.g, accentCol.b, (unsigned char)(60 * alpha)});
+    DrawText(icon, cardX + 20, cy + cardH / 2 - 8, 16, Color{accentCol.r, accentCol.g, accentCol.b, a});
+
+    // Title
+    DrawGameBoldText(title, cardX + 52, cy + 12, 13, Color{accentCol.r, accentCol.g, accentCol.b, a});
+    // Hint text
+    DrawText(hint, cardX + 52, cy + 32, 10, Color{203, 213, 225, (unsigned char)(220 * alpha)});
+
+    // Dismiss X button
+    int dismissX = cardX + cardW - 28;
+    int dismissY = cy + 8;
+    DrawCircle(dismissX + 8, dismissY + 8, 8, Color{51, 65, 85, (unsigned char)(180 * alpha)});
+    DrawText("X", dismissX + 3, dismissY + 2, 12, Color{148, 163, 184, a});
+
+    // Store dismiss button Y for click detection
+    advisorDismissY = (float)(cy + cardH / 2);
+}
+
+bool UserInterface::CheckAdvisorDismissClick(Vector2 mousePos, float showTime) {
+    if (showTime <= 0.0f) return false;
+    int screenW = GetScreenWidth();
+    int cardW = 320;
+    int cardX = (screenW - cardW) / 2;
+    int dismissX = cardX + cardW - 28;
+    int dismissY = (int)advisorDismissY - 8;
+    return CheckCollisionPointRec(mousePos, Rectangle{(float)dismissX, (float)dismissY, 24.0f, 24.0f});
 }

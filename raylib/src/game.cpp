@@ -49,6 +49,11 @@ void Game::Init() {
     endlessMode = false;
     buildRadius = 38;
 
+    // Smart Advisor init
+    advisorShowTime = 0.0f;
+    advisorDismissCount = 0;
+    lastAdvisorTier = -1;
+
     statsWindowOpen = false;
     staffWindowOpen = false;
     rideCamActive = false;
@@ -361,6 +366,7 @@ void Game::GenerateWeeklyUpgrades() {
     c1.description = "Extends rolling stock formation to 4 cars, adding +4 commuter capacity.";
     c1.perkTag = "+4 SEATS / TRAIN";
     c1.accentColor = Color{56, 189, 248, 255};
+    c1.id = UPGRADE_4CAR_EMU;
     pool.push_back(c1);
 
     UpgradeChoice c2;
@@ -368,6 +374,7 @@ void Game::GenerateWeeklyUpgrades() {
     c2.description = "Upgrades track signaling to Communications-Based Train Control, raising cruising speed to 75 km/h.";
     c2.perkTag = "HIGH-SPEED CBTC";
     c2.accentColor = Color{220, 38, 38, 255};
+    c2.id = UPGRADE_CBTC_SIGNALING;
     pool.push_back(c2);
 
     UpgradeChoice c3;
@@ -375,6 +382,7 @@ void Game::GenerateWeeklyUpgrades() {
     c3.description = "Receives $1,200 municipal transit subsidy and boosts commuter satisfaction by +15%.";
     c3.perkTag = "+$1,200 CASH & 15% SAT";
     c3.accentColor = Color{16, 185, 129, 255};
+    c3.id = UPGRADE_TRANSIT_SUBSIDY;
     pool.push_back(c3);
 
     UpgradeChoice c4;
@@ -382,6 +390,7 @@ void Game::GenerateWeeklyUpgrades() {
     c4.description = "Skips intermediate stations on odd-numbered loops, +50% fare for express commuters.";
     c4.perkTag = "+50% EXPRESS FARE";
     c4.accentColor = Color{168, 85, 247, 255}; // Purple
+    c4.id = UPGRADE_EXPRESS_LINE;
     pool.push_back(c4);
 
     UpgradeChoice c5;
@@ -389,6 +398,7 @@ void Game::GenerateWeeklyUpgrades() {
     c5.description = "Receives a free extra EMU trainset and reduces future train purchase cost by 20%.";
     c5.perkTag = "FREE TRAIN -20% COST";
     c5.accentColor = Color{245, 158, 11, 255}; // Amber
+    c5.id = UPGRADE_FLEET_GRANT;
     pool.push_back(c5);
 
     UpgradeChoice c6;
@@ -396,6 +406,7 @@ void Game::GenerateWeeklyUpgrades() {
     c6.description = "Attracts more tourists (+25% tourist spawn) who pay double fare at scenic stations.";
     c6.perkTag = "+25% TOURIST 2x FARE";
     c6.accentColor = Color{236, 72, 153, 255}; // Pink
+    c6.id = UPGRADE_TOURIST_MARKETING;
     pool.push_back(c6);
 
     UpgradeChoice c7;
@@ -403,6 +414,7 @@ void Game::GenerateWeeklyUpgrades() {
     c7.description = "All stations gain +2 platform length, reducing boarding time by 30%.";
     c7.perkTag = "-30% BOARDING TIME";
     c7.accentColor = Color{34, 211, 238, 255}; // Cyan
+    c7.id = UPGRADE_PLATFORM_EXPANSION;
     pool.push_back(c7);
 
     UpgradeChoice c8;
@@ -410,6 +422,7 @@ void Game::GenerateWeeklyUpgrades() {
     c8.description = "During rush hours, fare multiplier increased to 3x (from 2x) and +20% commuter demand.";
     c8.perkTag = "3x RUSH FARE +20%";
     c8.accentColor = Color{239, 68, 68, 255}; // Red
+    c8.id = UPGRADE_RUSH_HOUR_BONUS;
     pool.push_back(c8);
 
     // Shuffle and pick 3 unique upgrades
@@ -429,50 +442,126 @@ void Game::ApplyUpgrade(int choiceIdx) {
         return;
     }
 
-    const std::string& title = activeUpgrades[choiceIdx].title;
+    UpgradeID uid = activeUpgrades[choiceIdx].id;
+    Vector3 trainPos = train.GetLocomotivePos();
 
-    if (title == "4-Car EMU Trainset") {
-        train.SetCarriageCount(4);
-        ShowToast("Upgrade Applied: 4-Car EMU Trainset deployed!", Color{56, 189, 248, 255});
-    } else if (title == "CBTC Signaling & Boost") {
-        peeps.SetSpawnInterval(1.6f);
-        ShowToast("Upgrade Applied: CBTC Signaling & rapid dispatches active!", Color{220, 38, 38, 255});
-    } else if (title == "Transit Subsidy & Pass") {
-        economy.balance += 1200.0f;
-        parkRating = std::min(100.0f, parkRating + 15.0f);
-        ShowToast("Upgrade Applied: +$1,200 Subsidy & Commuter Satisfaction boosted!", Color{16, 185, 129, 255});
-    } else if (title == "Express Line Service") {
-        // Increase base fare by 50%
-        economy.baseFare *= 1.5f;
-        train.SetTicketFare(economy.baseFare);
-        ShowToast("Upgrade Applied: Express Line Service! +50% fare revenue!", Color{168, 85, 247, 255});
-    } else if (title == "Fleet Expansion Grant") {
-        // Add a free extra train if under limit
-        if ((int)extraTrains.size() < MAX_EXTRA_TRAINS) {
-            MetroTrain newTrain;
-            newTrain.Reset(tracks);
-            extraTrains.push_back(newTrain);
-            ShowToast("Upgrade Applied: Free EMU trainset received!", Color{245, 158, 11, 255});
-        } else {
-            economy.balance += 800.0f;
-            ShowToast("Upgrade Applied: Fleet full! Received $800 cash equivalent.", Color{245, 158, 11, 255});
-        }
-    } else if (title == "Tourist Marketing Campaign") {
-        // Boost tourist spawn rate (will affect peep manager)
-        peeps.SetSpawnInterval(peeps.GetSpawnInterval() * 0.8f);
-        ShowToast("Upgrade Applied: Tourist Marketing! +25% tourists, double fares!", Color{236, 72, 153, 255});
-    } else if (title == "Platform Expansion") {
-        // Reduce boarding time conceptually (boost satisfaction)
-        parkRating = std::min(100.0f, parkRating + 10.0f);
-        ShowToast("Upgrade Applied: Platform Expansion! -30% boarding time!", Color{34, 211, 238, 255});
-    } else if (title == "Rush Hour Bonus") {
-        // Increase rush hour bonus multiplier
-        rushCombo = std::max(rushCombo, 1.5f);
-        ShowToast("Upgrade Applied: Rush Hour Bonus! 3x fare during peaks!", Color{239, 68, 68, 255});
+    switch (uid) {
+        case UPGRADE_4CAR_EMU:
+            train.SetCarriageCount(4);
+            particles.SpawnConfetti(trainPos, 25);
+            ShowToast("Upgrade Applied: 4-Car EMU Trainset deployed!", Color{56, 189, 248, 255});
+            break;
+        case UPGRADE_CBTC_SIGNALING:
+            peeps.SetSpawnInterval(1.6f);
+            particles.SpawnSparks(trainPos, 20);
+            ShowToast("Upgrade Applied: CBTC Signaling & rapid dispatches active!", Color{220, 38, 38, 255});
+            break;
+        case UPGRADE_TRANSIT_SUBSIDY:
+            economy.balance += 1200.0f;
+            parkRating = std::min(100.0f, parkRating + 15.0f);
+            particles.SpawnConfetti(trainPos, 30);
+            ShowToast("Upgrade Applied: +$1,200 Subsidy & Commuter Satisfaction boosted!", Color{16, 185, 129, 255});
+            break;
+        case UPGRADE_EXPRESS_LINE:
+            economy.baseFare *= 1.5f;
+            train.SetTicketFare(economy.baseFare);
+            cachedStats.ticketFare = economy.baseFare;
+            particles.SpawnConfetti(trainPos, 20);
+            ShowToast("Upgrade Applied: Express Line Service! +50% fare revenue!", Color{168, 85, 247, 255});
+            break;
+        case UPGRADE_FLEET_GRANT:
+            if ((int)extraTrains.size() < MAX_EXTRA_TRAINS) {
+                MetroTrain newTrain;
+                newTrain.Reset(tracks);
+                extraTrains.push_back(newTrain);
+                ShowToast("Upgrade Applied: Free EMU trainset received!", Color{245, 158, 11, 255});
+            } else {
+                economy.balance += 800.0f;
+                ShowToast("Upgrade Applied: Fleet full! Received $800 cash equivalent.", Color{245, 158, 11, 255});
+            }
+            particles.SpawnConfetti(trainPos, 25);
+            break;
+        case UPGRADE_TOURIST_MARKETING:
+            peeps.SetSpawnInterval(peeps.GetSpawnInterval() * 0.8f);
+            particles.SpawnConfetti(trainPos, 20);
+            ShowToast("Upgrade Applied: Tourist Marketing! +25% tourists, double fares!", Color{236, 72, 153, 255});
+            break;
+        case UPGRADE_PLATFORM_EXPANSION:
+            parkRating = std::min(100.0f, parkRating + 10.0f);
+            particles.SpawnConfetti(trainPos, 15);
+            ShowToast("Upgrade Applied: Platform Expansion! -30% boarding time!", Color{34, 211, 238, 255});
+            break;
+        case UPGRADE_RUSH_HOUR_BONUS:
+            rushCombo = std::max(rushCombo, 1.5f);
+            particles.SpawnConfetti(trainPos, 25);
+            ShowToast("Upgrade Applied: Rush Hour Bonus! 3x fare during peaks!", Color{239, 68, 68, 255});
+            break;
+        case UPGRADE_COUNT:
+            break;
     }
 
     state = STATE_PLAYING;
     AudioManager::Play(SFX_UPGRADE_FANFARE, 0.9f);
+}
+
+void Game::UpdateAdvisor() {
+    if (state != STATE_PLAYING || isPaused) return;
+    if (advisorShowTime > 0.0f && (GetTime() - advisorShowTime) < 8.0f) return;
+
+    float t = GetTime();
+    int priority = -1;
+
+    // Priority 10: No circuit closed - MUST build a loop
+    if (!tracks.IsCircuitClosed()) {
+        priority = 10;
+    }
+
+    // Priority 9: Need more stations
+    int stationCount = tracks.GetStationCount();
+    if (stationCount < 2 && economy.totalDelivered < 25 && priority < 9) {
+        priority = 9;
+    }
+
+    // Priority 8: Cash very low
+    if (economy.balance < 100.0f && economy.totalDelivered > 10 && priority < 8) {
+        priority = 8;
+    }
+
+    // Priority 7: Queue overcrowding
+    if (peeps.IsOvercrowded() && priority < 7) {
+        priority = 7;
+    }
+
+    // Priority 6: Buy extra train
+    if (economy.balance > 2000.0f && extraTrains.empty() && economy.totalDelivered > 50 && priority < 6) {
+        priority = 6;
+    }
+
+    // Priority 5: Expand territory
+    if (economy.balance > 800.0f && economy.totalDelivered > 100 && buildRadius < 42 && priority < 5) {
+        priority = 5;
+    }
+
+    // Priority 4: Rating dropping - add scenery
+    if (parkRating < 60.0f && economy.totalDelivered > 30 && priority < 4) {
+        priority = 4;
+    }
+
+    // Priority 3: Upgrade stations
+    if (economy.balance > 500.0f && economy.totalDelivered > 200 && priority < 3) {
+        priority = 3;
+    }
+
+    // Priority 2: Grow network
+    if (economy.totalDelivered > 300 && tracks.GetStationCount() < 4 && priority < 2) {
+        priority = 2;
+    }
+
+    // Show if we have a higher-priority suggestion than last shown
+    if (priority > lastAdvisorTier) {
+        lastAdvisorTier = priority;
+        advisorShowTime = t;
+    }
 }
 
 void Game::HandleInput() {
@@ -755,6 +844,16 @@ void Game::HandleInput() {
             AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
         }
         return;
+    }
+
+    // Handle Advisor dismiss click
+    if (advisorShowTime > 0.0f && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if (ui.CheckAdvisorDismissClick(mousePos, advisorShowTime)) {
+            advisorShowTime = 0.0f;
+            advisorDismissCount++;
+            lastAdvisorTier = -1; // reset to allow re-showing
+            AudioManager::Play(SFX_BUTTON_CLICK, 0.5f);
+        }
     }
 
     // Handle UI Top HUD & Toolbar Clicks
@@ -1341,8 +1440,14 @@ void Game::Update(float dt) {
         return;
     }
     bool wasRush = rushHourActive;
-    if (weekTimer >= 12.0f && weekTimer < 40.0f) {
-        rushHourActive = (fmodf(weekTimer, 14.0f) < 7.0f);
+    // Dynamic rush hour: more frequent and longer as player progresses
+    float progressPct = std::min(1.0f, (float)economy.totalDelivered / (float)WIN_GOAL);
+    float rushWindowStart = 12.0f - progressPct * 4.0f;  // starts earlier (8s at max)
+    float rushWindowEnd = 40.0f + progressPct * 10.0f;    // ends later (50s at max)
+    float rushCycleLen = 14.0f - progressPct * 4.0f;       // cycles faster (10s at max)
+    float rushDutyLen = 7.0f + progressPct * 2.0f;         // rush periods longer (9s at max)
+    if (weekTimer >= rushWindowStart && weekTimer < rushWindowEnd) {
+        rushHourActive = (fmodf(weekTimer, rushCycleLen) < rushDutyLen);
     } else {
         rushHourActive = false;
     }
@@ -1352,9 +1457,13 @@ void Game::Update(float dt) {
     if (rushHourActive) {
         rushHourTimer += simDt;
         if (rushHourFlashTimer > 0.0f) rushHourFlashTimer -= simDt;
-        peeps.SetSpawnInterval(0.85f);
+        // Dynamic difficulty: faster spawning during rush hour, scales with progress
+        float diffScale = std::max(0.5f, 1.0f - (float)economy.totalDelivered * 0.0003f);
+        peeps.SetSpawnInterval(0.85f * diffScale);
     } else {
-        peeps.SetSpawnInterval(1.9f);
+        // Base spawn also scales with progress
+        float diffScale = std::max(0.7f, 1.0f - (float)economy.totalDelivered * 0.0002f);
+        peeps.SetSpawnInterval(1.9f * diffScale);
         rushHourTimer = 0.0f;
     }
 
@@ -1410,6 +1519,16 @@ void Game::Update(float dt) {
                 AudioManager::Play(SFX_UPGRADE_FANFARE, 0.9f);
                 break;
             }
+        }
+
+        // Rank-up detection
+        int currentRank = GetTransitRankTier();
+        if (currentRank > lastRankTier) {
+            lastRankTier = currentRank;
+            particles.SpawnConfetti(locoP, 50);
+            particles.SpawnFloatingText(Vector3{locoP.x, locoP.y, locoP.z + 2.0f}, TextFormat("RANK UP: %s!", GetTransitRank()), GetRankColor());
+            ShowToast(TextFormat("[RANK UP] Promoted to %s!", GetTransitRank()), GetRankColor(), 5.0f);
+            AudioManager::Play(SFX_UPGRADE_FANFARE, 1.0f);
         }
 
         if (economy.totalDelivered >= WIN_GOAL && !endlessMode) {
@@ -1569,6 +1688,9 @@ void Game::Update(float dt) {
     float investedCars = (float)train.GetCarriageCount() * 600.0f;
     float investedTrains = (float)GetExtraTrainCount() * 1200.0f;
     cachedStats.parkValue = economy.balance + investedTracks + investedStations + investedCars + investedTrains + (float)economy.totalDelivered * 5.0f;
+
+    // 8. Smart Advisor - contextual guidance
+    UpdateAdvisor();
 }
 
 void Game::Draw() {
@@ -1747,7 +1869,9 @@ void Game::Draw() {
         staffWindowOpen,
         rideCamActive,
         helpOverlayOpen,
-        rushCombo
+        rushCombo,
+        GetTransitRank(),
+        GetRankColor()
     );
 
     // 12a. Persistent arcade OBJECTIVE chip - compact goal tracking
@@ -1760,6 +1884,20 @@ void Game::Draw() {
             int left = std::max(0, WIN_GOAL - economy.totalDelivered);
             ui.DrawObjectiveChip("VICTORY GOAL", TextFormat("Deliver %d more riders (%d / %d)", left, economy.totalDelivered, WIN_GOAL), (float)economy.totalDelivered / (float)WIN_GOAL);
         }
+
+        // Fleet utilization mini-bar below objective chip
+        int totalCap = train.GetMaxCapacity();
+        int totalOn = train.GetTotalPassengers();
+        for (const auto& et : extraTrains) {
+            totalCap += et.GetMaxCapacity();
+            totalOn += et.GetTotalPassengers();
+        }
+        float utilPct = totalCap > 0 ? (float)totalOn / (float)totalCap : 0.0f;
+        Color utilCol = (utilPct >= 0.8f) ? Color{239, 68, 68, 255} : (utilPct >= 0.5f) ? Color{234, 179, 8, 255} : Color{56, 189, 248, 255};
+        int fBarX = 12, fBarY = 118, fBarW = 250;
+        DrawRectangle(fBarX, fBarY, fBarW, 4, Color{51, 65, 85, 180});
+        DrawRectangle(fBarX, fBarY, (int)(fBarW * utilPct), 4, utilCol);
+        DrawText(TextFormat("FLEET: %d/%d seats (%.0f%%)", totalOn, totalCap, utilPct * 100.0f), fBarX + 4, fBarY + 6, 9, Color{148, 163, 184, 200});
     }
 
     // 12c. Arcade RUSH HOUR banner (dramatic pulsing)
@@ -1780,9 +1918,12 @@ void Game::Draw() {
         DrawTriangle({(float)(rx + 20), (float)(ry + 6)}, {(float)(rx + 14), (float)(ry + 20)}, {(float)(rx + 22), (float)(ry + 18)}, Color{255, 214, 0, 255});
         DrawTriangle({(float)(rx + 22), (float)(ry + 18)}, {(float)(rx + 16), (float)(ry + 34)}, {(float)(rx + 24), (float)(ry + 22)}, Color{255, 214, 0, 255});
         DrawGameBoldTextCentered("RUSH HOUR!  FARES x1.25", (float)GetScreenWidth() / 2.0f, (float)ry + 10, 18, Color{255, 255, 255, (unsigned char)(230 + 25 * rp)});
-        // Remaining time bar
-        float rushRemaining = 7.0f - fmodf(weekTimer, 14.0f);
-        float rushPct = std::max(0.0f, rushRemaining / 7.0f);
+        // Remaining time bar (uses same dynamic scaling as rush hour logic)
+        float progressPctUI = std::min(1.0f, (float)economy.totalDelivered / (float)WIN_GOAL);
+        float rushCycleLenUI = 14.0f - progressPctUI * 4.0f;
+        float rushDutyLenUI = 7.0f + progressPctUI * 2.0f;
+        float rushRemaining = rushDutyLenUI - fmodf(weekTimer, rushCycleLenUI);
+        float rushPct = std::max(0.0f, rushRemaining / rushDutyLenUI);
         DrawRectangle(rx + 8, ry + rh - 5, rw - 16, 3, Color{127, 29, 29, 255});
         DrawRectangle(rx + 8, ry + rh - 5, (int)((rw - 16) * rushPct), 3, Color{255, 214, 0, 200});
         // Screen-edge red flash on activation
@@ -1891,10 +2032,64 @@ void Game::Draw() {
         int stars = 1 + ((economy.totalDelivered >= WIN_GOAL) ? 1 : 0) + ((week <= 12) ? 1 : 0);
         ui.DrawGameOver(economy.totalDelivered, stars, bestSessionRiders, stateEntryTime);
     } else if (state == STATE_VICTORY) {
-        int stars = 1 + ((economy.totalDelivered >= WIN_GOAL) ? 1 : 0) + ((week <= 12) ? 1 : 0);
+        int stars = 1 + ((economy.totalDelivered >= WIN_GOAL) ? 1 : 0) && ((week <= 12) ? 1 : 0);
         ui.DrawVictory(economy.totalDelivered, week, stars, economy.balance, bestSessionRiders, stateEntryTime);
     } else if (state == STATE_PLAYING && (gameSpeed == 0 || isPaused)) {
         ui.DrawPauseOverlay();
+    }
+
+    // 20. Smart Advisor suggestion card
+    if (state == STATE_PLAYING && !isPaused && advisorShowTime > 0.0f) {
+        // Re-derive the current suggestion for display
+        float t = GetTime();
+        float age = t - advisorShowTime;
+        if (age < 8.5f) {
+            // Determine the current advisor message based on priority
+            const char* aIcon = "!";
+            const char* aTitle = "BUILD A LOOP";
+            const char* aHint = "Place track tiles to connect stations into a closed circuit.";
+            Color aCol = Color{239, 68, 68, 255};
+
+            if (!tracks.IsCircuitClosed()) {
+                aIcon = "!"; aTitle = "BUILD A LOOP";
+                aHint = "Place track tiles to connect stations into a closed circuit.";
+                aCol = Color{239, 68, 68, 255};
+            } else if (tracks.GetStationCount() < 2 && economy.totalDelivered < 25) {
+                aIcon = "7"; aTitle = "ADD MORE STATIONS";
+                aHint = "Press [7] to place stations. Commuters need places to board!";
+                aCol = Color{249, 115, 22, 255};
+            } else if (economy.balance < 100.0f && economy.totalDelivered > 10) {
+                aIcon = "$"; aTitle = "LOW ON CASH";
+                aHint = "Build more stations to earn fare revenue. Each ride earns money!";
+                aCol = Color{234, 179, 8, 255};
+            } else if (peeps.IsOvercrowded()) {
+                aIcon = "~"; aTitle = "PLATFORM OVERCROWDED";
+                aHint = "Add more stations or buy extra trains to handle demand!";
+                aCol = Color{239, 68, 68, 255};
+            } else if (economy.balance > 2000.0f && extraTrains.empty() && economy.totalDelivered > 50) {
+                aIcon = "T"; aTitle = "BUY AN EXTRA TRAIN";
+                aHint = "Click EXTRA TRAIN ($1200) on the right to boost capacity!";
+                aCol = Color{56, 189, 248, 255};
+            } else if (economy.balance > 800.0f && economy.totalDelivered > 100 && buildRadius < 42) {
+                aIcon = "+"; aTitle = "EXPAND TERRITORY";
+                aHint = "Click EXPAND ($500) to unlock new buildable land!";
+                aCol = Color{52, 211, 153, 255};
+            } else if (parkRating < 60.0f && economy.totalDelivered > 30) {
+                aIcon = "*"; aTitle = "RATING IS DROPPING";
+                aHint = "Add trees, benches, or fountains to boost commuter satisfaction!";
+                aCol = Color{168, 85, 247, 255};
+            } else if (economy.balance > 500.0f && economy.totalDelivered > 200) {
+                aIcon = "^"; aTitle = "UPGRADE STATIONS";
+                aHint = "Click a station to upgrade it. Higher level = more fare revenue!";
+                aCol = Color{16, 185, 129, 255};
+            } else if (economy.totalDelivered > 300 && tracks.GetStationCount() < 4) {
+                aIcon = "#"; aTitle = "GROW YOUR NETWORK";
+                aHint = "Add more stations and connect them for a bigger transit system!";
+                aCol = Color{56, 189, 248, 255};
+            }
+
+            ui.DrawAdvisorSuggestion(aIcon, aTitle, aHint, aCol, advisorShowTime);
+        }
     }
 
     EndDrawing();

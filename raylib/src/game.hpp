@@ -22,6 +22,43 @@ public:
     bool ShouldClose() const;
     void ShowToast(const std::string& text, Color color = Color{34, 197, 94, 255}, float duration = 3.5f);
 
+    // Transit rank system (progression prestige)
+    int GetTransitRankTier() const {
+        int d = economy.totalDelivered;
+        if (d >= WIN_GOAL) return 9;
+        if (d >= 1250) return 8;
+        if (d >= 1000) return 7;
+        if (d >= 750) return 6;
+        if (d >= 500) return 5;
+        if (d >= 250) return 4;
+        if (d >= 100) return 3;
+        if (d >= 50) return 2;
+        if (d >= 25) return 1;
+        return 0;
+    }
+    const char* GetTransitRank() const {
+        int d = economy.totalDelivered;
+        if (d >= WIN_GOAL) return "TRANSIT LEGEND";
+        if (d >= 1250) return "Metro Director";
+        if (d >= 1000) return "Chief Engineer";
+        if (d >= 750) return "Line Supervisor";
+        if (d >= 500) return "Station Manager";
+        if (d >= 250) return "Senior Operator";
+        if (d >= 100) return "Train Driver";
+        if (d >= 50) return "Conductor";
+        if (d >= 25) return "Platform Guard";
+        return "Apprentice";
+    }
+    Color GetRankColor() const {
+        int d = economy.totalDelivered;
+        if (d >= WIN_GOAL) return Color{255, 214, 0, 255};  // Gold
+        if (d >= 1000) return Color{168, 85, 247, 255};     // Purple
+        if (d >= 500)  return Color{56, 189, 248, 255};     // Blue
+        if (d >= 250)  return Color{52, 211, 153, 255};     // Green
+        if (d >= 100)  return Color{234, 179, 8, 255};      // Yellow
+        return Color{148, 163, 184, 255};                    // Gray
+    }
+
     // Public fleet pricing (used by the toolbar shop)
     static int MaxExtraTrains() { return MAX_EXTRA_TRAINS; }
     static float ExtraTrainCostP(int owned) { return EXTRA_TRAIN_BASE_COST + 900.0f * owned; }
@@ -98,6 +135,7 @@ protected:
     float weekTimer = 0.0f;
     const float WEEK_DURATION = 60.0f;
     int lastMilestoneAwarded = 0;
+    int lastRankTier = 0;       // 0=Apprentice..9=Legend, for rank-up detection
     float rushCombo = 1.0f;
     float comboTimer = 0.0f;
     int comboStreak = 0;
@@ -124,6 +162,11 @@ protected:
     float rushHourFlashTimer = 0.0f;  // screen-edge red flash when rush hour starts
     float circuitFlashTimer = 0.0f;   // green flash when circuit is first closed
 
+    // Smart Advisor system (contextual guidance)
+    float advisorShowTime = 0.0f;     // GetTime() when current suggestion appeared
+    int advisorDismissCount = 0;      // number of times player dismissed an advisor
+    int lastAdvisorTier = -1;         // last advice shown (avoid repeats)
+
     // Audio roar / chain click timers
     float chainSoundTimer = 0.0f;
 
@@ -144,4 +187,5 @@ protected:
     void ResetPark();
     void RecenterCamera();
     void ClampCamera();
+    void UpdateAdvisor();
 };
