@@ -6,7 +6,9 @@ enum ParticleType {
     PARTICLE_SPARK = 0,
     PARTICLE_CONFETTI,
     PARTICLE_SMOKE,
-    PARTICLE_VOMIT
+    PARTICLE_VOMIT,
+    PARTICLE_RAIN,
+    PARTICLE_PETAL
 };
 
 struct Particle {
@@ -36,6 +38,8 @@ public:
     void SpawnConfetti(Vector3 gridPos, int count = 40);
     void SpawnSmoke(Vector3 gridPos, int count = 6);
     void SpawnVomit(Vector3 gridPos, int count = 15);
+    void SpawnRain(int screenW, int screenH, int count = 30);
+    void SpawnPetals(int screenW, int screenH, int count = 15);
     void SpawnFloatingText(Vector3 gridPos, const std::string& text, Color color = Color{34, 197, 94, 255});
 
     void Update(float dt);

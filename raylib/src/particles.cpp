@@ -89,6 +89,39 @@ void ParticleSystem::SpawnVomit(Vector3 gridPos, int count) {
     }
 }
 
+void ParticleSystem::SpawnRain(int screenW, int /*screenH*/, int count) {
+    for (int i = 0; i < count; ++i) {
+        Particle p;
+        // Rain falls from top of screen in screen space (stored as grid coords with special handling)
+        p.pos = Vector3{(float)(rand() % screenW), -10.0f - (float)(rand() % 100), 0.0f};
+        p.vel = Vector3{(float)(rand() % 20 - 10), (float)(400 + rand() % 200), 0.0f};
+        p.color = Color{56, 189, 248, (unsigned char)(80 + rand() % 60)};
+        p.maxLife = 1.2f;
+        p.life = p.maxLife;
+        p.size = 1.0f + (rand() % 100) / 100.0f;
+        p.type = PARTICLE_RAIN;
+        particles.push_back(p);
+    }
+}
+
+void ParticleSystem::SpawnPetals(int screenW, int /*screenH*/, int count) {
+    for (int i = 0; i < count; ++i) {
+        Particle p;
+        p.pos = Vector3{(float)(rand() % screenW), -5.0f - (float)(rand() % 50), 0.0f};
+        p.vel = Vector3{(float)(rand() % 40 - 20), (float)(30 + rand() % 60), 0.0f};
+        // Cherry blossom pink palette
+        int pink = rand() % 3;
+        if (pink == 0) p.color = Color{255, 183, 197, (unsigned char)(120 + rand() % 80)};
+        else if (pink == 1) p.color = Color{255, 150, 180, (unsigned char)(100 + rand() % 80)};
+        else p.color = Color{255, 200, 210, (unsigned char)(90 + rand() % 70)};
+        p.maxLife = 3.0f + (rand() % 200) / 100.0f;
+        p.life = p.maxLife;
+        p.size = 2.0f + (rand() % 100) / 50.0f;
+        p.type = PARTICLE_PETAL;
+        particles.push_back(p);
+    }
+}
+
 void ParticleSystem::SpawnFloatingText(Vector3 gridPos, const std::string& text, Color color) {
     FloatingText ft;
     ft.pos = gridPos;
@@ -120,6 +153,11 @@ void ParticleSystem::Update(float dt) {
         } else if (p.type == PARTICLE_SMOKE) {
             p.size += 4.0f * dt;
             p.color.a = (unsigned char)(180.0f * (p.life / p.maxLife));
+        } else if (p.type == PARTICLE_RAIN) {
+            p.vel.x += sinf(p.pos.y * 0.1f) * 20.0f * dt; // wind sway
+        } else if (p.type == PARTICLE_PETAL) {
+            p.vel.x += sinf(p.pos.y * 0.05f + p.pos.x * 0.02f) * 30.0f * dt; // drift
+            p.vel.y += 5.0f * dt; // slow fall
         }
 
         p.pos.x += p.vel.x * dt;
@@ -159,6 +197,18 @@ void ParticleSystem::Draw(Vector2 camOffset, float zoom) {
                 Rectangle{screenPos.x, screenPos.y, s, s * 0.6f},
                 Vector2{s / 2.0f, s * 0.3f},
                 (p.life * 360.0f),
+                p.color
+            );
+        } else if (p.type == PARTICLE_RAIN) {
+            // Rain: thin diagonal line
+            Vector2 end = {screenPos.x + p.vel.x * 0.01f, screenPos.y + s * 3.0f};
+            DrawLineEx(screenPos, end, 1.0f, p.color);
+        } else if (p.type == PARTICLE_PETAL) {
+            // Petal: small rotated ellipse
+            DrawRectanglePro(
+                Rectangle{screenPos.x, screenPos.y, s, s * 0.5f},
+                Vector2{s / 2.0f, s * 0.25f},
+                (p.life * 120.0f),
                 p.color
             );
         } else {

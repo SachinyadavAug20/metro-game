@@ -13,8 +13,68 @@
 constexpr int TILE_WIDTH = 64;
 constexpr int TILE_HEIGHT = 32;
 constexpr int HEIGHT_STEP = 24; // Pixel rise per elevation level (Z)
-constexpr int GRID_SIZE = 48;   // 48x48 sprawling metropolitan isometric grid
-constexpr int WIN_GOAL = 1500;  // Deliver this many commuters to win (up from 500)
+constexpr int GRID_SIZE = 64;   // 64x64 expanded metropolitan grid
+constexpr int WIN_GOAL = 10000;  // Deliver 10,000 commuters - true sandbox endgame
+
+// Biome Types (Terraria/Minecraft-inspired world variety)
+enum BiomeType {
+    BIOME_URBAN = 0,      // Default city - grass tiles
+    BIOME_WATERFRONT,     // Coastal - sand + water edges
+    BIOME_PARKLAND,       // Green belt - dense trees, flowers
+    BIOME_INDUSTRIAL,     // Factory zone - stone, darker tones
+    BIOME_DOWNTOWN,       // High density - plaza, tall buildings
+    BIOME_SUBURBAN,       // Residential - houses, quiet
+    BIOME_COUNT
+};
+
+inline const char* GetBiomeName(BiomeType b) {
+    switch (b) {
+        case BIOME_URBAN:      return "Urban Core";
+        case BIOME_WATERFRONT: return "Waterfront";
+        case BIOME_PARKLAND:   return "Green Belt";
+        case BIOME_INDUSTRIAL: return "Industrial";
+        case BIOME_DOWNTOWN:   return "Downtown";
+        case BIOME_SUBURBAN:   return "Suburbs";
+        default:               return "Unknown";
+    }
+}
+
+// Research Tree Tiers (Factorio-inspired progression)
+enum ResearchTier {
+    RESEARCH_BASIC = 0,       // Unlocked at start
+    RESEARCH_CIVIC,           // 100 riders - civic buildings
+    RESEARCH_COMMERCIAL,      // 300 riders - shops, offices
+    RESEARCH_INDUSTRIAL,      // 750 riders - factories, warehouses
+    RESEARCH_HIGHTECH,        // 1500 riders - tech campus, labs
+    RESEARCH_URBAN,           // 3000 riders - urban planning, density
+    RESEARCH_BIOTECH,         // 5000 riders - biotech, green energy
+    RESEARCH_MEGAPROJECT,     // 8000 riders - mega structures
+    RESEARCH_COUNT
+};
+
+inline const char* GetResearchName(ResearchTier t) {
+    switch (t) {
+        case RESEARCH_BASIC:       return "Basic Transit";
+        case RESEARCH_CIVIC:       return "Civic Infrastructure";
+        case RESEARCH_COMMERCIAL:  return "Commercial District";
+        case RESEARCH_INDUSTRIAL:  return "Industrial Zone";
+        case RESEARCH_HIGHTECH:    return "High-Tech Campus";
+        case RESEARCH_URBAN:       return "Urban Planning";
+        case RESEARCH_BIOTECH:     return "Biotech & Green";
+        case RESEARCH_MEGAPROJECT: return "Mega Project";
+        default:                   return "Unknown";
+    }
+}
+
+// World Districts (auto-generated zones that unlock with population)
+struct WorldDistrict {
+    int centerX, centerY;
+    int radius;
+    BiomeType biome;
+    int population;        // grows over time
+    bool unlocked;
+    float spawnTimer;
+};
 
 // Directions
 enum Direction {
@@ -230,6 +290,28 @@ struct StationMess {
     float timer = 0.0f;
 };
 
+// Train Upgrade Tiers (Metro EMU progression)
+struct TrainTier {
+    const char* name;
+    const char* desc;
+    int carCount;
+    int capacityPerCar;
+    float speedMult;   // multiplied by base speed
+    Color color;
+    int deliveryBonus; // extra commuters per delivery
+};
+
+inline const TrainTier& GetTrainTier(int tier) {
+    static const TrainTier tiers[] = {
+        {"Commuter Rail",  "3-car starter set",          3, 6,  1.0f, {148,163,184,255}, 0},  // tier 0
+        {"Express EMU",    "Faster accel, more seats",  3, 8,  1.2f, {56,189,248,255},  0},  // tier 1
+        {"Rapid Transit",  "4-car high-density set",    4, 10, 1.4f, {52,211,153,255},  1},  // tier 2
+        {"High-Speed Rail","5-car intercity express",   5, 12, 1.7f, {168,85,247,255},  2},  // tier 3
+        {"Maglev Express", "6-car levitation marvel",   6, 15, 2.0f, {255,214,0,255},   3},  // tier 4
+    };
+    return tiers[std::clamp(tier, 0, 4)];
+}
+
 // Weekly Upgrade IDs (deterministic matching)
 enum UpgradeID {
     UPGRADE_4CAR_EMU = 0,
@@ -240,6 +322,31 @@ enum UpgradeID {
     UPGRADE_TOURIST_MARKETING,
     UPGRADE_PLATFORM_EXPANSION,
     UPGRADE_RUSH_HOUR_BONUS,
+    UPGRADE_TRAIN_TIER_UP,
+    UPGRADE_ORGANIC_GROWTH,
+    UPGRADE_INFRA_BUDGET,
+    UPGRADE_PREMIUM_CARS,      // +30% fare from all passengers
+    UPGRADE_STATION_WIFI,      // +20% rider satisfaction, slower decay
+    UPGRADE_NIGHT_OPS,         // trains run at night too, +50% night revenue
+    UPGRADE_MEGA_HUB,          // one station becomes a mega-hub, +100% throughput
     UPGRADE_COUNT
 };
+
+// Line color palette (metro map colors for visual route distinction)
+struct LineColor {
+    Color primary;
+    Color dark;
+    const char* name;
+};
+static const LineColor LINE_COLORS[] = {
+    {{30, 64, 175, 255},  {15, 32, 88, 255}, "Blue Line"},
+    {{220, 38, 38, 255},  {120, 20, 20, 255}, "Red Line"},
+    {{22, 163, 74, 255},  {11, 82, 37, 255}, "Green Line"},
+    {{217, 119, 6, 255},  {109, 60, 3, 255}, "Orange Line"},
+    {{147, 51, 234, 255}, {74, 26, 117, 255}, "Purple Line"},
+    {{236, 72, 153, 255}, {118, 36, 77, 255}, "Pink Line"},
+    {{14, 165, 233, 255}, {7, 83, 117, 255}, "Sky Line"},
+    {{234, 179, 8, 255},  {117, 90, 4, 255}, "Gold Line"},
+};
+static const int LINE_COLOR_COUNT = sizeof(LINE_COLORS) / sizeof(LINE_COLORS[0]);
 

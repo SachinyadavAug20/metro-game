@@ -10,6 +10,16 @@ Game::~Game() {
     AudioManager::Cleanup();
 }
 
+// Natural events definitions
+const Game::NaturalEvent Game::EVENTS[] = {
+    {"Rush Hour Surge",  "Massive commuter spike! x1.5 riders, x1.5 fares", 20.0f, 1.5f, 1.5f, {255, 140, 0, 255}},
+    {"Calm Sunday",      "Peaceful day. Half the riders, but +x2 fare bonus", 25.0f, 0.5f, 2.0f, {100, 200, 255, 255}},
+    {"City Festival",    "Festival downtown! x2 riders rush to the party!", 18.0f, 2.0f, 1.2f, {255, 50, 150, 255}},
+    {"Train Strike",     "Workers protest! Half riders, half fares for 15s", 15.0f, 0.5f, 0.5f, {200, 50, 50, 255}},
+    {"Tourist Season",   "Tourists flood in! x1.8 riders, x1.3 fares", 22.0f, 1.8f, 1.3f, {50, 200, 100, 255}},
+    {"Late Night Quiet", "After midnight calm. Few riders, but x3 fare bonus", 20.0f, 0.3f, 3.0f, {80, 80, 160, 255}},
+};
+
 void Game::Init() {
     AudioManager::Init();
 
@@ -425,8 +435,65 @@ void Game::GenerateWeeklyUpgrades() {
     c8.id = UPGRADE_RUSH_HOUR_BONUS;
     pool.push_back(c8);
 
+    UpgradeChoice c9;
+    c9.title = "Train Tier Upgrade";
+    c9.description = "Upgrades fleet to next tech tier: more cars, higher capacity, faster acceleration.";
+    c9.perkTag = "TIER UP: SPEED+CAP";
+    c9.accentColor = Color{255, 214, 0, 255}; // Gold
+    c9.id = UPGRADE_TRAIN_TIER_UP;
+    pool.push_back(c9);
+
+    UpgradeChoice c10;
+    c10.title = "Organic Growth Initiative";
+    c10.description = "City zones develop naturally around stations. +50% population growth rate over time.";
+    c10.perkTag = "+50% POP GROWTH";
+    c10.accentColor = Color{52, 211, 153, 255}; // Green
+    c10.id = UPGRADE_ORGANIC_GROWTH;
+    pool.push_back(c10);
+
+    UpgradeChoice c11;
+    c11.title = "Infrastructure Budget";
+    c11.description = "Unlocks buildings, roads, and bridges that spawn organically near your stations.";
+    c11.perkTag = "UNLOCK BUILDINGS";
+    c11.accentColor = Color{249, 115, 22, 255};
+    c11.id = UPGRADE_INFRA_BUDGET;
+    pool.push_back(c11);
+
+    UpgradeChoice c12;
+    c12.title = "Premium First-Class Cars";
+    c12.description = "Adds premium seating with +30% fare revenue from all passengers.";
+    c12.perkTag = "+30% ALL FARES";
+    c12.accentColor = Color{255, 214, 0, 255};
+    c12.id = UPGRADE_PREMIUM_CARS;
+    pool.push_back(c12);
+
+    UpgradeChoice c13;
+    c13.title = "Station Free WiFi";
+    c13.description = "Installs WiFi at all stations. +20% rider satisfaction, slower rating decay.";
+    c13.perkTag = "+20% SATISFACTION";
+    c13.accentColor = Color{56, 189, 248, 255};
+    c13.id = UPGRADE_STATION_WIFI;
+    pool.push_back(c13);
+
+    UpgradeChoice c14;
+    c14.title = "Night Operations";
+    c14.description = "Trains continue running at night. +50% revenue during night cycle.";
+    c14.perkTag = "+50% NIGHT REVENUE";
+    c14.accentColor = Color{80, 80, 160, 255};
+    c14.id = UPGRADE_NIGHT_OPS;
+    pool.push_back(c14);
+
+    UpgradeChoice c15;
+    c15.title = "Mega Hub Upgrade";
+    c15.description = "One station becomes a mega-hub. +100% throughput, -50% boarding time.";
+    c15.perkTag = "MEGA HUB +100%";
+    c15.accentColor = Color{168, 85, 247, 255};
+    c15.id = UPGRADE_MEGA_HUB;
+    pool.push_back(c15);
+
     // Shuffle and pick 3 unique upgrades
-    std::vector<int> indices = {0, 1, 2, 3, 4, 5, 6, 7};
+    std::vector<int> indices;
+    for (int i = 0; i < (int)pool.size(); ++i) indices.push_back(i);
     for (int i = (int)indices.size() - 1; i > 0; --i) {
         int j = GetRandomValue(0, i);
         std::swap(indices[i], indices[j]);
@@ -472,6 +539,7 @@ void Game::ApplyUpgrade(int choiceIdx) {
         case UPGRADE_FLEET_GRANT:
             if ((int)extraTrains.size() < MAX_EXTRA_TRAINS) {
                 MetroTrain newTrain;
+                newTrain.SetCarriageCount(GetTrainTier(trainTier).carCount);
                 newTrain.Reset(tracks);
                 extraTrains.push_back(newTrain);
                 ShowToast("Upgrade Applied: Free EMU trainset received!", Color{245, 158, 11, 255});
@@ -496,6 +564,73 @@ void Game::ApplyUpgrade(int choiceIdx) {
             particles.SpawnConfetti(trainPos, 25);
             ShowToast("Upgrade Applied: Rush Hour Bonus! 3x fare during peaks!", Color{239, 68, 68, 255});
             break;
+        case UPGRADE_TRAIN_TIER_UP: {
+            if (trainTier < 4) {
+                trainTier++;
+                const TrainTier& tier = GetTrainTier(trainTier);
+                train.SetCarriageCount(tier.carCount);
+                train.SetSpeedMultiplier(tier.speedMult);
+                train.SetCapacityMultiplier(tier.capacityPerCar);
+                for (auto& et : extraTrains) {
+                    et.SetCarriageCount(tier.carCount);
+                    et.SetSpeedMultiplier(tier.speedMult);
+                    et.SetCapacityMultiplier(tier.capacityPerCar);
+                }
+                particles.SpawnConfetti(trainPos, 40);
+                char buf[128];
+                snprintf(buf, sizeof(buf), "Train upgraded to Tier %d: %s!", trainTier + 1, tier.name);
+                ShowToast(buf, tier.color);
+                tierUpFlashTimer = 2.0f;
+                // Achieve "TRAIN EVOLUTION" on first upgrade
+                if (trainTier == 1) {
+                    snprintf(achievementTitle, sizeof(achievementTitle), "TRAIN EVOLUTION");
+                    snprintf(achievementSub, sizeof(achievementSub), "Your fleet advances to %s", tier.name);
+                    achievementColor = tier.color;
+                    achievementShowTime = GetTime();
+                }
+            } else {
+                economy.balance += 600.0f;
+                ShowToast("Train already max tier! Received $600 bonus.", Color{255, 214, 0, 255});
+            }
+            break;
+        }
+        case UPGRADE_ORGANIC_GROWTH:
+            popGrowthRate *= 1.5f;
+            particles.SpawnConfetti(trainPos, 30);
+            ShowToast("Upgrade Applied: Organic Growth! +50% population growth rate!", Color{52, 211, 153, 255});
+            break;
+        case UPGRADE_INFRA_BUDGET:
+            infraUnlocked = true;
+            particles.SpawnConfetti(trainPos, 25);
+            ShowToast("Upgrade Applied: Infrastructure Budget! Buildings spawn near stations!", Color{249, 115, 22, 255});
+            break;
+        case UPGRADE_PREMIUM_CARS:
+            economy.baseFare *= 1.3f;
+            train.SetTicketFare(economy.baseFare);
+            cachedStats.ticketFare = economy.baseFare;
+            particles.SpawnConfetti(trainPos, 25);
+            ShowToast("Upgrade Applied: Premium First-Class Cars! +30% all fares!", Color{255, 214, 0, 255});
+            break;
+        case UPGRADE_STATION_WIFI:
+            parkRating = std::min(100.0f, parkRating + 20.0f);
+            particles.SpawnConfetti(trainPos, 20);
+            ShowToast("Upgrade Applied: Station Free WiFi! +20% rider satisfaction!", Color{56, 189, 248, 255});
+            break;
+        case UPGRADE_NIGHT_OPS:
+            daySpeed *= 0.5f; // slower day/night cycle = more night time
+            economy.baseFare *= 1.5f;
+            train.SetTicketFare(economy.baseFare);
+            cachedStats.ticketFare = economy.baseFare;
+            particles.SpawnConfetti(trainPos, 30);
+            ShowToast("Upgrade Applied: Night Operations! Trains run at night! +50% night revenue!", Color{80, 80, 160, 255});
+            break;
+        case UPGRADE_MEGA_HUB:
+            popGrowthRate *= 2.0f;
+            particles.SpawnConfetti(trainPos, 50);
+            ShowToast("Upgrade Applied: MEGA HUB! +100% throughput, -50% boarding time!", Color{168, 85, 247, 255});
+            shakeTimer = 0.5f;
+            shakeIntensity = 5.0f;
+            break;
         case UPGRADE_COUNT:
             break;
     }
@@ -510,58 +645,180 @@ void Game::UpdateAdvisor() {
 
     float t = GetTime();
     int priority = -1;
+    advisorTargetGx = -1;
+    advisorTargetGy = -1;
 
     // Priority 10: No circuit closed - MUST build a loop
     if (!tracks.IsCircuitClosed()) {
         priority = 10;
+        // Point to the open gap endpoint
+        int ax, ay, bx, by;
+        tracks.GetOpenEndpoints(ax, ay, bx, by);
+        if (ax >= 0 && bx >= 0) {
+            advisorTargetGx = ax;
+            advisorTargetGy = ay;
+        }
     }
 
     // Priority 9: Need more stations
     int stationCount = tracks.GetStationCount();
     if (stationCount < 2 && economy.totalDelivered < 25 && priority < 9) {
         priority = 9;
+        // Suggest placing near the existing station but offset
+        auto stations = tracks.GetAllStations();
+        if (!stations.empty()) {
+            int sgx = stations[0].gx;
+            int sgy = stations[0].gy;
+            // Suggest placing 3-4 tiles away along an open direction
+            if (terrain[sgx + 4][sgy] == GROUND_GRASS || terrain[sgx + 4][sgy] == GROUND_PLAZA) {
+                advisorTargetGx = sgx + 4;
+                advisorTargetGy = sgy;
+            } else if (terrain[sgx][sgy + 4] == GROUND_GRASS || terrain[sgx][sgy + 4] == GROUND_PLAZA) {
+                advisorTargetGx = sgx;
+                advisorTargetGy = sgy + 4;
+            } else {
+                advisorTargetGx = sgx + 3;
+                advisorTargetGy = sgy;
+            }
+        }
     }
 
     // Priority 8: Cash very low
     if (economy.balance < 100.0f && economy.totalDelivered > 10 && priority < 8) {
         priority = 8;
+        // Point to nearest station to suggest adding more
+        auto stations = tracks.GetAllStations();
+        if (!stations.empty()) {
+            advisorTargetGx = stations[0].gx;
+            advisorTargetGy = stations[0].gy;
+        }
     }
 
     // Priority 7: Queue overcrowding
     if (peeps.IsOvercrowded() && priority < 7) {
         priority = 7;
+        // Point to the overcrowded station
+        auto stations = tracks.GetAllStations();
+        for (auto& s : stations) {
+            if (s.isOvercrowded) {
+                advisorTargetGx = s.gx;
+                advisorTargetGy = s.gy;
+                break;
+            }
+        }
     }
 
     // Priority 6: Buy extra train
     if (economy.balance > 2000.0f && extraTrains.empty() && economy.totalDelivered > 50 && priority < 6) {
         priority = 6;
+        // No map target needed - this is a toolbar action
     }
 
     // Priority 5: Expand territory
     if (economy.balance > 800.0f && economy.totalDelivered > 100 && buildRadius < 42 && priority < 5) {
         priority = 5;
+        // Point to the outer edge of current territory
+        advisorTargetGx = LAND_CENTER_X + buildRadius - 2;
+        advisorTargetGy = LAND_CENTER_Y;
     }
 
     // Priority 4: Rating dropping - add scenery
     if (parkRating < 60.0f && economy.totalDelivered > 30 && priority < 4) {
         priority = 4;
+        // Point to an empty tile near a station
+        auto stations = tracks.GetAllStations();
+        if (!stations.empty()) {
+            int sgx = stations[0].gx + 2;
+            int sgy = stations[0].gy;
+            if (sgx >= 0 && sgx < GRID_SIZE && scenery[sgx][sgy] == SCENERY_NONE) {
+                advisorTargetGx = sgx;
+                advisorTargetGy = sgy;
+            } else {
+                advisorTargetGx = stations[0].gx;
+                advisorTargetGy = stations[0].gy + 2;
+            }
+        }
     }
 
     // Priority 3: Upgrade stations
     if (economy.balance > 500.0f && economy.totalDelivered > 200 && priority < 3) {
         priority = 3;
+        // Point to the lowest-level station
+        auto stations = tracks.GetAllStations();
+        int minLevel = 99;
+        for (auto& s : stations) {
+            if (s.stationLevel < minLevel) {
+                minLevel = s.stationLevel;
+                advisorTargetGx = s.gx;
+                advisorTargetGy = s.gy;
+            }
+        }
+    }
+
+    // Priority 3b: Add scenery near stations (when rating is mediocre but > 60)
+    if (parkRating >= 60.0f && parkRating < 75.0f && economy.totalDelivered > 150 &&
+        economy.balance > 300.0f && priority < 3) {
+        priority = 3;
+        auto stations = tracks.GetAllStations();
+        if (!stations.empty()) {
+            int sgx = stations[0].gx + 2;
+            int sgy = stations[0].gy;
+            if (sgx >= 0 && sgx < GRID_SIZE && scenery[sgx][sgy] == SCENERY_NONE &&
+                !tracks.HasPiece(sgx, sgy) && terrain[sgx][sgy] != GROUND_WATER) {
+                advisorTargetGx = sgx;
+                advisorTargetGy = sgy;
+            }
+        }
     }
 
     // Priority 2: Grow network
     if (economy.totalDelivered > 300 && tracks.GetStationCount() < 4 && priority < 2) {
         priority = 2;
+        // Suggest placing in an open area away from existing stations
+        auto stations = tracks.GetAllStations();
+        if (!stations.empty()) {
+            // Find a good open area
+            int bestGx = -1, bestGy = -1;
+            for (int r = 4; r <= 8; r += 2) {
+                for (auto& s : stations) {
+                    int tryX = s.gx + r;
+                    int tryY = s.gy;
+                    if (tryX >= 0 && tryX < GRID_SIZE && tryY >= 0 && tryY < GRID_SIZE &&
+                        terrain[tryX][tryY] != GROUND_WATER && scenery[tryX][tryY] == SCENERY_NONE &&
+                        !tracks.HasPiece(tryX, tryY)) {
+                        bestGx = tryX;
+                        bestGy = tryY;
+                        break;
+                    }
+                }
+                if (bestGx >= 0) break;
+            }
+            advisorTargetGx = bestGx;
+            advisorTargetGy = bestGy;
+        }
+    }
+
+    // Priority 1b: Signal discipline (when circuit is closed and signals are all green)
+    if (tracks.IsCircuitClosed() && economy.totalDelivered > 100 && priority < 1) {
+        priority = 1;
+        // No map target needed - informational
+    }
+
+    // Priority 0: Network optimization (late game)
+    if (economy.totalDelivered > 500 && tracks.GetStationCount() >= 4 && priority < 0) {
+        priority = 0;
+        // No map target needed - informational
     }
 
     // Show if we have a higher-priority suggestion than last shown
     if (priority > lastAdvisorTier) {
         lastAdvisorTier = priority;
         advisorShowTime = t;
+        advisorPulseTimer = 0.0f;
     }
+
+    // Animate pulse timer
+    advisorPulseTimer += GetFrameTime();
 }
 
 void Game::HandleInput() {
@@ -572,9 +829,16 @@ void Game::HandleInput() {
         if ((IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ui.CheckTitleStartClick(mousePos)) ||
             IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) {
             state = STATE_PLAYING;
+            endlessMode = false;
             RecenterCamera();
             AudioManager::Play(SFX_BUTTON_CLICK, 0.8f);
             ShowToast("[METRO] Service Commenced! Train will board passengers at Station [7]", Color{56, 189, 248, 255}, 5.0f);
+        } else if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ui.CheckTitleEndlessClick(mousePos)) {
+            state = STATE_PLAYING;
+            endlessMode = true;
+            RecenterCamera();
+            AudioManager::Play(SFX_BUTTON_CLICK, 0.8f);
+            ShowToast("[SANDBOX] Endless Mode — build freely, no win condition!", Color{56, 189, 248, 255}, 5.0f);
         }
         return;
     }
@@ -665,6 +929,16 @@ void Game::HandleInput() {
     if (IsKeyPressed(KEY_T)) {
         statsWindowOpen = !statsWindowOpen;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
+    }
+    if (IsKeyPressed(KEY_L)) {
+        lineColorIdx = (lineColorIdx + 1) % LINE_COLOR_COUNT;
+        lineColorFlash = 0.5f;
+        train.SetTrainTheme(LINE_COLORS[lineColorIdx].primary);
+        tracks.SetTrackColor(LINE_COLORS[lineColorIdx].primary);
+        cachedStats.themeColor = LINE_COLORS[lineColorIdx].primary;
+        AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
+        ShowToast(TextFormat("Line Color: %s", LINE_COLORS[lineColorIdx].name),
+                  LINE_COLORS[lineColorIdx].primary, 2.0f);
     }
     if (IsKeyPressed(KEY_P)) {
         staffWindowOpen = !staffWindowOpen;
@@ -853,6 +1127,14 @@ void Game::HandleInput() {
             advisorDismissCount++;
             lastAdvisorTier = -1; // reset to allow re-showing
             AudioManager::Play(SFX_BUTTON_CLICK, 0.5f);
+        }
+        // Also dismiss if clicking on the highlighted tile
+        else if (advisorTargetGx >= 0 && advisorTargetGy >= 0 &&
+                 hoveredGx == advisorTargetGx && hoveredGy == advisorTargetGy) {
+            advisorShowTime = 0.0f;
+            advisorDismissCount++;
+            lastAdvisorTier = -1;
+            AudioManager::Play(SFX_BUTTON_CLICK, 0.4f);
         }
     }
 
@@ -1134,7 +1416,7 @@ void Game::HandleInput() {
                         } else {
                             economy.balance -= cost;
                             MetroTrain nt;
-                            nt.SetCarriageCount(3);
+                            nt.SetCarriageCount(GetTrainTier(trainTier).carCount);
                             nt.SetTrainTheme(train.GetTrainTheme());
                             int index = GetExtraTrainCount();
                             nt.Reset(tracks, 0.5f + tracks.GetTotalCircuitLength() * (0.5f + 0.18f * index));
@@ -1286,6 +1568,11 @@ void Game::HandleInput() {
                                 ShowToast("[CIRCUIT] Transit Loop Closed! Regular EMU Schedule Active!", Color{34, 197, 94, 255}, 4.0f);
                                 AudioManager::Play(SFX_UPGRADE_FANFARE, 0.8f);
                                 circuitFlashTimer = 0.8f;
+                                // Achievement popup
+                                achievementShowTime = GetTime();
+                                snprintf(achievementTitle, sizeof(achievementTitle), "FIRST LOOP CLOSED!");
+                                snprintf(achievementSub, sizeof(achievementSub), "Your transit network is now operational!");
+                                achievementColor = Color{34, 197, 94, 255};
                             } else if (wasClosed && !tracks.IsCircuitClosed()) {
                                 ShowToast("[CIRCUIT] Loop broken! Reconnect the track to make a closed loop.", Color{239, 68, 68, 255}, 4.0f);
                             }
@@ -1404,6 +1691,23 @@ void Game::HandleInput() {
 }
 
 void Game::Update(float dt) {
+    // Toolbar auto-hide: fade toolbar when not interacting
+    if (state == STATE_PLAYING) {
+        bool mouseOverToolbar = GetMousePosition().y > GetScreenHeight() - 180;
+        bool anyKeyPressed = IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_TWO) || IsKeyPressed(KEY_THREE) ||
+                             IsKeyPressed(KEY_FOUR) || IsKeyPressed(KEY_FIVE) || IsKeyPressed(KEY_SIX) ||
+                             IsKeyPressed(KEY_SEVEN) || IsKeyPressed(KEY_EIGHT) || IsKeyPressed(KEY_TAB) ||
+                             IsKeyPressed(KEY_L) || IsKeyPressed(KEY_R) || IsKeyPressed(KEY_X);
+        if (mouseOverToolbar || anyKeyPressed || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            toolbarIdleTimer = 0.0f;
+        }
+        toolbarIdleTimer += dt;
+        float targetAlpha = (toolbarIdleTimer > 4.0f) ? 0.4f : 1.0f;
+        toolbarAlpha += (targetAlpha - toolbarAlpha) * 3.0f * dt;
+    } else {
+        toolbarAlpha = 1.0f;
+    }
+
     // Screen shake decay
     if (shakeTimer > 0.0f) {
         shakeTimer -= dt;
@@ -1412,6 +1716,44 @@ void Game::Update(float dt) {
         shakeIntensity = 0.0f;
     }
     if (circuitFlashTimer > 0.0f) circuitFlashTimer -= dt;
+    if (tierUpFlashTimer > 0.0f) tierUpFlashTimer -= dt;
+
+    // Day/night cycle (visual only)
+    if (state == STATE_PLAYING && !isPaused) {
+        timeOfDay += daySpeed * dt;
+        if (timeOfDay >= 1.0f) timeOfDay -= 1.0f;
+        // Compute ambient tint from time of day
+        float t = timeOfDay;
+        float brightness = 1.0f;
+        float warmth = 0.0f;
+        if (t < 0.2f) {        // Night
+            brightness = 0.35f;
+            warmth = -0.1f;
+        } else if (t < 0.3f) { // Dawn
+            float p = (t - 0.2f) / 0.1f;
+            brightness = 0.35f + 0.65f * p;
+            warmth = -0.1f + 0.2f * p;
+        } else if (t < 0.5f) { // Morning
+            brightness = 1.0f;
+            warmth = 0.1f;
+        } else if (t < 0.7f) { // Afternoon
+            brightness = 1.0f;
+            warmth = 0.0f;
+        } else if (t < 0.8f) { // Dusk
+            float p = (t - 0.7f) / 0.1f;
+            brightness = 1.0f - 0.3f * p;
+            warmth = 0.15f * (1.0f - p);
+        } else {                // Night
+            brightness = 0.7f - 0.35f * ((t - 0.8f) / 0.2f);
+            warmth = 0.0f;
+        }
+        int r = (int)(255.0f * (brightness + warmth * 0.3f));
+        int g = (int)(255.0f * brightness);
+        int b = (int)(255.0f * (brightness - warmth * 0.1f));
+        ambientTint = {(unsigned char)std::min(255, std::max(0, r)),
+                       (unsigned char)std::min(255, std::max(0, g)),
+                       (unsigned char)std::min(255, std::max(0, b)), 255};
+    }
 
     ui.Update(GetMousePosition(), IsMouseButtonPressed(MOUSE_BUTTON_LEFT));
 
@@ -1453,6 +1795,18 @@ void Game::Update(float dt) {
     }
     if (rushHourActive && !wasRush) {
         rushHourFlashTimer = 0.6f; // 0.6s red screen-edge flash
+        rushHourCountdown = 0.0f;
+    }
+    // Rush hour countdown telegraph (5s warning before rush hour)
+    if (!rushHourActive && state == STATE_PLAYING) {
+        float nextRushStart = rushWindowStart;
+        float timeToRush = nextRushStart - weekTimer;
+        if (timeToRush > 0.0f && timeToRush < 5.0f && weekTimer > rushWindowEnd) {
+            // Approaching next rush cycle
+            rushHourCountdown = timeToRush;
+        } else {
+            rushHourCountdown = 0.0f;
+        }
     }
     if (rushHourActive) {
         rushHourTimer += simDt;
@@ -1493,13 +1847,17 @@ void Game::Update(float dt) {
         comboTimer = 18.0f;
         rushCombo = 1.0f + std::min(1.0f, (float)comboStreak * 0.05f); // up to 2.0x
         float rushMult = rushHourActive ? 1.25f : 1.0f;                  // rush-hour fare surge
+        float eventFundMult = (activeEvent >= 0) ? EVENTS[activeEvent].fundBoost : 1.0f;
         float comboBonus = fareRevenue * rushMult * (rushCombo - 1.0f);
-        float totalEarned = fareRevenue * rushMult + comboBonus;
+        float totalEarned = fareRevenue * rushMult * eventFundMult + comboBonus;
         economy.balance += totalEarned;
         parkRating = std::min(100.0f, parkRating + (float)delivered * 0.6f);
 
-        // Alight passengers onto platform and concourse
+        // Floating text for rider delivery
         Vector3 locoP = train.GetLocomotivePos();
+        particles.SpawnFloatingText(Vector3{locoP.x, locoP.y, locoP.z + 1.0f},
+                                    TextFormat("+%d Rider%s!", delivered, delivered > 1 ? "s" : ""),
+                                    Color{52, 211, 153, 255});
         peeps.AlightPassengers(delivered, Vector2{locoP.x, locoP.y});
 
         if (rushCombo > 1.05f) {
@@ -1507,16 +1865,26 @@ void Game::Update(float dt) {
         }
 
         // Milestone grants (expanded progression: 12 tiers up to 1500)
-        int milestones[] = {25, 50, 100, 250, 500, 750, 1000, 1250, WIN_GOAL};
+        int milestones[] = {25, 50, 100, 250, 500, 1000, 2500, 5000, 7500, WIN_GOAL};
         for (int m : milestones) {
             if (economy.totalDelivered >= m && lastMilestoneAwarded < m) {
                 lastMilestoneAwarded = m;
                 float bonus = (float)m * 10.0f;
                 economy.balance += bonus;
-                particles.SpawnConfetti(locoP, 30);
-                particles.SpawnFloatingText(Vector3{locoP.x, locoP.y, locoP.z + 1.2f}, TextFormat("+$%.0f BONUS", bonus), Color{255, 215, 0, 255});
-                ShowToast(TextFormat("[MILESTONE] %d Commuters Served! Grant: +$%.0f", m, bonus), Color{34, 197, 94, 255}, 4.0f);
-                AudioManager::Play(SFX_UPGRADE_FANFARE, 0.9f);
+                // Big celebration: confetti burst + screen shake + golden flash
+                particles.SpawnConfetti(locoP, 50);
+                particles.SpawnFloatingText(Vector3{locoP.x, locoP.y, locoP.z + 1.2f}, TextFormat("+$%.0f BONUS!", bonus), Color{255, 215, 0, 255});
+                particles.SpawnFloatingText(Vector3{locoP.x, locoP.y, locoP.z + 2.0f}, TextFormat("%d COMMUTERS!", m), Color{255, 255, 255, 255});
+                shakeTimer = 0.3f;
+                shakeIntensity = 4.0f;
+                circuitFlashTimer = 0.6f;
+                ShowToast(TextFormat("[MILESTONE] %d Commuters Served! Grant: +$%.0f", m, bonus), Color{34, 197, 94, 255}, 5.0f);
+                AudioManager::Play(SFX_UPGRADE_FANFARE, 1.0f);
+                // Achievement popup
+                achievementShowTime = GetTime();
+                snprintf(achievementTitle, sizeof(achievementTitle), "%d COMMUTERS!", m);
+                snprintf(achievementSub, sizeof(achievementSub), "Bonus: +$%.0f earned. Keep building!", bonus);
+                achievementColor = Color{255, 214, 0, 255};
                 break;
             }
         }
@@ -1525,10 +1893,17 @@ void Game::Update(float dt) {
         int currentRank = GetTransitRankTier();
         if (currentRank > lastRankTier) {
             lastRankTier = currentRank;
-            particles.SpawnConfetti(locoP, 50);
+            particles.SpawnConfetti(locoP, 80);
             particles.SpawnFloatingText(Vector3{locoP.x, locoP.y, locoP.z + 2.0f}, TextFormat("RANK UP: %s!", GetTransitRank()), GetRankColor());
-            ShowToast(TextFormat("[RANK UP] Promoted to %s!", GetTransitRank()), GetRankColor(), 5.0f);
+            shakeTimer = 0.4f;
+            shakeIntensity = 5.0f;
+            ShowToast(TextFormat("[RANK UP] Promoted to %s!", GetTransitRank()), GetRankColor(), 6.0f);
             AudioManager::Play(SFX_UPGRADE_FANFARE, 1.0f);
+            // Achievement popup
+            achievementShowTime = GetTime();
+            snprintf(achievementTitle, sizeof(achievementTitle), "RANK UP: %s!", GetTransitRank());
+            snprintf(achievementSub, sizeof(achievementSub), "Your transit empire grows stronger!");
+            achievementColor = GetRankColor();
         }
 
         if (economy.totalDelivered >= WIN_GOAL && !endlessMode) {
@@ -1536,10 +1911,10 @@ void Game::Update(float dt) {
             stateEntryTime = GetTime();
             AudioManager::Play(SFX_UPGRADE_FANFARE, 1.0f);
         } else if (endlessMode) {
-            int nextEndlessMilestone = ((lastMilestoneAwarded / 250) + 1) * 250;
+            int nextEndlessMilestone = ((lastMilestoneAwarded / 500) + 1) * 500;
             if (economy.totalDelivered >= nextEndlessMilestone && lastMilestoneAwarded < nextEndlessMilestone) {
                 lastMilestoneAwarded = nextEndlessMilestone;
-                float bonus = 2500.0f;
+                float bonus = 5000.0f;
                 economy.balance += bonus;
                 particles.SpawnConfetti(locoP, 40);
                 particles.SpawnFloatingText(Vector3{locoP.x, locoP.y, locoP.z + 1.2f}, TextFormat("+$%.0f ENDLESS SUBSIDY", bonus), Color{255, 215, 0, 255});
@@ -1689,6 +2064,248 @@ void Game::Update(float dt) {
     float investedTrains = (float)GetExtraTrainCount() * 1200.0f;
     cachedStats.parkValue = economy.balance + investedTracks + investedStations + investedCars + investedTrains + (float)economy.totalDelivered * 5.0f;
 
+    // 7b. Weather effects: rain during rush hour, cherry blossoms during calm
+    if (state == STATE_PLAYING && !isPaused) {
+        static float weatherTimer = 0.0f;
+        weatherTimer += dt;
+        if (rushHourActive && weatherTimer > 0.3f) {
+            // Rain during rush hour
+            particles.SpawnRain(GetScreenWidth(), GetScreenHeight(), 8);
+            weatherTimer = 0.0f;
+        } else if (!rushHourActive && weatherTimer > 1.5f && parkRating > 70.0f) {
+            // Cherry blossom petals when rating is good
+            particles.SpawnPetals(GetScreenWidth(), GetScreenHeight(), 3);
+            weatherTimer = 0.0f;
+        }
+
+        // Natural events system
+        if (activeEvent >= 0) {
+            eventTimer -= dt;
+            if (eventTimer <= 0.0f) {
+                activeEvent = -1;
+                eventCooldown = 15.0f; // cooldown before next event
+                ShowToast("Event ended. Calm returns...", Color{180, 180, 180, 255}, 2.0f);
+            }
+        } else {
+            eventCooldown -= dt;
+            if (eventCooldown <= 0.0f && economy.totalDelivered > 10) {
+                // Random chance to trigger event (roughly every 30-60s)
+                if (GetRandomValue(0, 3000) < 2) {
+                    activeEvent = GetRandomValue(0, EVENT_COUNT - 1);
+                    eventTimer = EVENTS[activeEvent].duration;
+                    ShowToast(TextFormat("[EVENT] %s: %s", EVENTS[activeEvent].name, EVENTS[activeEvent].desc),
+                              EVENTS[activeEvent].color, 4.0f);
+                    AudioManager::Play(SFX_UPGRADE_FANFARE, 0.8f);
+                    particles.SpawnConfetti(train.GetLocomotivePos(), 25);
+                }
+            }
+        }
+    }
+
+    // 7c. Organic population growth - people appear as time passes
+    if (state == STATE_PLAYING && !isPaused) {
+        popGrowthTimer += dt;
+        float riderMult = (activeEvent >= 0) ? EVENTS[activeEvent].riderBoost : 1.0f;
+        float popInterval = 2.0f / (popGrowthRate * riderMult); // adjusted by event
+        if (popGrowthTimer >= popInterval) {
+            popGrowthTimer -= popInterval;
+            auto stations = tracks.GetAllStations();
+            int stationCount = (int)stations.size();
+            if (stationCount >= 2) {
+                totalWorldPopulation++;
+                if (totalWorldPopulation >= 500) populationTier = 4;
+                else if (totalWorldPopulation >= 200) populationTier = 3;
+                else if (totalWorldPopulation >= 80) populationTier = 2;
+                else if (totalWorldPopulation >= 30) populationTier = 1;
+                else populationTier = 0;
+
+                // Population tier milestone achievements
+                static int lastPopTier = 0;
+                if (populationTier > lastPopTier) {
+                    lastPopTier = populationTier;
+                    static const char* tierNames[] = {"Village", "Town", "City", "Metropolis", "MEGACITY"};
+                    static Color tierColors[] = {
+                        {148,163,184,255}, {52,211,153,255}, {56,189,248,255},
+                        {168,85,247,255}, {255,214,0,255}
+                    };
+                    snprintf(achievementTitle, sizeof(achievementTitle), "%s REACHED!", tierNames[populationTier]);
+                    snprintf(achievementSub, sizeof(achievementSub), "Population: %d citizens", totalWorldPopulation);
+                    achievementColor = tierColors[populationTier];
+                    achievementShowTime = GetTime();
+                    particles.SpawnConfetti(train.GetLocomotivePos(), 30 + populationTier * 10);
+                }
+
+                peeps.SpawnCommuter();
+            }
+        }
+    }
+
+    // 7e. Research tree progression (Factorio-inspired)
+    if (state == STATE_PLAYING && !isPaused) {
+        int researchThresholds[] = {0, 100, 300, 750, 1500, 3000, 5000, 8000};
+        int nextTier = researchTier + 1;
+        if (nextTier < RESEARCH_COUNT && economy.totalDelivered >= researchThresholds[nextTier]) {
+            researchTier = nextTier;
+            researchUnlocked[nextTier] = true;
+            // Unlock features at key tiers
+            if (nextTier == RESEARCH_CIVIC) infraUnlocked = true;
+            // Research completion notification
+            Color tierColors[] = {
+                Color{56, 189, 248, 255},   // Civic - blue
+                Color{52, 211, 153, 255},   // Commercial - green
+                Color{249, 115, 22, 255},   // Industrial - orange
+                Color{168, 85, 247, 255},   // HighTech - purple
+                Color{236, 72, 153, 255},   // Urban - pink
+                Color{34, 197, 94, 255},    // Biotech - emerald
+                Color{255, 214, 0, 255},    // MegaProject - gold
+            };
+            int colorIdx = std::min(nextTier - 1, 6);
+            snprintf(achievementTitle, sizeof(achievementTitle), "RESEARCH: %s", GetResearchName((ResearchTier)nextTier));
+            snprintf(achievementSub, sizeof(achievementSub), "New capabilities unlocked! (%d/%d)", nextTier, RESEARCH_COUNT - 1);
+            achievementColor = (colorIdx >= 0 && colorIdx < 7) ? tierColors[colorIdx] : Color{255, 255, 255, 255};
+            achievementShowTime = GetTime();
+            particles.SpawnConfetti(train.GetLocomotivePos(), 40);
+            shakeTimer = 0.2f;
+            shakeIntensity = 3.0f;
+        }
+        // Calculate research progress bar
+        if (nextTier < RESEARCH_COUNT) {
+            int prev = researchThresholds[researchTier];
+            int next = researchThresholds[nextTier];
+            researchProgress = (float)(economy.totalDelivered - prev) / (float)(next - prev);
+            researchProgress = std::max(0.0f, std::min(1.0f, researchProgress));
+        } else {
+            researchProgress = 1.0f;
+        }
+    }
+
+    // 7f. World district generation (auto-expanding zones)
+    if (state == STATE_PLAYING && !isPaused) {
+        districtSpawnTimer += dt;
+        if (districtSpawnTimer >= 15.0f && (int)districts.size() < maxDistricts) {
+            districtSpawnTimer = 0.0f;
+            // Spawn a new district in an unoccupied area
+            int cx = GetRandomValue(8, GRID_SIZE - 8);
+            int cy = GetRandomValue(8, GRID_SIZE - 8);
+            int radius = GetRandomValue(4, 7);
+            // Check if area is free
+            bool overlaps = false;
+            for (const auto& d : districts) {
+                int dx = cx - d.centerX;
+                int dy = cy - d.centerY;
+                if (dx * dx + dy * dy < (d.radius + radius + 2) * (d.radius + radius + 2)) {
+                    overlaps = true;
+                    break;
+                }
+            }
+            if (!overlaps) {
+                WorldDistrict nd;
+                nd.centerX = cx;
+                nd.centerY = cy;
+                nd.radius = radius;
+                nd.biome = (BiomeType)GetRandomValue(0, BIOME_COUNT - 1);
+                nd.population = 0;
+                nd.unlocked = (int)districts.size() <= researchTier + 1;
+                nd.spawnTimer = 0.0f;
+                districts.push_back(nd);
+                // Terrain the district
+                for (int dy = -radius; dy <= radius; dy++) {
+                    for (int dx = -radius; dx <= radius; dx++) {
+                        int gx = cx + dx;
+                        int gy = cy + dy;
+                        if (gx >= 0 && gx < GRID_SIZE && gy >= 0 && gy < GRID_SIZE) {
+                            if (dx * dx + dy * dy <= radius * radius) {
+                                if (terrain[gx][gy] == GROUND_GRASS && !tracks.HasPiece(gx, gy)) {
+                                    if (nd.biome == BIOME_WATERFRONT) terrain[gx][gy] = GROUND_SAND;
+                                    else if (nd.biome == BIOME_PARKLAND) terrain[gx][gy] = GROUND_GRASS;
+                                    else if (nd.biome == BIOME_INDUSTRIAL) terrain[gx][gy] = GROUND_STONE;
+                                    else if (nd.biome == BIOME_DOWNTOWN) terrain[gx][gy] = GROUND_PLAZA;
+                                    else terrain[gx][gy] = GROUND_PATH;
+                                    groundZ[gx][gy] = 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 7d. Infrastructure spawning - buildings appear near stations over time
+    if (state == STATE_PLAYING && !isPaused && infraUnlocked) {
+        infraSpawnTimer += dt;
+        if (infraSpawnTimer >= 8.0f) { // every 8 seconds
+            infraSpawnTimer = 0.0f;
+            auto stations = tracks.GetAllStations();
+
+            // Auto-build paths between nearby stations (road network)
+            for (size_t i = 0; i < stations.size(); ++i) {
+                for (size_t j = i + 1; j < stations.size(); ++j) {
+                    int dx = stations[j].gx - stations[i].gx;
+                    int dy = stations[j].gy - stations[i].gy;
+                    int dist = abs(dx) + abs(dy);
+                    if (dist <= 8) {
+                        // Place path tiles between stations
+                        int mx = (stations[i].gx + stations[j].gx) / 2;
+                        int my = (stations[i].gy + stations[j].gy) / 2;
+                        if (mx >= 0 && mx < GRID_SIZE && my >= 0 && my < GRID_SIZE) {
+                            if (terrain[mx][my] == GROUND_GRASS && !tracks.HasPiece(mx, my)) {
+                                terrain[mx][my] = GROUND_PATH;
+                                // Also extend path one step toward each station
+                                int stepX = (dx > 0) ? 1 : (dx < 0) ? -1 : 0;
+                                int stepY = (dy > 0) ? 1 : (dy < 0) ? -1 : 0;
+                                int nx = mx + stepX, ny = my + stepY;
+                                if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE &&
+                                    terrain[nx][ny] == GROUND_GRASS && !tracks.HasPiece(nx, ny)) {
+                                    terrain[nx][ny] = GROUND_PATH;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Spawn buildings near stations
+            for (const auto& st : stations) {
+                int tries = 0;
+                while (tries < 5) {
+                    int rx = st.gx + GetRandomValue(-3, 3);
+                    int ry = st.gy + GetRandomValue(-3, 3);
+                    if (rx >= 0 && rx < GRID_SIZE && ry >= 0 && ry < GRID_SIZE) {
+                        if (terrain[rx][ry] == GROUND_GRASS && scenery[rx][ry] == SCENERY_NONE &&
+                            tracks.HasPiece(rx, ry) == false) {
+                            int bldg = GetRandomValue(0, 5);
+                            if (bldg == 0) scenery[rx][ry] = SCENERY_LAMP_POST;
+                            else if (bldg == 1) scenery[rx][ry] = SCENERY_BENCH;
+                            else if (bldg == 2) scenery[rx][ry] = SCENERY_NEWSSTAND;
+                            else if (bldg == 3) scenery[rx][ry] = SCENERY_STREET_TREE;
+                            else if (bldg == 4) scenery[rx][ry] = SCENERY_BIKE_RACK;
+                            else scenery[rx][ry] = SCENERY_FLOWER_BED;
+                            // Buildings grow taller with population
+                            int maxHeight = 1 + populationTier;
+                            groundZ[rx][ry] = std::min(groundZ[rx][ry] + 1, maxHeight + 1);
+                            break;
+                        }
+                    }
+                    tries++;
+                }
+            }
+
+            // Higher population = upgrade existing grass to plaza near stations
+            if (populationTier >= 2) {
+                for (const auto& st : stations) {
+                    int rx = st.gx + GetRandomValue(-1, 1);
+                    int ry = st.gy + GetRandomValue(-1, 1);
+                    if (rx >= 0 && rx < GRID_SIZE && ry >= 0 && ry < GRID_SIZE) {
+                        if (terrain[rx][ry] == GROUND_GRASS && !tracks.HasPiece(rx, ry)) {
+                            terrain[rx][ry] = GROUND_PLAZA;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // 8. Smart Advisor - contextual guidance
     UpdateAdvisor();
 }
@@ -1703,10 +2320,11 @@ void Game::Draw() {
         return;
     }
 
-    // 1. Draw Ground Tiles (with screen shake offset)
+    // 1. Draw Ground Tiles (with screen shake offset) - frustum culled
     Vector2 drawCam = {cameraPos.x + shakeIntensity, cameraPos.y + shakeIntensity * 0.6f};
     for (int y = 0; y < GRID_SIZE; ++y) {
         for (int x = 0; x < GRID_SIZE; ++x) {
+            if (!Iso::IsVisible(x, y, groundZ[x][y], drawCam, zoom)) continue;
             bool isHovered = (x == hoveredGx && y == hoveredGy);
             Iso::DrawTile(x, y, groundZ[x][y], terrain[x][y], drawCam, zoom, isHovered);
         }
@@ -1715,17 +2333,21 @@ void Game::Draw() {
     // 2. Draw Transit Portal Arch Marquee at entrance (0, 9)
     Iso::DrawTransitPortalArch({0.0f, 9.0f}, drawCam, zoom);
 
-    // 3. Draw Scenery Items (Layered with correct isometric depth)
+    // 3. Draw Scenery Items (frustum culled)
     for (int y = 0; y < GRID_SIZE; ++y) {
         for (int x = 0; x < GRID_SIZE; ++x) {
             if (scenery[x][y] != SCENERY_NONE) {
+                if (!Iso::IsVisible(x, y, groundZ[x][y], drawCam, zoom)) continue;
                 Iso::DrawScenery(x, y, groundZ[x][y], scenery[x][y], drawCam, zoom);
             }
         }
     }
 
-    // 4. Draw Station Litter / Messes
+    // 4. Draw Station Litter / Messes (culled)
+    int scrW = GetScreenWidth(), scrH = GetScreenHeight();
     for (const auto& m : messes) {
+        Vector2 sp = Iso::GridToScreen(m.pos.x, m.pos.y, 0.0f, drawCam, zoom);
+        if (sp.x < -80 || sp.x > scrW + 80 || sp.y < -80 || sp.y > scrH + 80) continue;
         Iso::DrawMess(m, drawCam, zoom);
     }
 
@@ -1743,6 +2365,15 @@ void Game::Draw() {
     // 8. Draw Metro EMU Rolling Stock & Commuter Passengers
     train.Draw(drawCam, zoom);
     for (auto& extra : extraTrains) extra.Draw(drawCam, zoom);
+
+    // 8b. Line color flash effect
+    if (lineColorFlash > 0.0f) {
+        float a = lineColorFlash * 0.4f;
+        Color lc = LINE_COLORS[lineColorIdx].primary;
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
+                      Color{lc.r, lc.g, lc.b, (unsigned char)(a * 255)});
+        lineColorFlash -= GetFrameTime();
+    }
 
     // 9. Draw Particles (Sparks, Smoke, Confetti, Door Chime rings)
     particles.Draw(drawCam, zoom);
@@ -1815,6 +2446,153 @@ void Game::Draw() {
         }
     }
 
+    // 10c. Smart Advisor map indicators: glowing pulse on target tile + directional arrow
+    if (state == STATE_PLAYING && !isPaused && advisorShowTime > 0.0f &&
+        advisorTargetGx >= 0 && advisorTargetGx < GRID_SIZE &&
+        advisorTargetGy >= 0 && advisorTargetGy < GRID_SIZE) {
+        float age = GetTime() - advisorShowTime;
+        if (age < 8.0f) {
+            float pulse = 0.5f + 0.5f * sinf(advisorPulseTimer * 4.0f);
+            int gx = advisorTargetGx;
+            int gy = advisorTargetGy;
+
+            // Determine color based on current advice
+            Color glowCol = Color{56, 189, 248, 255}; // default cyan
+            if (!tracks.IsCircuitClosed()) glowCol = Color{239, 68, 68, 255}; // red
+            else if (peeps.IsOvercrowded()) glowCol = Color{239, 68, 68, 255}; // red
+            else if (parkRating < 60.0f) glowCol = Color{168, 85, 247, 255}; // purple
+            else if (parkRating >= 60.0f && parkRating < 75.0f && economy.totalDelivered > 150) glowCol = Color{168, 85, 247, 255}; // purple (scenery)
+            else if (economy.balance > 800.0f && economy.totalDelivered > 100 && buildRadius < 42) glowCol = Color{52, 211, 153, 255}; // green
+
+            // Glowing ring on target tile
+            Vector2 tPos = Iso::GridToScreen((float)gx + 0.5f, (float)gy + 0.5f, 0.0f, drawCam, zoom);
+            float rw = TILE_WIDTH * zoom * 0.6f;
+            float rh = TILE_HEIGHT * zoom * 0.6f;
+            float glowAlpha = 40.0f + 50.0f * pulse;
+            DrawEllipse((int)tPos.x, (int)tPos.y, rw * (1.0f + 0.15f * pulse), rh * (1.0f + 0.15f * pulse),
+                        Color{glowCol.r, glowCol.g, glowCol.b, (unsigned char)glowAlpha});
+            DrawEllipseLines((int)tPos.x, (int)tPos.y, rw, rh,
+                            Color{glowCol.r, glowCol.g, glowCol.b, (unsigned char)(180 + 75 * pulse)});
+
+            // Pulsing arrow pointing down at the target
+            float arrowY = tPos.y - 40.0f - 8.0f * pulse;
+            float arrowX = tPos.x;
+            float arrowSize = 10.0f + 3.0f * pulse;
+            DrawTriangle(
+                Vector2{arrowX, arrowY + arrowSize},
+                Vector2{arrowX - arrowSize, arrowY},
+                Vector2{arrowX + arrowSize, arrowY},
+                Color{glowCol.r, glowCol.g, glowCol.b, (unsigned char)(200 + 55 * pulse)}
+            );
+            // Arrow stem
+            DrawRectangle((int)(arrowX - 2.0f), (int)(arrowY - 12.0f), 4, 14,
+                         Color{glowCol.r, glowCol.g, glowCol.b, (unsigned char)(160 + 60 * pulse)});
+        }
+    }
+
+    // 10d. Progress tracker sidebar (right side, above toolbar) - Modern Glassmorphism
+    if (state == STATE_PLAYING && !isPaused) {
+        int screenW = GetScreenWidth();
+        int sidebarW = 175;
+        int sidebarX = screenW - sidebarW - 14;
+        int sidebarY = 60;
+        int rowH = 26;
+        int panelH = rowH * 5 + 60;
+
+        // Drop shadow
+        ui.DrawShadowRect(sidebarX - 8, sidebarY - 6, sidebarW + 16, panelH, 0.1f, Color{0, 0, 0, 80});
+        // Glass panel
+        ui.DrawGlassPanelBorder(sidebarX - 8, sidebarY - 6, sidebarW + 16, panelH,
+                                Color{8, 14, 28, 210}, Color{56, 189, 248, 60}, 0.1f);
+
+        // Title with icon + animated accent line
+        DrawGameBoldText("OBJECTIVES", sidebarX + 2, sidebarY - 2, 12, Color{56, 189, 248, 255});
+        float titlePulse = 0.4f + 0.6f * sinf(GetTime() * 2.0f);
+        DrawCircle(sidebarX + sidebarW - 4, sidebarY + 4, 3, Color{56, 189, 248, (unsigned char)(100 + 80 * titlePulse)});
+        // Accent underline
+        DrawRectangleGradientH(sidebarX + 2, sidebarY + 12, sidebarW - 12, 2,
+                               Color{56, 189, 248, 120}, Color{56, 189, 248, 20});
+        sidebarY += 20;
+
+        // Milestones: show next 5 unachieved with colored bars
+        int milestones[] = {25, 50, 100, 250, 500, 1000, 2500, 5000, 7500, 10000};
+        Color barColors[] = {
+            Color{56, 189, 248, 255},   // cyan
+            Color{34, 197, 94, 255},    // green
+            Color{250, 204, 21, 255},   // yellow
+            Color{249, 115, 22, 255},   // orange
+            Color{239, 68, 68, 255},    // red
+        };
+        int shown = 0;
+        for (int i = 0; i < 9 && shown < 5; i++) {
+            if (economy.totalDelivered >= milestones[i]) continue;
+            float pct = (float)economy.totalDelivered / (float)milestones[i] * 100.0f;
+            pct = std::min(100.0f, pct);
+
+            // Milestone label
+            const char* icon = (shown == 0) ? ">" : " ";
+            Color labelCol = (shown == 0) ? Color{230, 235, 245, 255} : Color{160, 170, 190, 200};
+            DrawText(TextFormat("%s %d commuters", icon, milestones[i]), sidebarX + 2, sidebarY, 10, labelCol);
+
+            // Progress bar (glass background + gradient fill)
+            int barX = sidebarX + 2;
+            int barY = sidebarY + 13;
+            int barW = sidebarW - 14;
+            int barH = 7;
+            // Glass bar background
+            DrawRectangleRounded(Rectangle{(float)barX, (float)barY, (float)barW, (float)barH}, 0.4f, 3,
+                                 Color{20, 30, 48, 200});
+            int fillW = (int)((pct / 100.0f) * barW);
+            Color fillCol = barColors[std::min(4, shown)];
+            if (fillW > 0) {
+                // Gradient fill bar
+                DrawRectangleGradientH(barX, barY, fillW, barH,
+                                       Color{(unsigned char)(fillCol.r * 7 / 10), (unsigned char)(fillCol.g * 7 / 10), (unsigned char)(fillCol.b * 7 / 10), fillCol.a},
+                                       fillCol);
+                // Top shine
+                DrawRectangleGradientH(barX, barY, fillW, 2,
+                                       Color{255, 255, 255, 45}, Color{255, 255, 255, 15});
+                // Glow at fill end
+                if (fillW > 4) {
+                    DrawCircleGradient(Vector2{(float)(barX + fillW), (float)(barY + barH / 2)}, 5,
+                                       Color{fillCol.r, fillCol.g, fillCol.b, 60}, Color{fillCol.r, fillCol.g, fillCol.b, 0});
+                }
+            }
+            // Percentage text
+            DrawText(TextFormat("%.0f%%", pct), barX + barW + 2, barY - 1, 8, Color{160, 170, 190, 160});
+
+            sidebarY += rowH;
+            shown++;
+        }
+
+        // Rank progress to next tier
+        int currentRank = GetTransitRankTier();
+        int nextThresholds[] = {25, 50, 100, 250, 500, 1000, 2500, 5000, 7500, 99999};
+        if (currentRank < 9) {
+            int nextReq = nextThresholds[currentRank + 1];
+            float rankPct = (float)economy.totalDelivered / (float)nextReq * 100.0f;
+            rankPct = std::min(100.0f, rankPct);
+            sidebarY += 6;
+            // Rank label with accent
+            DrawGameBoldText("NEXT RANK", sidebarX + 2, sidebarY, 10, Color{234, 179, 8, 255});
+            sidebarY += 16;
+            int barX = sidebarX + 2;
+            int barY = sidebarY;
+            int barW = sidebarW - 14;
+            int barH = 8;
+            DrawRectangleRounded(Rectangle{(float)barX, (float)barY, (float)barW, (float)barH}, 0.4f, 3,
+                                 Color{20, 30, 48, 200});
+            int fillW = (int)((rankPct / 100.0f) * barW);
+            if (fillW > 0) {
+                DrawRectangleGradientH(barX, barY, fillW, barH,
+                                       Color{180, 130, 10, 255}, Color{234, 179, 8, 255});
+                DrawRectangleGradientH(barX, barY, fillW, 2,
+                                       Color{255, 255, 255, 50}, Color{255, 255, 255, 15});
+            }
+            DrawText(TextFormat("%d / %d", economy.totalDelivered, nextReq), sidebarX + 2, barY + 11, 9, Color{160, 170, 190, 180});
+        }
+    }
+
 
 
     // 12. Atmospheric Day / Sunset / Night Rush Hour Lighting
@@ -1853,6 +2631,18 @@ void Game::Draw() {
         }
     }
 
+    // 11b. Day/night ambient tint overlay
+    if (state == STATE_PLAYING) {
+        int tintR = 255 - ambientTint.r;
+        int tintG = 255 - ambientTint.g;
+        int tintB = 255 - ambientTint.b;
+        int tintA = (tintR + tintG + tintB) / 3;
+        if (tintA > 5) {
+            DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
+                          Color{(unsigned char)tintR, (unsigned char)tintG, (unsigned char)tintB, (unsigned char)std::min(tintA, 180)});
+        }
+    }
+
     // 12. Draw Operations Control Center (OCC) Main HUD
     ui.DrawHUD(
         economy.totalDelivered,
@@ -1877,7 +2667,7 @@ void Game::Draw() {
     // 12a. Persistent arcade OBJECTIVE chip - compact goal tracking
     if (state == STATE_PLAYING) {
         if (endlessMode) {
-            int m = ((lastMilestoneAwarded / 250) + 1) * 250;
+            int m = ((lastMilestoneAwarded / 500) + 1) * 500;
             float pct = (float)(economy.totalDelivered - (m - 250)) / 250.0f;
             ui.DrawObjectiveChip("ENDLESS METROPOLIS", TextFormat("Next subsidy grant at %d riders", m), pct);
         } else {
@@ -1894,13 +2684,50 @@ void Game::Draw() {
         }
         float utilPct = totalCap > 0 ? (float)totalOn / (float)totalCap : 0.0f;
         Color utilCol = (utilPct >= 0.8f) ? Color{239, 68, 68, 255} : (utilPct >= 0.5f) ? Color{234, 179, 8, 255} : Color{56, 189, 248, 255};
-        int fBarX = 12, fBarY = 118, fBarW = 250;
-        DrawRectangle(fBarX, fBarY, fBarW, 4, Color{51, 65, 85, 180});
-        DrawRectangle(fBarX, fBarY, (int)(fBarW * utilPct), 4, utilCol);
-        DrawText(TextFormat("FLEET: %d/%d seats (%.0f%%)", totalOn, totalCap, utilPct * 100.0f), fBarX + 4, fBarY + 6, 9, Color{148, 163, 184, 200});
+        int fBarX = 12, fBarY = 118, fBarW = 260;
+        // Glass fleet bar background
+        ui.DrawGlassPanel(fBarX - 2, fBarY - 2, fBarW + 4, 36, Color{8, 14, 28, 180}, 0.15f);
+        DrawRectangleRounded(Rectangle{(float)(fBarX + 2), (float)(fBarY + 4), (float)(fBarW - 4), 5.0f}, 0.4f, 3, Color{20, 30, 48, 200});
+        DrawRectangleGradientH(fBarX + 2, fBarY + 4, (int)((fBarW - 4) * utilPct), 5,
+                               Color{(unsigned char)(utilCol.r * 7 / 10), (unsigned char)(utilCol.g * 7 / 10), (unsigned char)(utilCol.b * 7 / 10), utilCol.a}, utilCol);
+        DrawText(TextFormat("FLEET: %d/%d seats (%.0f%%)", totalOn, totalCap, utilPct * 100.0f), fBarX + 4, fBarY + 12, 9, Color{160, 170, 190, 200});
+
+        // 12b. Population, Train Tier, Research, Districts display
+        static const char* popTierNames[] = {"Village", "Town", "City", "Metropolis", "MEGACITY"};
+        Color popCol = (populationTier >= 4) ? Color{255, 214, 0, 255} :
+                       (populationTier >= 3) ? Color{168, 85, 247, 255} :
+                       (populationTier >= 2) ? Color{56, 189, 248, 255} :
+                       (populationTier >= 1) ? Color{52, 211, 153, 255} :
+                       Color{148, 163, 184, 255};
+        // Time of day icon
+        const char* timeIcon = (timeOfDay < 0.2f || timeOfDay >= 0.8f) ? "[NIGHT]" :
+                               (timeOfDay < 0.3f) ? "[DAWN]" :
+                               (timeOfDay < 0.7f) ? "[DAY]" : "[DUSK]";
+        DrawText(TextFormat("POP: %d (%s)  |  T%d %s  |  R:%s  |  %s  |  [L] %s",
+                            totalWorldPopulation, popTierNames[populationTier],
+                            trainTier + 1, GetTrainTier(trainTier).name,
+                            GetResearchName((ResearchTier)researchTier),
+                            timeIcon,
+                            LINE_COLORS[lineColorIdx].name), fBarX + 4, fBarY + 18, 8, popCol);
     }
 
-    // 12c. Arcade RUSH HOUR banner (dramatic pulsing)
+    // 12c. Natural event banner (top-right corner)
+    if (activeEvent >= 0) {
+        const auto& ev = EVENTS[activeEvent];
+        float ep = 0.5f + 0.5f * sinf(GetTime() * 4.0f);
+        int ew = 300, eh = 36;
+        int ex = (int)GetScreenWidth() - ew - 16;
+        int ey = 66;
+        DrawRectangleRounded(Rectangle{(float)ex + 2, (float)ey + 2, (float)ew, (float)eh}, 0.4f, 4, Color{0, 0, 0, 50});
+        DrawRectangleRounded(Rectangle{(float)ex, (float)ey, (float)ew, (float)eh}, 0.4f, 4,
+                            Color{ev.color.r, ev.color.g, ev.color.b, (unsigned char)(180 + 40 * ep)});
+        DrawRectangleRoundedLines(Rectangle{(float)ex, (float)ey, (float)ew, (float)eh}, 0.4f, 4,
+                                  Color{255, 255, 255, (unsigned char)(120 + 80 * ep)});
+        DrawGameBoldText(TextFormat("%s (%.0fs)", ev.name, eventTimer),
+                         (float)ex + 12, (float)ey + 8, 13, Color{255, 255, 255, 255});
+    }
+
+    // 12d. Arcade RUSH HOUR banner (dramatic pulsing)
     if (rushHourActive) {
         float rp = 0.5f + 0.5f * sinf(GetTime() * 6.0f);
         int rw = 380;
@@ -1937,7 +2764,23 @@ void Game::Draw() {
         }
     }
 
-    // 12a+. Circuit closed green celebration flash
+    // 12a+. Rush hour countdown telegraph (5s warning)
+    if (rushHourCountdown > 0.0f && !rushHourActive) {
+        float cp = 0.5f + 0.5f * sinf(GetTime() * 5.0f);
+        int cw = 340, ch = 32;
+        int cx = ((int)GetScreenWidth() - cw) / 2;
+        int cy = 98;
+        DrawRectangleRounded(Rectangle{(float)cx + 1, (float)cy + 2, (float)cw, (float)ch}, 0.4f, 4, Color{0, 0, 0, 40});
+        DrawRectangleRounded(Rectangle{(float)cx, (float)cy, (float)cw, (float)ch}, 0.4f, 4,
+                            Color{180, 50, 50, (unsigned char)(140 + 60 * cp)});
+        DrawRectangleRoundedLines(Rectangle{(float)cx, (float)cy, (float)cw, (float)ch}, 0.4f, 4,
+                                  Color{255, 100, 100, (unsigned char)(150 + 100 * cp)});
+        DrawGameBoldTextCentered(TextFormat("INCOMING: RUSH HOUR in %.0fs", rushHourCountdown),
+                                 (float)GetScreenWidth() / 2.0f, (float)cy + 6, 13,
+                                 Color{255, 200, 200, (unsigned char)(200 + 55 * cp)});
+    }
+
+    // 12a++. Circuit closed green celebration flash
     if (circuitFlashTimer > 0.0f) {
         unsigned char cfAlpha = (unsigned char)(60 * (circuitFlashTimer / 0.8f));
         int sw = GetScreenWidth(), sh = GetScreenHeight();
@@ -1947,10 +2790,24 @@ void Game::Draw() {
         DrawRectangle(sw - 10, 0, 10, sh, Color{34, 197, 94, cfAlpha});
     }
 
+    // 12a++. Train tier-up golden flash
+    if (tierUpFlashTimer > 0.0f) {
+        unsigned char tfAlpha = (unsigned char)(80 * (tierUpFlashTimer / 2.0f));
+        int sw = GetScreenWidth(), sh = GetScreenHeight();
+        Color tierCol = GetTrainTier(trainTier).color;
+        tierCol.a = tfAlpha;
+        DrawRectangle(0, 0, sw, 6, tierCol);
+        DrawRectangle(0, sh - 6, sw, 6, tierCol);
+        DrawRectangle(0, 0, 6, sh, tierCol);
+        DrawRectangle(sw - 6, 0, 6, sh, tierCol);
+    }
+
     // 12b. Draw Contextual Quick Tip Banner
     {
         std::string quickTip;
-        if (isBulldozing) {
+        if (activeEvent >= 0) {
+            quickTip = TextFormat("[EVENT] %s: %s", EVENTS[activeEvent].name, EVENTS[activeEvent].desc);
+        } else if (isBulldozing) {
             quickTip = "DEMOLISH MODE: click a tile to remove it (X to exit)";
         } else if (train.CanBoard() || train.GetState() == TRAIN_BOARDING || train.GetState() == TRAIN_STOPPED_IN_STATION) {
             quickTip = "Train is at a station - commuters are boarding!";
@@ -1968,7 +2825,7 @@ void Game::Draw() {
         ui.DrawQuickTipBanner(quickTip);
     }
 
-    // 13. Draw Categorized Toolbar
+    // 13. Draw Categorized Toolbar (with auto-hide fade)
     ui.DrawToolbar(
         activeTab,
         currentTrack,
@@ -1983,6 +2840,42 @@ void Game::Draw() {
         GetExtraTrainCount(),
         isTerraformingRaise
     );
+    // Toolbar fade when idle
+    if (toolbarAlpha < 0.95f) {
+        int sw = GetScreenWidth(), sh = GetScreenHeight();
+        unsigned char fadeA = (unsigned char)((1.0f - toolbarAlpha) * 200);
+        DrawRectangle(0, sh - 180, sw, 180, Color{15, 23, 42, fadeA});
+        // "Hover to activate" hint
+        if (toolbarAlpha < 0.6f) {
+            DrawGameBoldTextCentered("[ Hover toolbar or press 1-8 to build ]",
+                                     (float)sw / 2.0f, (float)sh - 100, 11,
+                                     Color{148, 163, 184, (unsigned char)(100 * toolbarAlpha)});
+        }
+    }
+
+    // 13b. First-action spotlight: pulsing glow on Straight track button when no circuit
+    if (state == STATE_PLAYING && !isPaused && !tracks.IsCircuitClosed() && economy.totalDelivered == 0) {
+        int screenW = GetScreenWidth();
+        int screenH = GetScreenHeight();
+        int barX = ToolbarMetrics::BarX(screenW);
+        int barY = ToolbarMetrics::BarY(screenH);
+        // Straight button is the first item (position 0)
+        int itemX = barX + 12;
+        int itemY = barY + ToolbarMetrics::ITEM_Y;
+        int itemW = ToolbarMetrics::ITEM_W;
+        int itemH = ToolbarMetrics::ITEM_H;
+        float spotlightPulse = 0.4f + 0.6f * sinf(GetTime() * 3.0f);
+        // Glow ring around the Straight button
+        DrawRectangleRounded(Rectangle{(float)itemX - 4, (float)itemY - 4, (float)itemW + 8, (float)itemH + 8},
+                           0.15f, 6, Color{56, 189, 248, (unsigned char)(40 * spotlightPulse)});
+        DrawRectangleRoundedLines(Rectangle{(float)itemX - 2, (float)itemY - 2, (float)itemW + 4, (float)itemH + 4},
+                                0.15f, 6, Color{56, 189, 248, (unsigned char)(150 * spotlightPulse)});
+        // "START HERE" text above
+        const char* startHint = "START HERE";
+        int hintW = MeasureText(startHint, 10);
+        int hintX = itemX + (itemW - hintW) / 2;
+        DrawText(startHint, hintX, itemY - 16, 10, Color{56, 189, 248, (unsigned char)(200 * spotlightPulse)});
+    }
 
     // 14. Draw Line Operations Window
     if (statsWindowOpen) {
@@ -2035,7 +2928,7 @@ void Game::Draw() {
         int stars = 1 + ((economy.totalDelivered >= WIN_GOAL) ? 1 : 0) && ((week <= 12) ? 1 : 0);
         ui.DrawVictory(economy.totalDelivered, week, stars, economy.balance, bestSessionRiders, stateEntryTime);
     } else if (state == STATE_PLAYING && (gameSpeed == 0 || isPaused)) {
-        ui.DrawPauseOverlay();
+        ui.DrawPauseOverlay(researchTier);
     }
 
     // 20. Smart Advisor suggestion card
@@ -2086,10 +2979,23 @@ void Game::Draw() {
                 aIcon = "#"; aTitle = "GROW YOUR NETWORK";
                 aHint = "Add more stations and connect them for a bigger transit system!";
                 aCol = Color{56, 189, 248, 255};
+            } else if (parkRating >= 60.0f && parkRating < 75.0f && economy.totalDelivered > 150 && economy.balance > 300.0f) {
+                aIcon = "*"; aTitle = "ADD SCENERY";
+                aHint = "Place trees, benches, or fountains near stations to boost satisfaction!";
+                aCol = Color{168, 85, 247, 255};
+            } else if (economy.totalDelivered > 500 && tracks.GetStationCount() >= 4) {
+                aIcon = "~"; aTitle = "OPTIMIZE YOUR NETWORK";
+                aHint = "Upgrade stations and add scenery to maximize your transit empire!";
+                aCol = Color{34, 197, 94, 255};
             }
 
             ui.DrawAdvisorSuggestion(aIcon, aTitle, aHint, aCol, advisorShowTime);
         }
+    }
+
+    // 21. Achievement popup (big animated badge for milestones)
+    if (state == STATE_PLAYING && achievementShowTime > 0.0f) {
+        ui.DrawAchievementPopup(achievementTitle, achievementSub, achievementColor, achievementShowTime);
     }
 
     EndDrawing();
