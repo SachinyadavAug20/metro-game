@@ -7,6 +7,14 @@ namespace Iso {
     Vector2 GridToScreen(float gx, float gy, float gz, Vector2 camOffset, float zoom);
     Vector2 ScreenToGrid(Vector2 screenPos, Vector2 camOffset, float zoom, float gz = 0.0f);
     
+    // Frustum culling: check if a grid cell is visible on screen
+    inline bool IsVisible(int gx, int gy, int gz, Vector2 camOffset, float zoom, int margin = 80) {
+        Vector2 sp = GridToScreen((float)gx, (float)gy, (float)gz, camOffset, zoom);
+        int sw = GetScreenWidth();
+        int sh = GetScreenHeight();
+        return sp.x > -margin && sp.x < sw + margin && sp.y > -margin && sp.y < sh + margin;
+    }
+    
     // Geometry rendering
     void DrawTile(int gx, int gy, int gz, GroundType type, Vector2 camOffset, float zoom, bool hovered = false);
     void DrawPillar(int gx, int gy, int groundZ, int trackZ, Vector2 camOffset, float zoom);
