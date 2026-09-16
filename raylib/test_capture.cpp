@@ -93,6 +93,12 @@ public:
     void ForcePause(bool on) { isPaused = on; }
     void ForceResultsScreen() { economy.totalDelivered = 512; week = 3; state = STATE_VICTORY; }
     void ForceGameOverScreen() { economy.totalDelivered = 343; state = STATE_GAME_OVER; }
+    void TriggerAchievement(const char* title, const char* sub, Color col) {
+        achievementShowTime = GetTime();
+        snprintf(achievementTitle, sizeof(achievementTitle), "%s", title);
+        snprintf(achievementSub, sizeof(achievementSub), "%s", sub);
+        achievementColor = col;
+    }
     float GetDistance() const { return train.GetTrainDistance(); }
     float GetDistance2() const { return extraTrains.empty() ? 0.0f : extraTrains[0].GetTrainDistance(); }
     int GetDelivered() const { return economy.totalDelivered; }
@@ -169,6 +175,12 @@ int main() {
     game.Render();
     TakeScreenshot("test_metro_autoloop_closed.png");
     std::cout << "Captured test_metro_autoloop_closed.png\n";
+
+    // Capture achievement popup
+    game.TriggerAchievement("FIRST LOOP CLOSED!", "Your transit network is now operational!", Color{34, 197, 94, 255});
+    game.Render();
+    TakeScreenshot("test_metro_achievement.png");
+    std::cout << "Captured test_metro_achievement.png\n";
 
     // 0c. Arcade PAUSE overlay + RUSH HOUR banner (flickering juice)
     game.ForceRush(true);
