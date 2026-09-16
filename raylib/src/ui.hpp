@@ -87,10 +87,11 @@ public:
     void DrawGameOver(int finalRidership, int stars, int best, float stateEntryTime);
     void DrawVictory(int finalRidership, int weeks, int stars, float balance, int best, float stateEntryTime);
     void DrawTitleScreen(int best);
-    void DrawPauseOverlay();
+    void DrawPauseOverlay(int currentResearchTier = 0);
     void DrawObjectiveChip(const char* title, const char* sub, float progressPct);
     void DrawAdvisorSuggestion(const char* icon, const char* title, const char* hint, Color accentCol, float showTime);
     bool CheckAdvisorDismissClick(Vector2 mousePos, float showTime);
+    void DrawAchievementPopup(const char* title, const char* sub, Color accentCol, float showTime);
 
     // Arcade pause menu. Returns: 0 = RESUME, 1 = RESTART, 2 = QUIT TO MENU, -1 = none.
     int CheckPauseClick(Vector2 mousePos) const;
@@ -130,7 +131,15 @@ public:
     bool CheckRestartClick(Vector2 mousePos) const;
     bool CheckVictoryContinueClick(Vector2 mousePos) const;
     bool CheckTitleStartClick(Vector2 mousePos) const;
+    bool CheckTitleEndlessClick(Vector2 mousePos) const;
     void SetModalEntryTime(float t) { modalEntryTime = t; }
+
+    // Modern UI helpers (public for use in game.cpp)
+    static void DrawGlassPanel(int x, int y, int w, int h, Color tint, float cornerRadius = 0.22f);
+    static void DrawGlassPanelBorder(int x, int y, int w, int h, Color tint, Color borderColor, float cornerRadius = 0.22f);
+    static void DrawGradientCard(int x, int y, int w, int h, Color topColor, Color bottomColor, Color borderColor);
+    static void DrawShadowRect(int x, int y, int w, int h, float cornerRadius, Color shadowColor);
+    static void DrawAccentBar(int x, int y, int w, int h, Color accent);
 
 private:
     float pulseAnim = 0.0f;
