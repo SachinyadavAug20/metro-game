@@ -49,6 +49,8 @@ public:
     void SetTicketFare(float fare) { ticketFare = fare; }
     float GetTicketFare() const { return ticketFare; }
     float GetTotalRevenue() const { return totalRevenueEarned; }
+    void SetSpeedMultiplier(float mult) { targetVelocity = 14.5f * mult; }
+    void SetCapacityMultiplier(int capPerCar) { for (auto& c : cars) c.maxCapacity = capPerCar; }
 
     // Compatibility aliases
     void SetCoasterName(const std::string& name) { SetLineName(name); }

@@ -600,15 +600,23 @@ void TrackSystem::UpdateSignals(float trainDistance) {
 }
 
 void TrackSystem::DrawAllTracks(Vector2 camOffset, float zoom) {
-    // 1. Draw Support Viaduct Pillars
+    int sw = GetScreenWidth();
+    int sh = GetScreenHeight();
+    float margin = 80.0f * zoom;
+
+    // 1. Draw Support Viaduct Pillars (culled)
     for (const auto& p : pieces) {
         if (p.gz > 0 || p.endZ > 0) {
+            Vector2 sp = Iso::GridToScreen((float)p.gx, (float)p.gy, (float)std::max(p.gz, p.endZ), camOffset, zoom);
+            if (sp.x < -margin || sp.x > sw + margin || sp.y < -margin || sp.y > sh + margin) continue;
             Iso::DrawPillar(p.gx, p.gy, 0, std::max(p.gz, p.endZ), camOffset, zoom);
         }
     }
 
-    // 2. Draw Track Rails, Sleepers, 3rd Rail, Stations, Signals
+    // 2. Draw Track Rails, Sleepers, 3rd Rail, Stations, Signals (culled)
     for (const auto& p : pieces) {
+        Vector2 sp = Iso::GridToScreen((float)p.gx, (float)p.gy, (float)p.gz, camOffset, zoom);
+        if (sp.x < -margin || sp.x > sw + margin || sp.y < -margin || sp.y > sh + margin) continue;
         DrawSinglePiece(p, camOffset, zoom);
     }
 }
