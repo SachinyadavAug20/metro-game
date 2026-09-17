@@ -34,11 +34,10 @@
       canvas.emscripten {
         border: 0px none;
         background-color: #000;
-        width: 100%;
-        height: 100%;
         max-width: 100%;
         max-height: 100%;
         aspect-ratio: 16 / 9;
+        object-fit: contain;
         display: block;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
         outline: none;
@@ -84,11 +83,26 @@
   <body>
     <div id="loading">LOADING METRO GRID OCC DISPATCH...</div>
     <div id="canvas-container">
-      <canvas class="emscripten" id="canvas" width="1280" height="720" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+      <canvas class="emscripten" id="canvas" width="1280" height="720" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
     </div>
     <button id="fs-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
 
     <script type="text/javascript">
+      var canvasElem = document.getElementById('canvas');
+      function ensureFocus() {
+        if (canvasElem) {
+          canvasElem.focus();
+        }
+      }
+      window.addEventListener('load', ensureFocus);
+      window.addEventListener('click', ensureFocus);
+      window.addEventListener('pointerdown', ensureFocus);
+      if (canvasElem) {
+        canvasElem.addEventListener('pointerdown', ensureFocus);
+        canvasElem.addEventListener('mousedown', ensureFocus);
+        canvasElem.addEventListener('touchstart', ensureFocus);
+      }
+
       function toggleFullscreen() {
         var canvas = document.getElementById('canvas');
         if (!document.fullscreenElement) {

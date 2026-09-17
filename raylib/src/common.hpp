@@ -240,11 +240,18 @@ enum LineOperatingMode {
     LINE_CLOSED = 2  // Service suspended: train stopped at station
 };
 
+// Train Service Tier (Dispatching)
+enum TrainServiceTier {
+    SERVICE_LOCAL = 0,    // Local all-stops: stops at every station platform
+    SERVICE_EXPRESS = 1   // Express rapid: bypasses minor Lv1 stops at 1.2x speed, serves Lv2/3 Hubs with +35% fare bonus
+};
+
 // Metro Line Telemetry & Efficiency Ratings (replacing CoasterStats)
 struct MetroLineStats {
     std::string lineName = "Line 1 - Central Loop";
     Color themeColor = Color{229, 57, 53, 255}; // Tokyo Red Line
     LineOperatingMode mode = LINE_OPEN;
+    TrainServiceTier serviceTier = SERVICE_LOCAL;
     float maxSpeedKmh = 72.0f;
     float currentSpeedKmh = 0.0f;
     float trackLengthM = 0.0f;

@@ -31,6 +31,7 @@ struct TrackNode {
     float signalTimer = 0.0f;
     float circuitDist = 0.0f;
     float pidsEta = 25.0f; // Dynamic train arrival countdown in seconds
+    bool isExpressPassing = false; // Express train approaching Lv1 stop at speed
 
     // Precomputed sub-spline points within this single tile in 3D grid space
     std::vector<Vector3> splinePoints;
@@ -70,7 +71,7 @@ public:
     bool GetNextStationAhead(float currentDist, float& outDistToStation, StationInfo& outStation) const;
     void RecordStationAlight(int gx, int gy, int count, bool& outLeveledUp, int& outNewLevel);
     bool UpgradeStation(int gx, int gy, int& outNewLevel);
-    void UpdateStationPIDS(float leadTrainDist, const std::vector<float>& extraTrainDists, float trainSpeed);
+    void UpdateStationPIDS(float leadTrainDist, const std::vector<float>& extraTrainDists, float trainSpeed, bool isLeadExpress = false);
 
     // Dynamic Wayside Signaling
     void UpdateSignals(float trainDistance);

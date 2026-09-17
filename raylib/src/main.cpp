@@ -2,12 +2,15 @@
 #include "game.hpp"
 #include "font_system.hpp"
 
+#include <algorithm>
+
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
     static Game* g_game = nullptr;
     static void UpdateDrawFrame() {
+        float dt = std::min(GetFrameTime(), 0.1f);
         g_game->HandleInput();
-        g_game->Update(GetFrameTime());
+        g_game->Update(dt);
         g_game->Draw();
     }
 #endif
@@ -35,8 +38,9 @@ int main() {
     emscripten_set_main_loop(UpdateDrawFrame, 0, 1);
 #else
     while (!game.ShouldClose()) {
+        float dt = std::min(GetFrameTime(), 0.1f);
         game.HandleInput();
-        game.Update(GetFrameTime());
+        game.Update(dt);
         game.Draw();
     }
 #endif

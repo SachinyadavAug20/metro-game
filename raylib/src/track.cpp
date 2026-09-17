@@ -520,7 +520,7 @@ bool TrackSystem::UpgradeStation(int gx, int gy, int& outNewLevel) {
     return false;
 }
 
-void TrackSystem::UpdateStationPIDS(float leadTrainDist, const std::vector<float>& extraTrainDists, float trainSpeed) {
+void TrackSystem::UpdateStationPIDS(float leadTrainDist, const std::vector<float>& extraTrainDists, float trainSpeed, bool isLeadExpress) {
     if (totalLength <= 0.001f) return;
     float spd = std::max(2.2f, trainSpeed * 0.08f); // circuit units per second
 
@@ -529,17 +529,22 @@ void TrackSystem::UpdateStationPIDS(float leadTrainDist, const std::vector<float
 
         // Find minimum distance from any operating train
         float minGap = p.circuitDist - leadTrainDist;
-        while (minGap < 0.0f) minGap += totalLength;
-        minGap = fmodf(minGap, totalLength);
+        if (totalLength > 0.001f) {
+            minGap = fmodf(minGap, totalLength);
+            if (minGap < 0.0f) minGap += totalLength;
+        }
 
         for (float ed : extraTrainDists) {
             float d = p.circuitDist - ed;
-            while (d < 0.0f) d += totalLength;
-            d = fmodf(d, totalLength);
+            if (totalLength > 0.001f) {
+                d = fmodf(d, totalLength);
+                if (d < 0.0f) d += totalLength;
+            }
             if (d < minGap) minGap = d;
         }
 
         p.pidsEta = minGap / spd;
+        p.isExpressPassing = (isLeadExpress && p.stationLevel == 1 && p.pidsEta <= 4.0f && p.pidsEta >= 0.1f);
     }
 }
 
@@ -552,8 +557,10 @@ bool TrackSystem::GetNextStationAhead(float currentDist, float& outDistToStation
 
     for (size_t i = 0; i < stations.size(); ++i) {
         float d = stations[i].circuitDist - currentDist;
-        while (d < 0.0f) d += totalLength;
-        d = fmodf(d, totalLength);
+        if (totalLength > 0.001f) {
+            d = fmodf(d, totalLength);
+            if (d < 0.0f) d += totalLength;
+        }
         if (d < bestDist) {
             bestDist = d;
             bestIdx = (int)i;
@@ -604,8 +611,10 @@ void TrackSystem::UpdateSignals(float trainDistance) {
     for (auto& p : pieces) {
         if (p.type == TRACK_SIGNAL) {
             float forwardDist = trainDistance - p.circuitDist;
-            while (forwardDist < 0.0f) forwardDist += totalLength;
-            forwardDist = fmodf(forwardDist, totalLength);
+            if (totalLength > 0.001f) {
+                forwardDist = fmodf(forwardDist, totalLength);
+                if (forwardDist < 0.0f) forwardDist += totalLength;
+            }
 
             // If train is in the block immediately past the signal (0 to 3.5 units ahead)
             if (forwardDist >= 0.0f && forwardDist < 3.5f) {
@@ -754,7 +763,11 @@ void TrackSystem::DrawPlatformCanopy(const TrackNode& node, Vector2 camOffset, f
     Color pidsCol = Color{56, 189, 248, 255};
     Color ledCol = Color{56, 189, 248, 255};
 
-    if (node.pidsEta <= 1.0f) {
+    if (node.isExpressPassing) {
+        pidsText = "EXP PASSING";
+        pidsCol = Color{239, 68, 68, 255};
+        ledCol = Color{239, 68, 68, 255};
+    } else if (node.pidsEta <= 1.0f) {
         pidsText = "BOARDING";
         pidsCol = Color{74, 222, 128, 255};
         ledCol = Color{74, 222, 128, 255};

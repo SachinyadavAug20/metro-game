@@ -831,19 +831,24 @@ void Game::HandleInput() {
 
     // 0. Title & Start Menu Screen Input Handler
     if (state == STATE_TITLE) {
-        if ((IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ui.CheckTitleStartClick(mousePos)) ||
-            IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) {
-            state = STATE_PLAYING;
-            endlessMode = false;
-            RecenterCamera();
-            AudioManager::Play(SFX_BUTTON_CLICK, 0.8f);
-            ShowToast("[METRO] Service Commenced! Train will board passengers at Station [7]", Color{56, 189, 248, 255}, 5.0f);
-        } else if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ui.CheckTitleEndlessClick(mousePos)) {
-            state = STATE_PLAYING;
-            endlessMode = true;
-            RecenterCamera();
-            AudioManager::Play(SFX_BUTTON_CLICK, 0.8f);
-            ShowToast("[SANDBOX] Endless Mode — build freely, no win condition!", Color{56, 189, 248, 255}, 5.0f);
+        bool leftClick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+        bool anyKey = IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || (GetKeyPressed() != 0);
+        bool touchInput = (GetTouchPointCount() > 0);
+
+        if (leftClick || anyKey || touchInput) {
+            if (leftClick && ui.CheckTitleEndlessClick(mousePos)) {
+                state = STATE_PLAYING;
+                endlessMode = true;
+                RecenterCamera();
+                AudioManager::Play(SFX_BUTTON_CLICK, 0.8f);
+                ShowToast("[SANDBOX] Endless Mode — build freely, no win condition!", Color{56, 189, 248, 255}, 5.0f);
+            } else {
+                state = STATE_PLAYING;
+                endlessMode = false;
+                RecenterCamera();
+                AudioManager::Play(SFX_BUTTON_CLICK, 0.8f);
+                ShowToast("[METRO] Service Commenced! Train will board passengers at Station [7]", Color{56, 189, 248, 255}, 5.0f);
+            }
         }
         return;
     }
@@ -934,6 +939,14 @@ void Game::HandleInput() {
     if (IsKeyPressed(KEY_T)) {
         statsWindowOpen = !statsWindowOpen;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
+    }
+    if (IsKeyPressed(KEY_K)) {
+        train.ToggleServiceTier();
+        for (auto& et : extraTrains) et.SetServiceTier(train.GetServiceTier());
+        bool isExp = (train.GetServiceTier() == SERVICE_EXPRESS);
+        ShowToast(isExp ? "Service Tier: EXPRESS RAPID (+35% Hub Fares)" : "Service Tier: LOCAL (All Stops)",
+                  isExp ? Color{245, 158, 11, 255} : Color{56, 189, 248, 255}, 2.5f);
+        AudioManager::Play(isExp ? SFX_EXPRESS_WHOOSH : SFX_BUTTON_CLICK, 0.7f);
     }
     if (IsKeyPressed(KEY_L)) {
         lineColorIdx = (lineColorIdx + 1) % LINE_COLOR_COUNT;
@@ -1187,9 +1200,18 @@ void Game::HandleInput() {
             int colorChoice = -1;
             int modeChange = -1;
             int carDelta = 0;
+            int serviceChange = -1;
             bool closeStats = false;
-            if (ui.CheckStatsWindowClick(mousePos, deltaFare, colorChoice, modeChange, carDelta, closeStats)) {
+            if (ui.CheckStatsWindowClick(mousePos, deltaFare, colorChoice, modeChange, carDelta, closeStats, &serviceChange)) {
                 if (closeStats) statsWindowOpen = false;
+                if (serviceChange != -1) {
+                    train.SetServiceTier((TrainServiceTier)serviceChange);
+                    for (auto& et : extraTrains) et.SetServiceTier((TrainServiceTier)serviceChange);
+                    bool isExp = (serviceChange == (int)SERVICE_EXPRESS);
+                    ShowToast(isExp ? "Service Tier: EXPRESS RAPID (+35% Hub Fares)" : "Service Tier: LOCAL (All Stops)",
+                              isExp ? Color{245, 158, 11, 255} : Color{56, 189, 248, 255}, 2.5f);
+                    AudioManager::Play(isExp ? SFX_EXPRESS_WHOOSH : SFX_BUTTON_CLICK, 0.7f);
+                }
                 if (modeChange != -1) {
                     train.SetOperatingMode((LineOperatingMode)modeChange);
                     const char* mNames[] = {"OPEN (Boarding Active)", "TEST RUN (No Boarding)", "CLOSED (Service Suspended)"};
@@ -1719,7 +1741,7 @@ void Game::Update(float dt) {
         bool anyKeyPressed = IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_TWO) || IsKeyPressed(KEY_THREE) ||
                              IsKeyPressed(KEY_FOUR) || IsKeyPressed(KEY_FIVE) || IsKeyPressed(KEY_SIX) ||
                              IsKeyPressed(KEY_SEVEN) || IsKeyPressed(KEY_EIGHT) || IsKeyPressed(KEY_TAB) ||
-                             IsKeyPressed(KEY_L) || IsKeyPressed(KEY_R) || IsKeyPressed(KEY_X);
+                             IsKeyPressed(KEY_L) || IsKeyPressed(KEY_R) || IsKeyPressed(KEY_X) || IsKeyPressed(KEY_K);
         if (mouseOverToolbar || anyKeyPressed || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             toolbarIdleTimer = 0.0f;
         }
@@ -1879,7 +1901,7 @@ void Game::Update(float dt) {
     // Dynamic Station PIDS Arrival Displays (Next train live ETA)
     std::vector<float> extraDists;
     for (const auto& et : extraTrains) extraDists.push_back(et.GetTrainDistance());
-    tracks.UpdateStationPIDS(train.GetTrainDistance(), extraDists, train.GetSpeedKmh());
+    tracks.UpdateStationPIDS(train.GetTrainDistance(), extraDists, train.GetSpeedKmh(), train.GetServiceTier() == SERVICE_EXPRESS);
 
     if (delivered > 0) {
         economy.totalDelivered += delivered;

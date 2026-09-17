@@ -338,6 +338,24 @@ void Init() {
         sounds[SFX_TUNNEL_REVERB] = CreateProceduralSound(buf, sr);
     }
 
+    // 21. SFX_EXPRESS_WHOOSH: High-speed express train slipstream wind roar & Doppler whoosh (0.52s)
+    {
+        int n = (int)(sr * 0.52f);
+        std::vector<float> buf(n);
+        for (int i = 0; i < n; ++i) {
+            float t = (float)i / sr;
+            // Smooth bell envelope with rapid rise
+            float env = sinf(t / 0.52f * PI);
+            // Doppler frequency shift: pitch descends smoothly from 440Hz down to 210Hz
+            float freq = 440.0f - 230.0f * (t / 0.52f);
+            float tone = sinf(2.0f * PI * freq * t) * 0.35f;
+            // Aerodynamic slipstream wind rushing noise
+            float noise = (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * 0.65f;
+            buf[i] = (tone + noise) * env * 0.55f;
+        }
+        sounds[SFX_EXPRESS_WHOOSH] = CreateProceduralSound(buf, sr);
+    }
+
     initialized = true;
 }
 
@@ -355,6 +373,7 @@ void Cleanup() {
 
 void Play(SfxType type, float volume) {
     if (!initialized || muted) return;
+    if (!IsAudioDeviceReady()) return;
     auto it = sounds.find(type);
     if (it == sounds.end()) return;
 

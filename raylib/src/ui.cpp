@@ -591,7 +591,7 @@ DrawText(buttons[i].key, bx + 6, itemStartY + 8, 16, Color{255, 214, 0, 255});
 void UserInterface::DrawLineOperations(const MetroLineStats& stats) {
     int screenW = GetScreenWidth();
     int winW = 330;
-    int winH = 500;
+    int winH = 535;
     int winX = screenW - winW - 16;
     int winY = 62;
 
@@ -629,8 +629,26 @@ void UserInterface::DrawLineOperations(const MetroLineStats& stats) {
     DrawCircle(winX + 234, modeY + 13, 5, isClosed ? WHITE : Color{239, 68, 68, 255});
     DrawText("CLOSED", winX + 246, modeY + 7, 10, WHITE);
 
+    // 2. Service Tier Dispatch Buttons (Local All-Stops vs Express Rapid Hubs)
+    int tierY = winY + 74;
+    int tierBtnW = 146;
+    bool isLocal = (stats.serviceTier == SERVICE_LOCAL);
+    bool isExpress = (stats.serviceTier == SERVICE_EXPRESS);
+
+    // LOCAL Button
+    DrawRectangleRounded(Rectangle{(float)winX + 14, (float)tierY, (float)tierBtnW, 24.0f}, 0.25f, 4, isLocal ? Color{2, 132, 199, 255} : Color{15, 35, 55, 200});
+    DrawRectangleRoundedLines(Rectangle{(float)winX + 14, (float)tierY, (float)tierBtnW, 24.0f}, 0.25f, 4, isLocal ? WHITE : Color{2, 132, 199, 120});
+    DrawCircle(winX + 26, tierY + 12, 4, isLocal ? WHITE : Color{56, 189, 248, 200});
+    DrawText("LOCAL (All-Stops)", winX + 36, tierY + 6, 10, WHITE);
+
+    // EXPRESS Button
+    DrawRectangleRounded(Rectangle{(float)winX + 170, (float)tierY, (float)tierBtnW, 24.0f}, 0.25f, 4, isExpress ? Color{217, 119, 6, 255} : Color{45, 30, 15, 200});
+    DrawRectangleRoundedLines(Rectangle{(float)winX + 170, (float)tierY, (float)tierBtnW, 24.0f}, 0.25f, 4, isExpress ? WHITE : Color{245, 158, 11, 120});
+    DrawCircle(winX + 182, tierY + 12, 4, isExpress ? WHITE : Color{251, 191, 36, 200});
+    DrawText("EXPRESS (+35% Hub)", winX + 192, tierY + 6, 10, WHITE);
+
     // Content rows
-    int rowY = winY + 78;
+    int rowY = winY + 104;
     int rowH = 24;
 
     // Train Formation
@@ -1068,7 +1086,7 @@ void UserInterface::DrawTransitOperationsManual() {
     DrawText("Tab 1 / 2 / 3 : Switch Track / Concourse / Scenery", kCol2, ky, 10, Color{203, 213, 225, 255});
     ky += 16;
     DrawText("[1] - [8] Tools: Rails / Reclaim Water / Canal / Sand / Stone / Hill", kCol1, ky, 10, Color{203, 213, 225, 255});
-    DrawText("[L]           : Cycle Line Livery Theme (Red/Blue/Green/etc.)", kCol2, ky, 10, Color{250, 204, 21, 255});
+    DrawText("[K] Service Tier: Local/Express   [L] Line Livery Palette", kCol2, ky, 10, Color{250, 204, 21, 255});
     ky += 16;
     DrawText("[C] / [HOME]  : Recenter Camera to Train & Central Station", kCol1, ky, 10, Color{34, 197, 94, 255});
     DrawText("[N]           : Toggle Night Vista Mode (City Lamps & Headlights)", kCol2, ky, 10, Color{147, 197, 253, 255});
@@ -1815,7 +1833,7 @@ bool UserInterface::CheckHUDClick(
     return false;
 }
 
-bool UserInterface::CheckStatsWindowClick(Vector2 mousePos, float& outTicketPriceDelta, int& outColorChoice, int& outModeChange, int& outCarDelta, bool& outClose) const {
+bool UserInterface::CheckStatsWindowClick(Vector2 mousePos, float& outTicketPriceDelta, int& outColorChoice, int& outModeChange, int& outCarDelta, bool& outClose, int* outServiceTierChange) const {
     int screenW = GetScreenWidth();
     int winW = 330;
     int winX = screenW - winW - 16;
@@ -1825,6 +1843,7 @@ bool UserInterface::CheckStatsWindowClick(Vector2 mousePos, float& outTicketPric
     outModeChange = -1;
     outCarDelta = 0;
     outTicketPriceDelta = 0.0f;
+    if (outServiceTierChange) *outServiceTierChange = -1;
 
     // Close button [X]
     if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + winW - 32, (float)winY + 4, 28.0f, 28.0f})) {
@@ -1848,8 +1867,22 @@ bool UserInterface::CheckStatsWindowClick(Vector2 mousePos, float& outTicketPric
         return true;
     }
 
+    // Service Tier Dispatch buttons: Local, Express
+    int tierY = winY + 74;
+    int tierBtnW = 146;
+    if (outServiceTierChange) {
+        if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + 14, (float)tierY, (float)tierBtnW, 24.0f})) {
+            *outServiceTierChange = (int)SERVICE_LOCAL;
+            return true;
+        }
+        if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + 170, (float)tierY, (float)tierBtnW, 24.0f})) {
+            *outServiceTierChange = (int)SERVICE_EXPRESS;
+            return true;
+        }
+    }
+
     // Train Formation [-] and [+]
-    int carRowY = winY + 78;
+    int carRowY = winY + 104;
     if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX + 250, (float)carRowY, 24.0f, 20.0f})) {
         outCarDelta = -1;
         return true;
@@ -1881,7 +1914,7 @@ bool UserInterface::CheckStatsWindowClick(Vector2 mousePos, float& outTicketPric
     }
 
     // Consume any other click inside the window rectangle so it does not click through to the world!
-    if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX, (float)winY, (float)winW, 470.0f})) {
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)winX, (float)winY, (float)winW, 540.0f})) {
         return true;
     }
 

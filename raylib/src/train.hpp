@@ -45,6 +45,9 @@ public:
 
     void SetOperatingMode(LineOperatingMode mode) { operatingMode = mode; }
     LineOperatingMode GetOperatingMode() const { return operatingMode; }
+    void SetServiceTier(TrainServiceTier tier) { serviceTier = tier; }
+    TrainServiceTier GetServiceTier() const { return serviceTier; }
+    void ToggleServiceTier() { serviceTier = (serviceTier == SERVICE_LOCAL) ? SERVICE_EXPRESS : SERVICE_LOCAL; }
     int GetCarriageCount() const { return (int)cars.size(); }
     void SetTicketFare(float fare) { ticketFare = fare; }
     float GetTicketFare() const { return ticketFare; }
@@ -63,6 +66,7 @@ private:
     Color themeColor = Color{229, 57, 53, 255}; // Line 1 Tokyo Red
     std::string lineName = "Line 1 - Central Loop";
     LineOperatingMode operatingMode = LINE_OPEN;
+    TrainServiceTier serviceTier = SERVICE_LOCAL;
     TrainState state = TRAIN_STOPPED_IN_STATION;
     float distance = 0.0f;
     float velocity = 0.0f;
@@ -77,6 +81,8 @@ private:
     float doorProgress = 0.0f;
     int lastStationGx = -1;
     int lastStationGy = -1;
+    int lastExpressPassStationGx = -1;
+    int lastExpressPassStationGy = -1;
     float lastDepartedStationDist = -999.0f;
 };
 

@@ -43,9 +43,9 @@ void MetroTrain::Reset(const TrackSystem& tracks, float startOffset) {
         cars[i].doorOpenProgress = 1.0f;
 
         float carDist = distance - (float)i * carSpacing;
-        if (circuitLen > 0.0f) {
-            while (carDist < 0.0f) carDist += circuitLen;
+        if (circuitLen > 0.001f) {
             carDist = fmodf(carDist, circuitLen);
+            if (carDist < 0.0f) carDist += circuitLen;
         }
         Vector3 carTangent;
         cars[i].pos = tracks.GetPointAtDistance(carDist, &carTangent);
@@ -155,14 +155,55 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
         float distToStation = 999.0f;
         bool hasStation = tracks.GetNextStationAhead(distance, distToStation, nextStation);
 
+        // Effective cruising target velocity: Express trains run 20% faster!
+        float effectiveTargetVelocity = targetVelocity * (serviceTier == SERVICE_EXPRESS ? 1.20f : 1.0f);
+
+        // Check if train should stop at this station:
+        bool shouldStopAtStation = true;
+        if (hasStation && serviceTier == SERVICE_EXPRESS) {
+            // Express trains only stop at Level 2 and Level 3 Interchange Hubs!
+            bool isHub = (nextStation.stationLevel >= 2);
+            if (!isHub) {
+                // If there are ANY Level 2+ hubs on the line, skip this Level 1 local stop
+                bool anyHubExists = false;
+                for (const auto& st : tracks.GetAllStations()) {
+                    if (st.stationLevel >= 2) { anyHubExists = true; break; }
+                }
+                if (anyHubExists) {
+                    shouldStopAtStation = false;
+                }
+            }
+        }
+
+        // High-Speed Express Pass-through audio/visual fanfare
+        if (hasStation && !shouldStopAtStation && distToStation <= 1.2f && distToStation > 0.05f) {
+            if (lastExpressPassStationGx != nextStation.gx || lastExpressPassStationGy != nextStation.gy) {
+                lastExpressPassStationGx = nextStation.gx;
+                lastExpressPassStationGy = nextStation.gy;
+                AudioManager::Play(SFX_EXPRESS_WHOOSH, 0.85f);
+                AudioManager::Play(SFX_TRAIN_HORN, 0.4f);
+                Vector3 headPos = tracks.GetPointAtDistance(distance);
+                particles.SpawnFloatingText(
+                    Vector3{headPos.x, headPos.y, headPos.z + 1.2f},
+                    "EXPRESS RAPID - ZOOM!",
+                    Color{56, 189, 248, 255}
+                );
+                particles.SpawnSmoke(headPos, 6);
+            }
+        }
+        if (distToStation > 2.5f) {
+            lastExpressPassStationGx = -1;
+            lastExpressPassStationGy = -1;
+        }
+
         // Smooth station deceleration and exact center stop
-        if (hasStation && distToStation <= 2.6f && distToStation > 0.09f) {
+        if (hasStation && shouldStopAtStation && distToStation <= 2.6f && distToStation > 0.09f) {
             state = TRAIN_BRAKING;
-            float targetV = std::max(1.4f, targetVelocity * (distToStation / 2.6f));
+            float targetV = std::max(1.4f, effectiveTargetVelocity * (distToStation / 2.6f));
             if (velocity > targetV) {
                 velocity = std::max(targetV, velocity - 12.0f * dt);
             }
-        } else if (hasStation && distToStation <= 0.09f) {
+        } else if (hasStation && shouldStopAtStation && distToStation <= 0.09f) {
             // Arrived squarely at the station platform!
             distance = nextStation.circuitDist;
             velocity = 0.0f;
@@ -194,7 +235,8 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
                     tracks.RecordStationAlight(nextStation.gx, nextStation.gy, alighted, leveledUp, newLevel);
 
                     float lvlBonus = (nextStation.stationLevel == 3) ? 1.50f : ((nextStation.stationLevel == 2) ? 1.25f : 1.0f);
-                    float rev = (float)alighted * ticketFare * lvlBonus;
+                    float expressBonus = (serviceTier == SERVICE_EXPRESS) ? 1.35f : 1.0f;
+                    float rev = (float)alighted * ticketFare * lvlBonus * expressBonus;
                     outFareRevenue += rev;
                     totalRevenueEarned += rev;
 
@@ -208,6 +250,12 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
                             Vector3{headPos.x, headPos.y, headPos.z + 1.4f},
                             TextFormat("STATION LEVEL UP (LV %d)!", newLevel),
                             Color{255, 215, 0, 255}
+                        );
+                    } else if (serviceTier == SERVICE_EXPRESS) {
+                        particles.SpawnFloatingText(
+                            Vector3{headPos.x, headPos.y, headPos.z + 0.9f},
+                            TextFormat("+$%.2f (EXPRESS RAPID)", rev),
+                            Color{56, 189, 248, 255}
                         );
                     } else if (lvlBonus > 1.0f) {
                         particles.SpawnFloatingText(
@@ -227,15 +275,15 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
         } else {
             // Normal cruising / acceleration
             state = TRAIN_CRUISING;
-            if (velocity < targetVelocity) {
-                velocity = std::min(targetVelocity, velocity + 6.0f * dt);
+            if (velocity < effectiveTargetVelocity) {
+                velocity = std::min(effectiveTargetVelocity, velocity + 6.0f * dt);
                 // Exhaust puff when accelerating
                 if (cars.size() > 0 && (rand() % 100) < 15) {
                     Vector3 rear = {cars.back().pos.x - cars.back().forward.x * 0.3f, cars.back().pos.y - cars.back().forward.y * 0.3f, cars.back().pos.z + 0.2f};
                     particles.SpawnSmoke(rear, 3);
                 }
-            } else if (velocity > targetVelocity) {
-                velocity = std::max(targetVelocity, velocity - 8.0f * dt);
+            } else if (velocity > effectiveTargetVelocity) {
+                velocity = std::max(effectiveTargetVelocity, velocity - 8.0f * dt);
             }
 
             // Periodic electric motor hum while accelerating
@@ -251,9 +299,8 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
 
     // CBTC Moving-Block Headway Spacing: Maintain realistic headway with train ahead
     if (trainAheadDist >= 0.0f && circuitLen > 1.0f && state != TRAIN_BOARDING && state != TRAIN_STOPPED_IN_STATION) {
-        float forwardGap = trainAheadDist - distance;
-        while (forwardGap < 0.0f) forwardGap += circuitLen;
-        forwardGap = fmodf(forwardGap, circuitLen);
+        float forwardGap = fmodf(trainAheadDist - distance, circuitLen);
+        if (forwardGap < 0.0f) forwardGap += circuitLen;
 
         float safeHeadway = (float)cars.size() * 1.3f + 2.8f;
         if (forwardGap < safeHeadway * 0.65f) {
@@ -464,6 +511,7 @@ MetroLineStats MetroTrain::GetStats(const TrackSystem& tracks) const {
     stats.lineName = lineName;
     stats.themeColor = themeColor;
     stats.mode = operatingMode;
+    stats.serviceTier = serviceTier;
     stats.currentSpeedKmh = GetSpeedKmh();
     stats.maxSpeedKmh = std::max(stats.currentSpeedKmh, recordSpeedKmh);
     stats.trackLengthM = tracks.GetTrackLengthM();

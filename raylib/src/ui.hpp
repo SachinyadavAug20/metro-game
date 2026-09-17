@@ -120,7 +120,7 @@ public:
         bool* outAutoBridge = nullptr
     ) const;
 
-    bool CheckStatsWindowClick(Vector2 mousePos, float& outTicketPriceDelta, int& outColorChoice, int& outModeChange, int& outCarDelta, bool& outClose) const;
+    bool CheckStatsWindowClick(Vector2 mousePos, float& outTicketPriceDelta, int& outColorChoice, int& outModeChange, int& outCarDelta, bool& outClose, int* outServiceTierChange = nullptr) const;
     bool CheckStaffWindowClick(Vector2 mousePos, bool& outHireHandyman, bool& outHireMechanic, bool& outClose) const;
     bool CheckPeepInspectorCloseClick(Vector2 mousePos) const;
     bool IsMouseInPeepInspector(Vector2 mousePos) const;
