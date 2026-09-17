@@ -460,6 +460,69 @@ void DrawScenery(int gx, int gy, int gz, SceneryType type, Vector2 camOffset, fl
             break;
         }
 
+        case SCENERY_VENT_GRATE: {
+            // Subway Ventilation Sidewalk Iron Grate with Rising Steam
+            float grateW = 16.0f * zoom;
+            float grateH = 9.0f * zoom;
+            // Dark void pit beneath sidewalk
+            DrawRectangle((int)(center.x - grateW * 0.5f), (int)(center.y - grateH * 0.5f), (int)grateW, (int)grateH, Color{15, 23, 42, 255});
+            // Outer steel perimeter border
+            DrawRectangleLines((int)(center.x - grateW * 0.5f), (int)(center.y - grateH * 0.5f), (int)grateW, (int)grateH, Color{71, 85, 105, 255});
+            // Iron slotted ventilation bars
+            for (int b = -3; b <= 3; ++b) {
+                float bx = center.x + (float)b * 2.0f * zoom;
+                DrawLineEx({bx, center.y - grateH * 0.45f}, {bx, center.y + grateH * 0.45f}, 1.0f * zoom, Color{100, 116, 139, 230});
+            }
+
+            // Animated Rising Warm Steam Wisps
+            float t = (float)GetTime();
+            for (int w = 0; w < 3; ++w) {
+                float phase = fmodf(t * 1.8f + (float)w * 0.35f, 1.0f);
+                float wy = center.y - 2.0f * zoom - phase * 16.0f * zoom;
+                float wx = center.x + sinf(t * 2.5f + (float)w) * 3.5f * zoom + (float)(w - 1) * 3.0f * zoom;
+                float radius = (1.5f + phase * 3.2f) * zoom;
+                unsigned char alpha = (unsigned char)((1.0f - phase) * 110.0f);
+                DrawCircleGradient(Vector2{wx, wy}, radius, Color{255, 255, 255, alpha}, Color{255, 255, 255, 0});
+            }
+            break;
+        }
+
+        case SCENERY_PALM_TREE: {
+            // Coastal Tropical Palm Tree with Swaying Fronds
+            DrawEllipse((int)center.x, (int)center.y, 10.0f * zoom, 5.0f * zoom, Color{0, 0, 0, 60});
+
+            // Curved Segmented Trunk
+            float trunkH = 26.0f * zoom;
+            float sway = sinf((float)GetTime() * 1.8f + (float)gx) * 2.5f * zoom;
+            Vector2 base = center;
+            Vector2 midTrunk = {center.x + 3.0f * zoom, center.y - trunkH * 0.5f};
+            Vector2 crown = {center.x + 4.5f * zoom + sway, center.y - trunkH};
+
+            // Trunk spline
+            DrawLineEx(base, midTrunk, 3.2f * zoom, Color{120, 53, 15, 255});
+            DrawLineEx(midTrunk, crown, 2.5f * zoom, Color{146, 64, 14, 255});
+
+            // Coconuts
+            DrawCircle((int)(crown.x - 1.5f * zoom), (int)(crown.y + 2.0f * zoom), 1.8f * zoom, Color{69, 26, 3, 255});
+            DrawCircle((int)(crown.x + 1.5f * zoom), (int)(crown.y + 2.0f * zoom), 1.8f * zoom, Color{69, 26, 3, 255});
+
+            // Arching Tropical Palm Fronds
+            for (int f = 0; f < 6; ++f) {
+                float ang = (float)f * (2.0f * PI / 6.0f);
+                Vector2 frondTip = {
+                    crown.x + cosf(ang) * 14.0f * zoom,
+                    crown.y + sinf(ang) * 6.0f * zoom + 5.0f * zoom
+                };
+                Vector2 frondMid = {
+                    crown.x + cosf(ang) * 9.0f * zoom,
+                    crown.y + sinf(ang) * 3.5f * zoom - 3.0f * zoom
+                };
+                DrawLineEx(crown, frondMid, 2.0f * zoom, Color{22, 101, 52, 255});
+                DrawLineEx(frondMid, frondTip, 1.4f * zoom, Color{34, 197, 94, 255});
+            }
+            break;
+        }
+
         default: break;
     }
 }

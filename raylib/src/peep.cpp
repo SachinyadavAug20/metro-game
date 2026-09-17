@@ -362,6 +362,12 @@ void CommuterManager::CheckSceneryInteractions(const SceneryType scenery[GRID_SI
         } else if (s == SCENERY_FLOWER_BED) {
             c.happiness = std::min(100.0f, c.happiness + 0.15f);
             c.thought = "Lovely botanical blossoms brighten my commute!";
+        } else if (s == SCENERY_VENT_GRATE) {
+            c.happiness = std::min(100.0f, c.happiness + 0.1f);
+            c.thought = "Warm subway steam rising from below!";
+        } else if (s == SCENERY_PALM_TREE) {
+            c.happiness = std::min(100.0f, c.happiness + 0.15f);
+            c.thought = "Tropical palms swaying in the ocean breeze!";
         }
     }
 }

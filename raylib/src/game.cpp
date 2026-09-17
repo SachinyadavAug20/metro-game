@@ -249,7 +249,9 @@ void Game::SetupInitialPark() {
 
     // 6. Urban Transit Station Amenities & Scenery
     scenery[0][9] = SCENERY_METRO_ENTRANCE; // Grand subway portal entrance
+    scenery[1][9] = SCENERY_VENT_GRATE;     // Subway sidewalk ventilation grate with rising steam
     scenery[2][9] = SCENERY_TURNSTILE_GATE; // Contactless fare gates & TVM ticket machine
+    scenery[4][9] = SCENERY_VENT_GRATE;     // Secondary sidewalk steam vent
     scenery[3][8] = SCENERY_MAP_KIOSK;      // Harry Beck style schematic transit map board
     scenery[5][7] = SCENERY_NEWSSTAND;      // Platform Metro Cafe & refreshments
     scenery[1][10] = SCENERY_BIKE_RACK;     // Metro bike share docking rack
@@ -263,16 +265,18 @@ void Game::SetupInitialPark() {
     scenery[10][11] = SCENERY_BENCH;
 
     // High-Efficiency Municipal LED Streetlamps
-    scenery[3][8] = SCENERY_LAMP_POST;
+    scenery[2][8] = SCENERY_LAMP_POST;
     scenery[8][10] = SCENERY_LAMP_POST;
     scenery[5][12] = SCENERY_LAMP_POST;
     scenery[8][14] = SCENERY_LAMP_POST;
     scenery[10][14] = SCENERY_LAMP_POST;
 
-    // Manicured Trees & Botanical Flower Beds
+    // Manicured Trees, Coastal Palms & Botanical Flower Beds
     scenery[1][8] = SCENERY_STREET_TREE;
     scenery[3][10] = SCENERY_STREET_TREE;
     scenery[5][10] = SCENERY_STREET_TREE;
+    scenery[11][7]  = SCENERY_PALM_TREE;    // Coastal canal tropical palm
+    scenery[11][15] = SCENERY_PALM_TREE;    // Coastal canal tropical palm
     scenery[4][10] = SCENERY_FLOWER_BED;
     scenery[6][7]  = SCENERY_FLOWER_BED;
     scenery[9][11] = SCENERY_FLOWER_BED;
@@ -1039,14 +1043,14 @@ void Game::HandleInput() {
     if (IsKeyPressed(KEY_THREE)) {
         if (activeTab == CAT_TRACK) currentTrack = TRACK_CURVE_RIGHT;
         else if (activeTab == CAT_INFRA) { currentGround = GROUND_PLAZA; isTerraformingRaise = false; }
-        else currentScenery = SCENERY_STREET_TREE;
+        else currentScenery = SCENERY_VENT_GRATE;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
     if (IsKeyPressed(KEY_FOUR)) {
         if (activeTab == CAT_TRACK) currentTrack = TRACK_VIADUCT_ELEVATED;
         else if (activeTab == CAT_INFRA) { currentGround = GROUND_GRASS; isTerraformingRaise = false; }
-        else currentScenery = SCENERY_PINE_TREE;
+        else currentScenery = SCENERY_PALM_TREE;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
@@ -1369,8 +1373,8 @@ void Game::HandleInput() {
                 }
             } else if (activeTab == CAT_SCENERY) {
                 SceneryType sTypes[] = {
-                    SCENERY_METRO_ENTRANCE, SCENERY_TURNSTILE_GATE, SCENERY_STREET_TREE,
-                    SCENERY_PINE_TREE, SCENERY_BENCH, SCENERY_LAMP_POST,
+                    SCENERY_METRO_ENTRANCE, SCENERY_TURNSTILE_GATE, SCENERY_VENT_GRATE,
+                    SCENERY_PALM_TREE, SCENERY_BENCH, SCENERY_LAMP_POST,
                     SCENERY_FOUNTAIN, SCENERY_NEWSSTAND, SCENERY_NONE
                 };
                 if (itemIdx == 8) isBulldozing = true;
@@ -1681,6 +1685,8 @@ void Game::HandleInput() {
                     float boost = 1.5f;
                     if (currentScenery == SCENERY_METRO_ENTRANCE) { scnCost = 120; boost = 4.0f; }
                     else if (currentScenery == SCENERY_TURNSTILE_GATE) { scnCost = 90; boost = 3.0f; }
+                    else if (currentScenery == SCENERY_VENT_GRATE) { scnCost = 45; boost = 2.0f; }
+                    else if (currentScenery == SCENERY_PALM_TREE) { scnCost = 40; boost = 2.5f; }
                     else if (currentScenery == SCENERY_NEWSSTAND) { scnCost = 150; boost = 4.0f; }
                     else if (currentScenery == SCENERY_MAP_KIOSK) { scnCost = 40; boost = 1.5f; }
                     else if (currentScenery == SCENERY_STREET_TREE) { scnCost = 35; boost = 1.2f; }

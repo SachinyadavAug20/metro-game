@@ -453,8 +453,8 @@ void UserInterface::DrawToolbar(
         SceneryBtn buttons[] = {
             {"Entrance", "1", SCENERY_METRO_ENTRANCE, 120},
             {"Fare Gates", "2", SCENERY_TURNSTILE_GATE, 90},
-            {"Oak Tree", "3", SCENERY_STREET_TREE, 35},
-            {"Pine Tree", "4", SCENERY_PINE_TREE, 30},
+            {"Steam Vent", "3", SCENERY_VENT_GRATE, 45},
+            {"Palm Tree", "4", SCENERY_PALM_TREE, 40},
             {"Bench", "5", SCENERY_BENCH, 20},
             {"LED Lamp", "6", SCENERY_LAMP_POST, 25},
             {"Fountain", "7", SCENERY_FOUNTAIN, 120},
