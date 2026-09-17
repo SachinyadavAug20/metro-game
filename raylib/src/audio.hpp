@@ -16,7 +16,8 @@ enum SfxType {
     SFX_BULLDOZE,           // Infrastructure demolition
     SFX_COMMUTER_CHATTER,   // Commuters boarding / cheering
     SFX_COFFEE_SIP,         // Station newsstand coffee sip
-    SFX_CASH_REGISTER       // RCT style cash register ka-ching chime
+    SFX_CASH_REGISTER,      // RCT style cash register ka-ching chime
+    SFX_TRAIN_HORN          // Two-tone pneumatic electric train departure horn
 };
 
 namespace AudioManager {

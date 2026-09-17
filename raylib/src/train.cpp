@@ -137,13 +137,16 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
             doorProgress = 0.0f;
             for (auto& c : cars) c.doorOpenProgress = 0.0f;
             AudioManager::Play(SFX_VVVF_MOTOR, 0.65f);
+            AudioManager::Play(SFX_TRAIN_HORN, 0.45f);
             velocity = 2.5f;
             distance += 0.35f; // Nudge past platform stop threshold
             if (distance >= circuitLen) distance = fmodf(distance, circuitLen);
-            // Departure whoosh — burst of smoke from rear
+            // Departure effects: smoke from rear + horn puff from front cab
             if (cars.size() > 0) {
                 Vector3 rear = {cars.back().pos.x - cars.back().forward.x * 0.4f, cars.back().pos.y - cars.back().forward.y * 0.4f, cars.back().pos.z + 0.2f};
-                particles.SpawnSmoke(rear, 8);
+                particles.SpawnSmoke(rear, 6);
+                Vector3 front = {cars[0].pos.x + cars[0].forward.x * 0.4f, cars[0].pos.y + cars[0].forward.y * 0.4f, cars[0].pos.z + 0.6f};
+                particles.SpawnSmoke(front, 2);
             }
         }
     } else {

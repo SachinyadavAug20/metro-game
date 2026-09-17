@@ -242,6 +242,22 @@ void Init() {
         sounds[SFX_CASH_REGISTER] = CreateProceduralSound(buf, sr);
     }
 
+    // 15. SFX_TRAIN_HORN: Two-tone pneumatic dual chime electric train horn (370 Hz & 440 Hz) (0.35s)
+    {
+        int n = (int)(sr * 0.35f);
+        std::vector<float> buf(n);
+        for (int i = 0; i < n; ++i) {
+            float t = (float)i / sr;
+            float attack = std::min(1.0f, t * 80.0f);
+            float decay = expf(-4.5f * t);
+            float env = attack * decay;
+            float tone1 = sinf(2.0f * PI * 370.0f * t) + 0.3f * sinf(2.0f * PI * 740.0f * t);
+            float tone2 = sinf(2.0f * PI * 440.0f * t) + 0.3f * sinf(2.0f * PI * 880.0f * t);
+            buf[i] = (tone1 * 0.5f + tone2 * 0.5f) * env * 0.65f;
+        }
+        sounds[SFX_TRAIN_HORN] = CreateProceduralSound(buf, sr);
+    }
+
     initialized = true;
 }
 
