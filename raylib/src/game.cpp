@@ -2080,6 +2080,23 @@ void Game::Update(float dt) {
             weatherTimer = 0.0f;
         }
 
+        // Ambient Soundscape (nature & coastal audio immersion)
+        static float ambientTimer = 0.0f;
+        ambientTimer += dt;
+        if (ambientTimer >= 5.5f) {
+            ambientTimer = 0.0f;
+            if (nightMode) {
+                AudioManager::Play(SFX_NIGHT_CRICKET, 0.28f);
+            } else {
+                Vector2 cGrid = Iso::ScreenToGrid(Vector2{(float)GetScreenWidth() * 0.5f, (float)GetScreenHeight() * 0.5f}, cameraPos, zoom, 0.0f);
+                if (cGrid.y >= 22.0f || (cGrid.x >= 11.0f && cGrid.x <= 15.0f)) {
+                    AudioManager::Play(SFX_OCEAN_AMBIENT, 0.32f);
+                } else {
+                    AudioManager::Play(SFX_MORNING_BIRD, 0.26f);
+                }
+            }
+        }
+
         // Natural events system
         if (activeEvent >= 0) {
             eventTimer -= dt;

@@ -258,6 +258,49 @@ void Init() {
         sounds[SFX_TRAIN_HORN] = CreateProceduralSound(buf, sr);
     }
 
+    // 16. SFX_OCEAN_AMBIENT: Gentle rolling ocean surf swell (0.9s)
+    {
+        int n = (int)(sr * 0.9f);
+        std::vector<float> buf(n);
+        for (int i = 0; i < n; ++i) {
+            float t = (float)i / sr;
+            float env = sinf(t / 0.9f * PI);
+            float noise = (((float)rand() / RAND_MAX) * 2.0f - 1.0f);
+            float rumble = sinf(2.0f * PI * 65.0f * t) * 0.4f;
+            buf[i] = (noise * 0.4f + rumble) * env * 0.35f;
+        }
+        sounds[SFX_OCEAN_AMBIENT] = CreateProceduralSound(buf, sr);
+    }
+
+    // 17. SFX_NIGHT_CRICKET: Nighttime cricket rhythmic double chirp (0.32s)
+    {
+        int n = (int)(sr * 0.32f);
+        std::vector<float> buf(n);
+        for (int i = 0; i < n; ++i) {
+            float t = (float)i / sr;
+            float pulse = sinf(2.0f * PI * 28.0f * t);
+            float env = (pulse > 0.3f) ? (pulse - 0.3f) / 0.7f : 0.0f;
+            float tone = sinf(2.0f * PI * 4650.0f * t);
+            buf[i] = tone * env * 0.35f;
+        }
+        sounds[SFX_NIGHT_CRICKET] = CreateProceduralSound(buf, sr);
+    }
+
+    // 18. SFX_MORNING_BIRD: Melodic morning park songbird chirp (0.28s)
+    {
+        int n = (int)(sr * 0.28f);
+        std::vector<float> buf(n);
+        for (int i = 0; i < n; ++i) {
+            float t = (float)i / sr;
+            float progress = t / 0.28f;
+            float env = sinf(progress * PI);
+            float freq = 2800.0f + 700.0f * sinf(progress * 3.5f * PI);
+            float tone = sinf(2.0f * PI * freq * t);
+            buf[i] = tone * env * 0.35f;
+        }
+        sounds[SFX_MORNING_BIRD] = CreateProceduralSound(buf, sr);
+    }
+
     initialized = true;
 }
 
