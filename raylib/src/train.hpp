@@ -19,7 +19,7 @@ public:
     MetroTrain();
 
     void Reset(const TrackSystem& tracks, float startOffset = 0.5f);
-    void Update(float dt, TrackSystem& tracks, ParticleSystem& particles, int& outDeliveredCommuters, float& outFareRevenue);
+    void Update(float dt, TrackSystem& tracks, ParticleSystem& particles, int& outDeliveredCommuters, float& outFareRevenue, float trainAheadDist = -1.0f);
     void Draw(Vector2 camOffset, float zoom) const;
 
     // State queries

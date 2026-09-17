@@ -93,7 +93,7 @@ int MetroTrain::AlightCommutersAtStation(StationShape stationShape) {
     return alighted;
 }
 
-void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles, int& outDeliveredCommuters, float& outFareRevenue) {
+void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles, int& outDeliveredCommuters, float& outFareRevenue, float trainAheadDist) {
     if (!tracks.IsCircuitClosed()) {
         state = TRAIN_STOPPED_IN_STATION;
         velocity = 0.0f;
@@ -242,6 +242,30 @@ void MetroTrain::Update(float dt, TrackSystem& tracks, ParticleSystem& particles
                     AudioManager::Play(SFX_VVVF_MOTOR, 0.35f);
                     vvvfSoundTimer = 3.5f;
                 }
+            }
+        }
+    }
+
+    // CBTC Moving-Block Headway Spacing: Maintain realistic headway with train ahead
+    if (trainAheadDist >= 0.0f && circuitLen > 1.0f && state != TRAIN_BOARDING && state != TRAIN_STOPPED_IN_STATION) {
+        float forwardGap = trainAheadDist - distance;
+        while (forwardGap < 0.0f) forwardGap += circuitLen;
+        forwardGap = fmodf(forwardGap, circuitLen);
+
+        float safeHeadway = (float)cars.size() * 1.3f + 2.8f;
+        if (forwardGap < safeHeadway * 0.65f) {
+            // Signal Red / Danger block: full brake application
+            state = TRAIN_BRAKING;
+            velocity = std::max(0.0f, velocity - 18.0f * dt);
+            if ((rand() % 100) < 6 && cars.size() > 0) {
+                particles.SpawnSparks(cars[0].pos, 2);
+            }
+        } else if (forwardGap < safeHeadway) {
+            // Signal Amber / Caution block: decelerate smoothly to matching crawl
+            state = TRAIN_BRAKING;
+            float approachSpeed = 3.6f * ((forwardGap - safeHeadway * 0.65f) / (safeHeadway * 0.35f));
+            if (velocity > approachSpeed) {
+                velocity = std::max(approachSpeed, velocity - 10.0f * dt);
             }
         }
     }

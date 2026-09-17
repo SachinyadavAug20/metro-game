@@ -1824,16 +1824,18 @@ void Game::Update(float dt) {
     // 3. Update Particles
     particles.Update(simDt);
 
-    // 4. Update Metro Train Operations & Physics
+    // 4. Update Metro Train Operations & Physics (CBTC Moving-Block Headway Control)
     int delivered = 0;
     float fareRevenue = 0.0f;
-    train.Update(simDt, tracks, particles, delivered, fareRevenue);
+    float leadAheadDist = extraTrains.empty() ? -1.0f : extraTrains.back().GetTrainDistance();
+    train.Update(simDt, tracks, particles, delivered, fareRevenue, leadAheadDist);
 
-    // Extra fleet EMUs (purchasable); rush-hour surges spawn them in demand
-    for (auto& extra : extraTrains) {
+    // Extra fleet EMUs (purchasable); headway spacing keeps trains evenly distributed
+    for (size_t i = 0; i < extraTrains.size(); ++i) {
+        float aheadDist = (i == 0) ? train.GetTrainDistance() : extraTrains[i - 1].GetTrainDistance();
         int deliveredN = 0;
         float fareN = 0.0f;
-        extra.Update(simDt, tracks, particles, deliveredN, fareN);
+        extraTrains[i].Update(simDt, tracks, particles, deliveredN, fareN, aheadDist);
         delivered += deliveredN;
         fareRevenue += fareN;
     }
