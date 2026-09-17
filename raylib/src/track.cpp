@@ -854,6 +854,31 @@ void TrackSystem::DrawSinglePiece(const TrackNode& node, Vector2 camOffset, floa
         DrawPlatformCanopy(node, camOffset, zoom);
     }
 
+    // 2b. Draw Concrete Parapet Guard Wall on Elevated Viaducts
+    if (node.gz > 0 || node.type == TRACK_VIADUCT_ELEVATED || node.type == TRACK_VIADUCT_SLOPE) {
+        float parapetDist = 7.8f * zoom;
+        Color parapetC = Color{100, 116, 139, 230};
+        Color handrailC = Color{71, 85, 105, 255};
+        for (size_t i = 0; i < node.splinePoints.size() - 1; i += 2) {
+            Vector3 pt1 = node.splinePoints[i];
+            Vector3 pt2 = node.splinePoints[i + 1];
+            Vector2 s1 = Iso::GridToScreen(pt1.x, pt1.y, pt1.z, camOffset, zoom);
+            Vector2 s2 = Iso::GridToScreen(pt2.x, pt2.y, pt2.z, camOffset, zoom);
+            Vector2 tangent = Vector2Normalize({s2.x - s1.x, s2.y - s1.y});
+            Vector2 normal = {-tangent.y, tangent.x};
+
+            Vector2 p1L = {s1.x - normal.x * parapetDist, s1.y - normal.y * parapetDist};
+            Vector2 p2L = {s2.x - normal.x * parapetDist, s2.y - normal.y * parapetDist};
+            Vector2 p1R = {s1.x + normal.x * parapetDist, s1.y + normal.y * parapetDist};
+            Vector2 p2R = {s2.x + normal.x * parapetDist, s2.y + normal.y * parapetDist};
+
+            DrawLineEx(p1L, p2L, 2.2f * zoom, parapetC);
+            DrawLineEx(p1R, p2R, 2.2f * zoom, parapetC);
+            DrawLineEx({p1L.x, p1L.y - 2.5f * zoom}, {p2L.x, p2L.y - 2.5f * zoom}, 1.0f * zoom, handrailC);
+            DrawLineEx({p1R.x, p1R.y - 2.5f * zoom}, {p2R.x, p2R.y - 2.5f * zoom}, 1.0f * zoom, handrailC);
+        }
+    }
+
     // 3. Draw Cross Sleepers (Ties)
     float railGauge = 5.2f * zoom;
     Color tieC = Color{148, 163, 184, 255}; // Modern concrete ties

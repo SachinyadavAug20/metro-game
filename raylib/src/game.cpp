@@ -2703,13 +2703,13 @@ void Game::Draw() {
         }
         float utilPct = totalCap > 0 ? (float)totalOn / (float)totalCap : 0.0f;
         Color utilCol = (utilPct >= 0.8f) ? Color{239, 68, 68, 255} : (utilPct >= 0.5f) ? Color{234, 179, 8, 255} : Color{56, 189, 248, 255};
-        int fBarX = 12, fBarY = 118, fBarW = 260;
+        int fBarX = 12, fBarY = 124, fBarW = 260;
         // Glass fleet bar background
-        ui.DrawGlassPanel(fBarX - 2, fBarY - 2, fBarW + 4, 36, Color{8, 14, 28, 180}, 0.15f);
-        DrawRectangleRounded(Rectangle{(float)(fBarX + 2), (float)(fBarY + 4), (float)(fBarW - 4), 5.0f}, 0.4f, 3, Color{20, 30, 48, 200});
-        DrawRectangleGradientH(fBarX + 2, fBarY + 4, (int)((fBarW - 4) * utilPct), 5,
+        ui.DrawGlassPanel(fBarX - 2, fBarY - 2, fBarW + 4, 42, Color{8, 14, 28, 210}, 0.15f);
+        DrawRectangleRounded(Rectangle{(float)(fBarX + 4), (float)(fBarY + 5), (float)(fBarW - 8), 4.0f}, 0.4f, 3, Color{20, 30, 48, 200});
+        DrawRectangleGradientH(fBarX + 4, fBarY + 5, (int)((fBarW - 8) * utilPct), 4,
                                Color{(unsigned char)(utilCol.r * 7 / 10), (unsigned char)(utilCol.g * 7 / 10), (unsigned char)(utilCol.b * 7 / 10), utilCol.a}, utilCol);
-        DrawText(TextFormat("FLEET: %d/%d seats (%.0f%%)", totalOn, totalCap, utilPct * 100.0f), fBarX + 4, fBarY + 12, 9, Color{160, 170, 190, 200});
+        DrawText(TextFormat("FLEET: %d/%d seats (%.0f%%)", totalOn, totalCap, utilPct * 100.0f), fBarX + 6, fBarY + 12, 11, Color{203, 213, 225, 255});
 
         // 12b. Population, Train Tier, Research, Districts display
         static const char* popTierNames[] = {"Village", "Town", "City", "Metropolis", "MEGACITY"};
@@ -2722,12 +2722,10 @@ void Game::Draw() {
         const char* timeIcon = (timeOfDay < 0.2f || timeOfDay >= 0.8f) ? "[NIGHT]" :
                                (timeOfDay < 0.3f) ? "[DAWN]" :
                                (timeOfDay < 0.7f) ? "[DAY]" : "[DUSK]";
-        DrawText(TextFormat("POP: %d (%s)  |  T%d %s  |  R:%s  |  %s  |  [L] %s",
+        DrawText(TextFormat("POP %d (%s) | T%d %s | %s",
                             totalWorldPopulation, popTierNames[populationTier],
                             trainTier + 1, GetTrainTier(trainTier).name,
-                            GetResearchName((ResearchTier)researchTier),
-                            timeIcon,
-                            LINE_COLORS[lineColorIdx].name), fBarX + 4, fBarY + 18, 8, popCol);
+                            timeIcon), fBarX + 6, fBarY + 26, 10, popCol);
     }
 
     // 12c. Natural event banner (top-right corner)

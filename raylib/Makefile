@@ -25,6 +25,9 @@ $(TARGET): $(OBJS)
 coaster_grid: $(TARGET)
 	ln -sf $(TARGET) coaster_grid
 
+test_capture: test_capture.cpp $(filter-out src/main.o, $(OBJS))
+	$(CXX) $(CXXFLAGS) $(INCLUDES) test_capture.cpp $(filter-out src/main.o, $(OBJS)) -o test_capture $(LIBS)
+
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 

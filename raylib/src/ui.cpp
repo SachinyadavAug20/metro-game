@@ -790,7 +790,7 @@ void UserInterface::DrawCommuterInspector(const Commuter* commuter) {
     int cardW = 300;
     int cardH = 145;
     int cardX = 14;
-    int cardY = 120;
+    int cardY = 172;
 
     // Card background
     DrawRectangleRounded(Rectangle{(float)cardX, (float)cardY, (float)cardW, (float)cardH}, 0.15f, 6, Color{15, 23, 42, 250});
@@ -865,7 +865,7 @@ void UserInterface::DrawStationInspector(const TrackNode* station, int waitingCo
     int cardW = 300;
     int cardH = 172;
     int cardX = 14;
-    int cardY = 120;
+    int cardY = 172;
 
     // Card background
     DrawRectangleRounded(Rectangle{(float)cardX, (float)cardY, (float)cardW, (float)cardH}, 0.15f, 6, Color{15, 23, 42, 250});
@@ -1924,13 +1924,13 @@ bool UserInterface::CheckStaffWindowClick(Vector2 mousePos, bool& outHireHandyma
 bool UserInterface::CheckPeepInspectorCloseClick(Vector2 mousePos) const {
     int cardW = 300;
     int cardX = 14;
-    int cardY = 120;
+    int cardY = 172;
 
     return CheckCollisionPointRec(mousePos, Rectangle{(float)cardX + cardW - 28, (float)cardY + 8, 24.0f, 24.0f});
 }
 
 bool UserInterface::IsMouseInPeepInspector(Vector2 mousePos) const {
-    return CheckCollisionPointRec(mousePos, Rectangle{14.0f, 120.0f, 300.0f, 145.0f});
+    return CheckCollisionPointRec(mousePos, Rectangle{14.0f, 172.0f, 300.0f, 145.0f});
 }
 
 bool UserInterface::CheckStationInspectorClick(Vector2 mousePos, const TrackNode* station, bool& outUpgrade, bool& outClose) const {
@@ -1939,7 +1939,7 @@ bool UserInterface::CheckStationInspectorClick(Vector2 mousePos, const TrackNode
     int cardW = 300;
     int cardH = 172;
     int cardX = 14;
-    int cardY = 120;
+    int cardY = 172;
 
     outUpgrade = false;
     outClose = false;
@@ -1970,7 +1970,7 @@ bool UserInterface::CheckStationInspectorClick(Vector2 mousePos, const TrackNode
 }
 
 bool UserInterface::IsMouseInStationInspector(Vector2 mousePos) const {
-    return CheckCollisionPointRec(mousePos, Rectangle{14.0f, 120.0f, 300.0f, 172.0f});
+    return CheckCollisionPointRec(mousePos, Rectangle{14.0f, 172.0f, 300.0f, 172.0f});
 }
 
 bool UserInterface::CheckHelpOverlayClick(Vector2 mousePos) const {
