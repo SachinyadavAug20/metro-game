@@ -113,9 +113,9 @@
           if (document.exitFullscreen) document.exitFullscreen();
         }
       }
-      // Prevent browser scrolling with arrow keys, tab, or spacebar
+      // Prevent browser page scrolling with arrow keys without blocking game controls
       window.addEventListener("keydown", function(e) {
-        if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab"].indexOf(e.code) > -1) {
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.code) > -1) {
           e.preventDefault();
         }
       }, false);

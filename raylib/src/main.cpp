@@ -31,21 +31,19 @@ int main() {
 
     InitGameFont();
 
-    Game game;
-
 #if defined(PLATFORM_WEB)
-    g_game = &game;
+    g_game = new Game();
     emscripten_set_main_loop(UpdateDrawFrame, 0, 1);
 #else
+    Game game;
     while (!game.ShouldClose()) {
         float dt = std::min(GetFrameTime(), 0.1f);
         game.HandleInput();
         game.Update(dt);
         game.Draw();
     }
-#endif
-
     CleanupGameFont();
     CloseWindow();
+#endif
     return 0;
 }
