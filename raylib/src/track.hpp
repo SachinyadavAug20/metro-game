@@ -105,5 +105,6 @@ private:
     void DrawPlatformCanopy(const TrackNode& node, Vector2 camOffset, float zoom);
     void DrawSignalMast(const TrackNode& node, Vector2 camOffset, float zoom);
     void DrawTunnelPortal(const TrackNode& node, Vector2 camOffset, float zoom);
+    void DrawSubwayTunnel(const TrackNode& node, Vector2 camOffset, float zoom);
 };
 

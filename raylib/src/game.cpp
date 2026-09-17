@@ -1841,6 +1841,20 @@ void Game::Update(float dt) {
         fareRevenue += fareN;
     }
 
+    // Subway tunnel resonant echo audio
+    static float tunnelSoundTimer = 0.0f;
+    tunnelSoundTimer += dt;
+    Vector3 locPos = train.GetLocomotivePos();
+    int tgx = (int)roundf(locPos.x);
+    int tgy = (int)roundf(locPos.y);
+    const TrackNode* tNode = tracks.GetPiece(tgx, tgy);
+    if (tNode && (tNode->type == TRACK_TUNNEL || tNode->type == TRACK_TUNNEL_PORTAL) && train.GetSpeedKmh() > 10.0f) {
+        if (tunnelSoundTimer > 1.2f) {
+            AudioManager::Play(SFX_TUNNEL_REVERB, 0.48f);
+            tunnelSoundTimer = 0.0f;
+        }
+    }
+
     if (delivered > 0) {
         economy.totalDelivered += delivered;
         bestSessionRiders = std::max(bestSessionRiders, economy.totalDelivered);

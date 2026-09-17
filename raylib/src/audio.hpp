@@ -21,7 +21,8 @@ enum SfxType {
     SFX_OCEAN_AMBIENT,      // Gentle rolling ocean surf swell
     SFX_NIGHT_CRICKET,      // Nighttime crickets chirping
     SFX_MORNING_BIRD,       // Cheerful morning park songbird chirp
-    SFX_THUNDER_ROLL        // Distant rolling atmospheric thunder rumble
+    SFX_THUNDER_ROLL,       // Distant rolling atmospheric thunder rumble
+    SFX_TUNNEL_REVERB       // Hollow resonant subway tunnel rolling wheel echo
 };
 
 namespace AudioManager {

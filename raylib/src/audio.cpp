@@ -321,6 +321,23 @@ void Init() {
         sounds[SFX_THUNDER_ROLL] = CreateProceduralSound(buf, sr);
     }
 
+    // 20. SFX_TUNNEL_REVERB: Resonant subway tunnel rolling wheel echo (0.42s)
+    {
+        int n = (int)(sr * 0.42f);
+        std::vector<float> buf(n);
+        for (int i = 0; i < n; ++i) {
+            float t = (float)i / sr;
+            float env = sinf(t / 0.42f * PI);
+            // Low resonant hum + comb-filtered steel wheel clatter
+            float res1 = sinf(2.0f * PI * 185.0f * t);
+            float res2 = sinf(2.0f * PI * 310.0f * t) * 0.4f;
+            float rattle = sinf(2.0f * PI * 65.0f * t) * 0.6f;
+            float noise = (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * 0.3f;
+            buf[i] = (res1 * 0.4f + res2 + rattle + noise) * env * 0.45f;
+        }
+        sounds[SFX_TUNNEL_REVERB] = CreateProceduralSound(buf, sr);
+    }
+
     initialized = true;
 }
 

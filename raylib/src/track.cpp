@@ -75,8 +75,8 @@ void TrackSystem::InitDefaultCircuit() {
 
     // 16. Underground Subway Tunnel Entry
     AddPiece(14, 16, 0, TRACK_TUNNEL_PORTAL, DIR_EAST, DIR_WEST, lineCol);
-    AddPiece(13, 16, 0, TRACK_STRAIGHT, DIR_EAST, DIR_WEST, lineCol);
-    AddPiece(12, 16, 0, TRACK_STRAIGHT, DIR_EAST, DIR_WEST, lineCol);
+    AddPiece(13, 16, 0, TRACK_TUNNEL, DIR_EAST, DIR_WEST, lineCol);
+    AddPiece(12, 16, 0, TRACK_TUNNEL, DIR_EAST, DIR_WEST, lineCol);
     AddPiece(11, 16, 0, TRACK_TUNNEL_PORTAL, DIR_EAST, DIR_WEST, lineCol);
 
     // 17. University Med Center Station [Cross - Hospital & Campus]
@@ -843,6 +843,43 @@ void TrackSystem::DrawTunnelPortal(const TrackNode& node, Vector2 camOffset, flo
     DrawCircleGradient(Vector2{center.x, center.y - portalH - 2.0f * zoom}, 7.0f * zoom, Color{245, 158, 11, 140}, Color{245, 158, 11, 0});
 }
 
+void TrackSystem::DrawSubwayTunnel(const TrackNode& node, Vector2 camOffset, float zoom) {
+    if (node.splinePoints.empty()) return;
+
+    // Arched concrete subway tube vault casing
+    float tubeW = 16.0f * zoom;
+    float tubeH = 16.0f * zoom;
+    Color concreteRing = Color{51, 65, 85, 240};
+    Color innerVoid = Color{15, 23, 42, 210};
+    Color workLamp = Color{250, 204, 21, 255};
+    Color cableTray = Color{56, 189, 248, 200};
+
+    // Draw tunnel concrete vault arches along the spline segments
+    for (size_t i = 0; i < node.splinePoints.size() - 1; i += 3) {
+        Vector3 pt = node.splinePoints[i];
+        Vector2 s = Iso::GridToScreen(pt.x, pt.y, pt.z, camOffset, zoom);
+
+        // Arched subterranean tunnel tube cutaway
+        DrawRectangle((int)(s.x - tubeW * 0.5f), (int)(s.y - tubeH), (int)tubeW, (int)tubeH, innerVoid);
+        DrawRectangleLines((int)(s.x - tubeW * 0.5f), (int)(s.y - tubeH), (int)tubeW, (int)tubeH, concreteRing);
+
+        // Vaulted arch ceiling crown
+        DrawCircleSector(Vector2{s.x, s.y - tubeH}, tubeW * 0.5f, 180.0f, 360.0f, 8, concreteRing);
+
+        // Utility wall cable conduit line
+        DrawLineEx({s.x - tubeW * 0.45f, s.y - tubeH * 0.5f}, {s.x - tubeW * 0.45f, s.y - tubeH * 0.2f}, 1.2f * zoom, cableTray);
+
+        // Warm yellow work light lamp on ceiling
+        if (i % 6 == 0) {
+            Vector2 lampPos = {s.x, s.y - tubeH - 2.0f * zoom};
+            DrawCircle((int)lampPos.x, (int)lampPos.y, 2.0f * zoom, workLamp);
+            DrawCircleGradient(lampPos, 8.0f * zoom, Color{250, 204, 21, 100}, Color{250, 204, 21, 0});
+            // Track ground puddle glow
+            DrawEllipse((int)s.x, (int)s.y, 6.0f * zoom, 3.0f * zoom, Color{250, 204, 21, 40});
+        }
+    }
+}
+
 void TrackSystem::DrawSinglePiece(const TrackNode& node, Vector2 camOffset, float zoom) {
     if (node.splinePoints.empty()) return;
 
@@ -935,9 +972,11 @@ void TrackSystem::DrawSinglePiece(const TrackNode& node, Vector2 camOffset, floa
         DrawSignalMast(node, camOffset, zoom);
     }
 
-    // 7. Draw Subway Tunnel Portal if tunnel
+    // 7. Draw Subway Tunnel Portal or Tube if tunnel
     if (node.type == TRACK_TUNNEL_PORTAL) {
         DrawTunnelPortal(node, camOffset, zoom);
+    } else if (node.type == TRACK_TUNNEL) {
+        DrawSubwayTunnel(node, camOffset, zoom);
     }
 }
 

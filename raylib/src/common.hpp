@@ -143,6 +143,7 @@ enum TrackType {
     TRACK_VIADUCT_ELEVATED,// Elevated concrete SkyTrain viaduct (+1 Z)
     TRACK_VIADUCT_SLOPE,   // Viaduct ramp descending from elevated to surface (-1 Z)
     TRACK_TUNNEL_PORTAL,   // Arched concrete subway tunnel portal into underground
+    TRACK_TUNNEL,          // Subterranean subway tunnel: arched concrete tube with utility lighting
     TRACK_STATION,         // Station Platform: Island platform with glass canopy, LED PIDS, PSDs
     TRACK_SIGNAL           // Track segment equipped with 3-aspect wayside signaling mast
 };
