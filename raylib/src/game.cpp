@@ -1563,7 +1563,22 @@ void Game::HandleInput() {
                             shakeTimer = 0.15f; // subtle screen shake
                             AudioManager::Play(SFX_CONSTRUCTION, 0.8f);
                             particles.SpawnSparks(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 14);
+                            particles.SpawnSmoke(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ}, 5);
                             particles.SpawnFloatingText(Vector3{(float)hoveredGx + 0.5f, (float)hoveredGy + 0.5f, (float)currentZ + 0.6f}, "-$40", Color{239, 68, 68, 255});
+
+                            // Track placement rhythmic streak
+                            static float lastTrackPlaceTime = 0.0f;
+                            static int trackCombo = 0;
+                            float now = (float)GetTime();
+                            if (now - lastTrackPlaceTime < 1.4f) trackCombo++;
+                            else trackCombo = 1;
+                            lastTrackPlaceTime = now;
+                            if (trackCombo == 5) {
+                                ShowToast("★ 5-Track Streak! Rapid transit expansion!", Color{250, 204, 21, 255}, 1.8f);
+                            } else if (trackCombo == 10) {
+                                ShowToast("★ 10-Track Mega Streak! Master civil engineer!", Color{56, 189, 248, 255}, 2.2f);
+                                AudioManager::Play(SFX_UPGRADE_FANFARE, 0.7f);
+                            }
 
                             if (!wasClosed && tracks.IsCircuitClosed()) {
                                 ShowToast("[CIRCUIT] Transit Loop Closed! Regular EMU Schedule Active!", Color{34, 197, 94, 255}, 4.0f);
