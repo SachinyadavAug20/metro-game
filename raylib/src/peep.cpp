@@ -319,6 +319,17 @@ void CommuterManager::CheckSceneryInteractions(const SceneryType scenery[GRID_SI
             c.thought = "Resting on the station bench.";
         } else if (s == SCENERY_MAP_KIOSK) {
             c.thought = "Checking the Harry Beck route diagram.";
+        } else if (s == SCENERY_FOUNTAIN) {
+            c.happiness = std::min(100.0f, c.happiness + 0.2f);
+            c.thought = "Admiring the ornamental fountain.";
+            if ((rand() % 100) < 4) {
+                particles.SpawnSparks(Vector3{c.pos.x, c.pos.y, 0.4f}, 2);
+            }
+        } else if (s == SCENERY_BIKE_RACK) {
+            c.thought = "Docked my bike for the rapid transit transfer.";
+        } else if (s == SCENERY_FLOWER_BED) {
+            c.happiness = std::min(100.0f, c.happiness + 0.15f);
+            c.thought = "Lovely botanical blossoms brighten my commute!";
         }
     }
 }
@@ -352,6 +363,14 @@ void CommuterManager::Draw(Vector2 camOffset, float zoom) const {
         if (c.hasBriefcase) {
             Vector2 bagPos = { sPos.x + 3.5f * zoom, sPos.y - bodyH * 0.4f + bob };
             DrawRectangle((int)bagPos.x, (int)bagPos.y, (int)(3.5f * zoom), (int)(2.8f * zoom), Color{120, 53, 15, 255}); // Leather briefcase
+        }
+
+        // Takeout Espresso Paper Cup
+        if (c.hasCoffee) {
+            Vector2 cupPos = { sPos.x - 3.8f * zoom, sPos.y - bodyH * 0.42f + bob };
+            DrawRectangle((int)cupPos.x, (int)cupPos.y, (int)(2.2f * zoom), (int)(3.0f * zoom), WHITE);
+            DrawRectangle((int)(cupPos.x - 0.4f * zoom), (int)cupPos.y, (int)(3.0f * zoom), (int)(1.0f * zoom), Color{146, 64, 14, 255});
+            DrawLineEx({cupPos.x + 1.0f * zoom, cupPos.y - 1.0f * zoom}, {cupPos.x + 1.4f * zoom, cupPos.y - 2.8f * zoom}, 0.8f * zoom, Color{255, 255, 255, 140});
         }
 
         // RollerCoaster Tycoon Bobbing Balloon
