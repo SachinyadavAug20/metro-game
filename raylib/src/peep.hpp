@@ -27,6 +27,8 @@ struct Commuter {
     Color balloonColor = Color{239, 68, 68, 255};
     bool hasUmbrella = false;
     Color umbrellaColor = Color{56, 189, 248, 255};
+    bool hasPhone = false;
+    bool hasSmartCard = false;
     std::string thought = "Tapped my transit card, waiting for Line 1!";
 };
 

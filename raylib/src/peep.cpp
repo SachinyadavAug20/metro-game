@@ -221,6 +221,7 @@ void CommuterManager::Update(float dt, MetroTrain& train, std::vector<MetroTrain
                 UpdateCommuterMovement(c, dt);
                 if (Vector2Distance(c.pos, c.targetPos) < 0.25f) {
                     c.state = COMMUTER_SWIPING_GATE;
+                    c.hasSmartCard = true;
                     c.queueTimer = 0.45f;
                     AudioManager::Play(SFX_SMARTCARD_BEEP, 0.5f);
                     particles.SpawnSparks(Vector3{c.pos.x, c.pos.y, 0.4f}, 3);
@@ -231,6 +232,7 @@ void CommuterManager::Update(float dt, MetroTrain& train, std::vector<MetroTrain
             case COMMUTER_SWIPING_GATE: {
                 c.queueTimer -= dt;
                 if (c.queueTimer <= 0.0f) {
+                    c.hasSmartCard = false;
                     c.state = COMMUTER_ON_PLATFORM;
                     c.targetPos = {queueStartPos.x + 0.5f, queueStartPos.y};
                 }
@@ -238,6 +240,7 @@ void CommuterManager::Update(float dt, MetroTrain& train, std::vector<MetroTrain
             }
 
             case COMMUTER_ON_PLATFORM: {
+                c.hasSmartCard = false;
                 int qPos = (int)queueCommuters.size();
                 queueCommuters.push_back(i);
 
@@ -250,6 +253,9 @@ void CommuterManager::Update(float dt, MetroTrain& train, std::vector<MetroTrain
                 UpdateCommuterMovement(c, dt);
 
                 c.queuePatience -= dt;
+                if (c.queuePatience < 35.0f && (c.type == COMMUTER_STUDENT || c.type == COMMUTER_WORKER)) {
+                    c.hasPhone = true;
+                }
                 if (c.queuePatience < 15.0f) {
                     c.thought = "Train is delayed... checking transit app.";
                     c.happiness = std::max(20.0f, c.happiness - dt * 1.5f);
@@ -259,6 +265,8 @@ void CommuterManager::Update(float dt, MetroTrain& train, std::vector<MetroTrain
 
             case COMMUTER_RIDING: {
                 // Inside the train
+                c.hasSmartCard = false;
+                c.hasPhone = false;
                 c.pos = {train.GetLocomotivePos().x, train.GetLocomotivePos().y};
                 break;
             }
@@ -428,6 +436,21 @@ void CommuterManager::Draw(Vector2 camOffset, float zoom) const {
             DrawLineEx(apexPos, {apexPos.x - canopyW * 0.5f, apexPos.y}, 0.8f * zoom, Color{255, 255, 255, 100});
             DrawLineEx(apexPos, {apexPos.x + canopyW * 0.5f, apexPos.y}, 0.8f * zoom, Color{255, 255, 255, 100});
             DrawCircle((int)apexPos.x, (int)(apexPos.y - canopyW + 1.0f * zoom), 1.2f * zoom, Color{226, 232, 240, 255});
+        }
+
+        // Contactless IC SmartCard (Held forward when swiping turnstile gate)
+        if (c.hasSmartCard) {
+            Vector2 cardPos = { sPos.x + 3.2f * zoom, sPos.y - bodyH * 0.45f + bob };
+            DrawRectangle((int)cardPos.x, (int)cardPos.y, (int)(3.2f * zoom), (int)(2.2f * zoom), Color{56, 189, 248, 255});
+            DrawCircle((int)(cardPos.x + 1.6f * zoom), (int)(cardPos.y + 1.1f * zoom), 0.7f * zoom, Color{250, 204, 21, 255});
+        }
+
+        // Mobile Smartphone (Checking transit app on platform)
+        if (c.hasPhone && !c.hasUmbrella) {
+            Vector2 phonePos = { sPos.x - 3.4f * zoom, sPos.y - bodyH * 0.48f + bob };
+            DrawRectangle((int)phonePos.x, (int)phonePos.y, (int)(2.2f * zoom), (int)(3.4f * zoom), Color{30, 41, 59, 255});
+            DrawRectangle((int)(phonePos.x + 0.3f * zoom), (int)(phonePos.y + 0.4f * zoom), (int)(1.6f * zoom), (int)(2.4f * zoom), Color{147, 197, 253, 245});
+            DrawCircleGradient(Vector2{phonePos.x + 1.0f * zoom, phonePos.y + 1.4f * zoom}, 3.5f * zoom, Color{147, 197, 253, 70}, Color{147, 197, 253, 0});
         }
 
         // Floating Thought & Destination Shape Speech Bubble

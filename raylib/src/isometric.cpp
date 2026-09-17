@@ -288,8 +288,12 @@ void DrawScenery(int gx, int gy, int gz, SceneryType type, Vector2 camOffset, fl
             DrawRectangle((int)(center.x), (int)(center.y - gateH), (int)gateW, (int)gateH, Color{148, 163, 184, 255});
             // Glass flap doors
             DrawRectangle((int)(center.x + 4.0f * zoom), (int)(center.y - gateH + 2.0f * zoom), (int)(3.0f * zoom), (int)(gateH - 3.0f * zoom), Color{56, 189, 248, 200});
-            // Green LED directional arrow
-            DrawCircle((int)(center.x + 8.0f * zoom), (int)(center.y - gateH - 1.5f * zoom), 2.0f * zoom, Color{34, 197, 94, 255});
+            // Glowing contactless smartcard touch target pad
+            DrawCircle((int)(center.x + 2.5f * zoom), (int)(center.y - gateH - 1.0f * zoom), 1.8f * zoom, Color{56, 189, 248, 255});
+            DrawCircleGradient(Vector2{center.x + 2.5f * zoom, center.y - gateH - 1.0f * zoom}, 4.0f * zoom, Color{56, 189, 248, 120}, Color{56, 189, 248, 0});
+            // Green LED directional passage arrow
+            DrawCircle((int)(center.x + 10.0f * zoom), (int)(center.y - gateH - 1.5f * zoom), 2.2f * zoom, Color{34, 197, 94, 255});
+            DrawCircleGradient(Vector2{center.x + 10.0f * zoom, center.y - gateH - 1.5f * zoom}, 4.5f * zoom, Color{34, 197, 94, 130}, Color{34, 197, 94, 0});
             break;
         }
 
