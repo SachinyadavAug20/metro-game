@@ -1855,6 +1855,11 @@ void Game::Update(float dt) {
         }
     }
 
+    // Dynamic Station PIDS Arrival Displays (Next train live ETA)
+    std::vector<float> extraDists;
+    for (const auto& et : extraTrains) extraDists.push_back(et.GetTrainDistance());
+    tracks.UpdateStationPIDS(train.GetTrainDistance(), extraDists, train.GetSpeedKmh());
+
     if (delivered > 0) {
         economy.totalDelivered += delivered;
         bestSessionRiders = std::max(bestSessionRiders, economy.totalDelivered);

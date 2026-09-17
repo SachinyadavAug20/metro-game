@@ -520,6 +520,29 @@ bool TrackSystem::UpgradeStation(int gx, int gy, int& outNewLevel) {
     return false;
 }
 
+void TrackSystem::UpdateStationPIDS(float leadTrainDist, const std::vector<float>& extraTrainDists, float trainSpeed) {
+    if (totalLength <= 0.001f) return;
+    float spd = std::max(2.2f, trainSpeed * 0.08f); // circuit units per second
+
+    for (auto& p : pieces) {
+        if (p.type != TRACK_STATION) continue;
+
+        // Find minimum distance from any operating train
+        float minGap = p.circuitDist - leadTrainDist;
+        while (minGap < 0.0f) minGap += totalLength;
+        minGap = fmodf(minGap, totalLength);
+
+        for (float ed : extraTrainDists) {
+            float d = p.circuitDist - ed;
+            while (d < 0.0f) d += totalLength;
+            d = fmodf(d, totalLength);
+            if (d < minGap) minGap = d;
+        }
+
+        p.pidsEta = minGap / spd;
+    }
+}
+
 bool TrackSystem::GetNextStationAhead(float currentDist, float& outDistToStation, StationInfo& outStation) const {
     std::vector<StationInfo> stations = GetAllStations();
     if (stations.empty() || totalLength <= 0.001f) return false;
@@ -714,12 +737,43 @@ void TrackSystem::DrawPlatformCanopy(const TrackNode& node, Vector2 camOffset, f
 
     // 5. Dynamic LED Passenger Information Display (PIDS)
     Vector2 pidsCenter = { (rTop.x + rBottom.x) * 0.5f, (rTop.y + rBottom.y) * 0.5f + 4.0f * zoom };
-    float pidsW = 46.0f * zoom;
-    float pidsH = 10.0f * zoom;
-    DrawRectangleRounded(Rectangle{pidsCenter.x - pidsW * 0.5f, pidsCenter.y - pidsH * 0.5f, pidsW, pidsH}, 0.3f, 4, Color{15, 23, 42, 235});
+    float pidsW = 56.0f * zoom;
+    float pidsH = 11.0f * zoom;
+
+    // Dual steel suspension drop-rods from canopy ceiling
+    Color rodCol = Color{71, 85, 105, 230};
+    DrawLineEx({pidsCenter.x - 18.0f * zoom, pidsCenter.y - pidsH * 0.5f}, {pidsCenter.x - 18.0f * zoom, pidsCenter.y - pidsH * 0.5f - 6.0f * zoom}, 1.2f * zoom, rodCol);
+    DrawLineEx({pidsCenter.x + 18.0f * zoom, pidsCenter.y - pidsH * 0.5f}, {pidsCenter.x + 18.0f * zoom, pidsCenter.y - pidsH * 0.5f - 6.0f * zoom}, 1.2f * zoom, rodCol);
+
+    // Matrix Chassis
+    DrawRectangleRounded(Rectangle{pidsCenter.x - pidsW * 0.5f, pidsCenter.y - pidsH * 0.5f, pidsW, pidsH}, 0.3f, 4, Color{15, 23, 42, 245});
     DrawRectangleRoundedLines(Rectangle{pidsCenter.x - pidsW * 0.5f, pidsCenter.y - pidsH * 0.5f, pidsW, pidsH}, 0.3f, 4, Color{56, 189, 248, 190});
-    DrawCircle((int)(pidsCenter.x - 14.0f * zoom), (int)pidsCenter.y, 2.0f * zoom, Color{74, 222, 128, 255});
-    DrawText("METRO", (int)(pidsCenter.x - 9.0f * zoom), (int)(pidsCenter.y - 3.5f * zoom), (int)(7.0f * zoom), Color{241, 245, 249, 240});
+
+    // Dynamic arrival status and text
+    const char* pidsText = "NEXT: 15s";
+    Color pidsCol = Color{56, 189, 248, 255};
+    Color ledCol = Color{56, 189, 248, 255};
+
+    if (node.pidsEta <= 1.0f) {
+        pidsText = "BOARDING";
+        pidsCol = Color{74, 222, 128, 255};
+        ledCol = Color{74, 222, 128, 255};
+    } else if (node.pidsEta <= 5.0f) {
+        pidsText = "ARRIVING";
+        pidsCol = Color{250, 204, 21, 255};
+        ledCol = Color{250, 204, 21, 255};
+    } else {
+        int sec = (int)node.pidsEta;
+        pidsText = TextFormat("ETA %ds", sec);
+    }
+
+    // Status LED
+    DrawCircle((int)(pidsCenter.x - pidsW * 0.5f + 5.0f * zoom), (int)pidsCenter.y, 2.0f * zoom, ledCol);
+    DrawCircleGradient(Vector2{pidsCenter.x - pidsW * 0.5f + 5.0f * zoom, pidsCenter.y}, 4.0f * zoom, Color{ledCol.r, ledCol.g, ledCol.b, 120}, Color{ledCol.r, ledCol.g, ledCol.b, 0});
+
+    // Matrix text
+    int tw = MeasureText(pidsText, (int)(7.5f * zoom));
+    DrawText(pidsText, (int)(pidsCenter.x - tw * 0.5f + 3.0f * zoom), (int)(pidsCenter.y - 3.8f * zoom), (int)(7.5f * zoom), pidsCol);
 
     // 6. Prominent Floating Holographic District Shape Roundel
     if (node.stationShape != SHAPE_NONE) {
