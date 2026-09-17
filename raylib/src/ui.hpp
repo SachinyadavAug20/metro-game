@@ -92,6 +92,19 @@ public:
     void DrawAdvisorSuggestion(const char* icon, const char* title, const char* hint, Color accentCol, float showTime);
     bool CheckAdvisorDismissClick(Vector2 mousePos, float showTime);
     void DrawAchievementPopup(const char* title, const char* sub, Color accentCol, float showTime);
+    void DrawRideCamHUD(
+        const MetroLineStats& stats,
+        TrainState trainState,
+        float speedKmh,
+        int currentPassengers,
+        int maxCapacity,
+        const char* nextStationName,
+        StationShape nextStationShape,
+        float distToNextStation,
+        SignalAspect currentSignalAspect,
+        bool isExpress
+    );
+    bool CheckRideCamExitClick(Vector2 mousePos) const;
 
     // Arcade pause menu. Returns: 0 = RESUME, 1 = RESTART, 2 = QUIT TO MENU, -1 = none.
     int CheckPauseClick(Vector2 mousePos) const;

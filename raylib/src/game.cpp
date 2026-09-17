@@ -948,6 +948,15 @@ void Game::HandleInput() {
                   isExp ? Color{245, 158, 11, 255} : Color{56, 189, 248, 255}, 2.5f);
         AudioManager::Play(isExp ? SFX_EXPRESS_WHOOSH : SFX_BUTTON_CLICK, 0.7f);
     }
+    if (IsKeyPressed(KEY_F)) {
+        rideCamActive = !rideCamActive;
+        AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
+        if (rideCamActive) {
+            ShowToast("CAB RIDE-CAM ACTIVATED [Press F to exit]", Color{56, 189, 248, 255}, 2.5f);
+        } else {
+            ShowToast("CAB RIDE-CAM DEACTIVATED", Color{203, 213, 225, 255}, 2.0f);
+        }
+    }
     if (IsKeyPressed(KEY_L)) {
         lineColorIdx = (lineColorIdx + 1) % LINE_COLOR_COUNT;
         lineColorFlash = 0.5f;
@@ -1084,7 +1093,7 @@ void Game::HandleInput() {
     if (IsKeyPressed(KEY_SEVEN)) {
         if (activeTab == CAT_TRACK) currentTrack = TRACK_STATION;
         else if (activeTab == CAT_INFRA) { currentGround = GROUND_STONE; isTerraformingRaise = false; }
-        else currentScenery = SCENERY_FOUNTAIN;
+        else currentScenery = SCENERY_VENDING_MACHINE;
         isBulldozing = false;
         AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
     }
@@ -1158,6 +1167,13 @@ void Game::HandleInput() {
 
     // Handle UI Top HUD & Toolbar Clicks
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if (rideCamActive && ui.CheckRideCamExitClick(mousePos)) {
+            rideCamActive = false;
+            AudioManager::Play(SFX_BUTTON_CLICK, 0.6f);
+            ShowToast("CAB RIDE-CAM DEACTIVATED", Color{203, 213, 225, 255}, 2.0f);
+            return;
+        }
+
         // Top HUD Click
         int newSpeed = -1;
         bool toggleMute = false;
@@ -1397,7 +1413,7 @@ void Game::HandleInput() {
                 SceneryType sTypes[] = {
                     SCENERY_METRO_ENTRANCE, SCENERY_TURNSTILE_GATE, SCENERY_VENT_GRATE,
                     SCENERY_PALM_TREE, SCENERY_BENCH, SCENERY_LAMP_POST,
-                    SCENERY_FOUNTAIN, SCENERY_NEWSSTAND, SCENERY_NONE
+                    SCENERY_VENDING_MACHINE, SCENERY_NEWSSTAND, SCENERY_NONE
                 };
                 if (itemIdx == 8) isBulldozing = true;
                 else { isBulldozing = false; currentScenery = sTypes[itemIdx]; }
@@ -1710,6 +1726,7 @@ void Game::HandleInput() {
                     else if (currentScenery == SCENERY_VENT_GRATE) { scnCost = 45; boost = 2.0f; }
                     else if (currentScenery == SCENERY_PALM_TREE) { scnCost = 40; boost = 2.5f; }
                     else if (currentScenery == SCENERY_NEWSSTAND) { scnCost = 150; boost = 4.0f; }
+                    else if (currentScenery == SCENERY_VENDING_MACHINE) { scnCost = 85; boost = 3.5f; }
                     else if (currentScenery == SCENERY_MAP_KIOSK) { scnCost = 40; boost = 1.5f; }
                     else if (currentScenery == SCENERY_STREET_TREE) { scnCost = 35; boost = 1.2f; }
                     else if (currentScenery == SCENERY_PINE_TREE) { scnCost = 30; boost = 1.0f; }
@@ -1810,6 +1827,20 @@ void Game::Update(float dt) {
 
     // Arcade mission briefing timer (real-time countdown)
     float simDt = dt * (float)gameSpeed;
+
+    // Driver Cab Ride-Cam smooth camera track
+    if (rideCamActive) {
+        Vector3 lp = train.GetLocomotivePos();
+        int screenW = GetScreenWidth(); if (screenW <= 0) screenW = 1280;
+        int screenH = GetScreenHeight(); if (screenH <= 0) screenH = 720;
+        float halfW = (TILE_WIDTH / 2.0f) * zoom;
+        float halfH = (TILE_HEIGHT / 2.0f) * zoom;
+        float desiredX = (float)screenW * 0.5f - (lp.x - lp.y) * halfW;
+        float desiredY = (float)screenH * 0.52f - (lp.x + lp.y) * halfH + (lp.z * 16.0f * zoom);
+        float lerpRate = std::min(1.0f, dt * 8.0f);
+        cameraPos.x += (desiredX - cameraPos.x) * lerpRate;
+        cameraPos.y += (desiredY - cameraPos.y) * lerpRate;
+    }
 
     // Strict camera safety: guarantee camera center is always firmly within playable map
     ClampCamera();
@@ -2761,6 +2792,30 @@ void Game::Draw() {
         GetRankColor()
     );
 
+    // 12a0. Driver Cab Ride-Cam Cockpit OCC HUD
+    if (rideCamActive && state == STATE_PLAYING) {
+        float distToNext = 0.0f;
+        StationInfo nextSt;
+        const char* nextStName = "Line Terminus";
+        StationShape nextStShape = SHAPE_CIRCLE;
+        if (tracks.GetNextStationAhead(train.GetTrainDistance(), distToNext, nextSt)) {
+            nextStName = nextSt.name.c_str();
+            nextStShape = nextSt.shape;
+        }
+        ui.DrawRideCamHUD(
+            cachedStats,
+            train.GetState(),
+            train.GetSpeedKmh(),
+            train.GetTotalPassengers(),
+            train.GetMaxCapacity(),
+            nextStName,
+            nextStShape,
+            distToNext,
+            tracks.GetActiveSignalAspect(),
+            train.GetServiceTier() == SERVICE_EXPRESS
+        );
+    }
+
     // 12a. Persistent arcade OBJECTIVE chip - compact goal tracking
     if (state == STATE_PLAYING) {
         if (endlessMode) {
@@ -2897,8 +2952,8 @@ void Game::Draw() {
         DrawRectangle(sw - 6, 0, 6, sh, tierCol);
     }
 
-    // 12b. Draw Contextual Quick Tip Banner
-    {
+    // 12b. Draw Contextual Quick Tip Banner & Toolbar (only in standard view)
+    if (!rideCamActive) {
         std::string quickTip;
         if (activeEvent >= 0) {
             quickTip = TextFormat("[EVENT] %s: %s", EVENTS[activeEvent].name, EVENTS[activeEvent].desc);
@@ -2915,61 +2970,61 @@ void Game::Draw() {
         } else if (activeTab == CAT_INFRA) {
             quickTip = "Concourse: 1 Walkway  3 Plaza  4 Reclaim Water  5 Canal  6 Sand  7 Stone  8 Hill";
         } else if (activeTab == CAT_SCENERY) {
-            quickTip = "Scenery: 1 Entrance  2 Gates  3 Tree  5 Bench  7 Fountain  8 Cafe";
+            quickTip = "Scenery: 1 Entrance  2 Gates  3 Vent  4 Palm  5 Bench  6 Lamp  7 Vending  8 Cafe";
         }
         ui.DrawQuickTipBanner(quickTip);
-    }
 
-    // 13. Draw Categorized Toolbar (with auto-hide fade)
-    ui.DrawToolbar(
-        activeTab,
-        currentTrack,
-        currentScenery,
-        currentGround,
-        currentZ,
-        buildHeading,
-        isBulldozing,
-        economy.balance,
-        train.GetCarriageCount(),
-        buildRadius,
-        GetExtraTrainCount(),
-        isTerraformingRaise
-    );
-    // Toolbar fade when idle
-    if (toolbarAlpha < 0.95f) {
-        int sw = GetScreenWidth(), sh = GetScreenHeight();
-        unsigned char fadeA = (unsigned char)((1.0f - toolbarAlpha) * 200);
-        DrawRectangle(0, sh - 180, sw, 180, Color{15, 23, 42, fadeA});
-        // "Hover to activate" hint
-        if (toolbarAlpha < 0.6f) {
-            DrawGameBoldTextCentered("[ Hover toolbar or press 1-8 to build ]",
-                                     (float)sw / 2.0f, (float)sh - 100, 11,
-                                     Color{148, 163, 184, (unsigned char)(100 * toolbarAlpha)});
+        // 13. Draw Categorized Toolbar (with auto-hide fade)
+        ui.DrawToolbar(
+            activeTab,
+            currentTrack,
+            currentScenery,
+            currentGround,
+            currentZ,
+            buildHeading,
+            isBulldozing,
+            economy.balance,
+            train.GetCarriageCount(),
+            buildRadius,
+            GetExtraTrainCount(),
+            isTerraformingRaise
+        );
+        // Toolbar fade when idle
+        if (toolbarAlpha < 0.95f) {
+            int sw = GetScreenWidth(), sh = GetScreenHeight();
+            unsigned char fadeA = (unsigned char)((1.0f - toolbarAlpha) * 200);
+            DrawRectangle(0, sh - 180, sw, 180, Color{15, 23, 42, fadeA});
+            // "Hover to activate" hint
+            if (toolbarAlpha < 0.6f) {
+                DrawGameBoldTextCentered("[ Hover toolbar or press 1-8 to build ]",
+                                         (float)sw / 2.0f, (float)sh - 100, 11,
+                                         Color{148, 163, 184, (unsigned char)(100 * toolbarAlpha)});
+            }
         }
-    }
 
-    // 13b. First-action spotlight: pulsing glow on Straight track button when no circuit
-    if (state == STATE_PLAYING && !isPaused && !tracks.IsCircuitClosed() && economy.totalDelivered == 0) {
-        int screenW = GetScreenWidth();
-        int screenH = GetScreenHeight();
-        int barX = ToolbarMetrics::BarX(screenW);
-        int barY = ToolbarMetrics::BarY(screenH);
-        // Straight button is the first item (position 0)
-        int itemX = barX + 12;
-        int itemY = barY + ToolbarMetrics::ITEM_Y;
-        int itemW = ToolbarMetrics::ITEM_W;
-        int itemH = ToolbarMetrics::ITEM_H;
-        float spotlightPulse = 0.4f + 0.6f * sinf(GetTime() * 3.0f);
-        // Glow ring around the Straight button
-        DrawRectangleRounded(Rectangle{(float)itemX - 4, (float)itemY - 4, (float)itemW + 8, (float)itemH + 8},
-                           0.15f, 6, Color{56, 189, 248, (unsigned char)(40 * spotlightPulse)});
-        DrawRectangleRoundedLines(Rectangle{(float)itemX - 2, (float)itemY - 2, (float)itemW + 4, (float)itemH + 4},
-                                0.15f, 6, Color{56, 189, 248, (unsigned char)(150 * spotlightPulse)});
-        // "START HERE" text above
-        const char* startHint = "START HERE";
-        int hintW = MeasureText(startHint, 10);
-        int hintX = itemX + (itemW - hintW) / 2;
-        DrawText(startHint, hintX, itemY - 16, 10, Color{56, 189, 248, (unsigned char)(200 * spotlightPulse)});
+        // 13b. First-action spotlight: pulsing glow on Straight track button when no circuit
+        if (state == STATE_PLAYING && !isPaused && !tracks.IsCircuitClosed() && economy.totalDelivered == 0) {
+            int screenW = GetScreenWidth();
+            int screenH = GetScreenHeight();
+            int barX = ToolbarMetrics::BarX(screenW);
+            int barY = ToolbarMetrics::BarY(screenH);
+            // Straight button is the first item (position 0)
+            int itemX = barX + 12;
+            int itemY = barY + ToolbarMetrics::ITEM_Y;
+            int itemW = ToolbarMetrics::ITEM_W;
+            int itemH = ToolbarMetrics::ITEM_H;
+            float spotlightPulse = 0.4f + 0.6f * sinf(GetTime() * 3.0f);
+            // Glow ring around the Straight button
+            DrawRectangleRounded(Rectangle{(float)itemX - 4, (float)itemY - 4, (float)itemW + 8, (float)itemH + 8},
+                               0.15f, 6, Color{56, 189, 248, (unsigned char)(40 * spotlightPulse)});
+            DrawRectangleRoundedLines(Rectangle{(float)itemX - 2, (float)itemY - 2, (float)itemW + 4, (float)itemH + 4},
+                                    0.15f, 6, Color{56, 189, 248, (unsigned char)(150 * spotlightPulse)});
+            // "START HERE" text above
+            const char* startHint = "START HERE";
+            int hintW = MeasureText(startHint, 10);
+            int hintX = itemX + (itemW - hintW) / 2;
+            DrawText(startHint, hintX, itemY - 16, 10, Color{56, 189, 248, (unsigned char)(200 * spotlightPulse)});
+        }
     }
 
     // 14. Draw Line Operations Window

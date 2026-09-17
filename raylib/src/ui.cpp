@@ -194,6 +194,18 @@ void UserInterface::DrawHUD(
     // 5. Simulation controls & mute (modern glass buttons)
     int btnX = screenW - 140;
 
+    // Ride-Cam (Driver cab tracking camera) button
+    int camX = btnX - 110;
+    int camR = 14;
+    int camCY = 26;
+    DrawCircleGradient(Vector2{(float)(camX + camR), (float)camCY}, 18,
+                       Color{(unsigned char)(cabCamActive ? 56 : 30), (unsigned char)(cabCamActive ? 189 : 41), (unsigned char)(cabCamActive ? 248 : 59), (unsigned char)(cabCamActive ? 80 : 25)}, Color{0, 0, 0, 0});
+    DrawCircle(camX + camR, camCY, camR, cabCamActive ? Color{2, 132, 199, 255} : Color{20, 30, 55, 220});
+    DrawCircleLines(camX + camR, camCY, camR, cabCamActive ? WHITE : Color{56, 189, 248, 160});
+    // Camera icon
+    DrawRectangle(camX + camR - 6, camCY - 4, 8, 7, WHITE);
+    DrawTriangle({(float)(camX + camR + 2), (float)(camCY - 3)}, {(float)(camX + camR + 2), (float)(camCY + 3)}, {(float)(camX + camR + 6), (float)(camCY)}, WHITE);
+
     // Info button
     int infoX = btnX - 74;
     int infoR = 14;
@@ -457,7 +469,7 @@ void UserInterface::DrawToolbar(
             {"Palm Tree", "4", SCENERY_PALM_TREE, 40},
             {"Bench", "5", SCENERY_BENCH, 20},
             {"LED Lamp", "6", SCENERY_LAMP_POST, 25},
-            {"Fountain", "7", SCENERY_FOUNTAIN, 120},
+            {"Vending", "7", SCENERY_VENDING_MACHINE, 85},
             {"Cafe", "8", SCENERY_NEWSSTAND, 150},
             {"Demolish", "X", SCENERY_NONE, 0}
         };
@@ -1785,11 +1797,12 @@ bool UserInterface::CheckHUDClick(
     bool& outToggleHelp,
     bool* outAutoBridge
 ) const {
-    (void)outToggleStaff; (void)outToggleRideCam;
+    (void)outToggleStaff;
 
     int screenW = GetScreenWidth();
 
     int btnX = screenW - 140;
+    int camCX = btnX - 110 + 14;
     int infoCX = btnX - 74 + 14;
     int helpCX = btnX - 38 + 14;
 
@@ -1797,6 +1810,12 @@ bool UserInterface::CheckHUDClick(
     int badgeX = 607;
     if (CheckCollisionPointRec(mousePos, Rectangle{(float)badgeX, 8.0f, 120.0f, 36.0f})) {
         if (outAutoBridge) *outAutoBridge = true;
+        return true;
+    }
+
+    // Ride-Cam tracking camera button (circular camera icon)
+    if (CheckCollisionPointCircle(mousePos, {(float)camCX, 26.0f}, 16.0f)) {
+        outToggleRideCam = true;
         return true;
     }
 
@@ -2222,4 +2241,155 @@ void UserInterface::DrawAchievementPopup(const char* title, const char* sub, Col
     DrawText(sub, popupX + 70, popupY + 44, 12, Color{203, 213, 225, (unsigned char)(220 * alpha)});
     // "ACHIEVEMENT UNLOCKED" label
     DrawText("ACHIEVEMENT UNLOCKED", popupX + 70, popupY + 64, 10, Color{accentCol.r, accentCol.g, accentCol.b, (unsigned char)(150 * alpha)});
+}
+
+void UserInterface::DrawRideCamHUD(
+    const MetroLineStats& stats,
+    TrainState trainState,
+    float speedKmh,
+    int currentPassengers,
+    int maxCapacity,
+    const char* nextStationName,
+    StationShape nextStationShape,
+    float distToNextStation,
+    SignalAspect currentSignalAspect,
+    bool isExpress
+) {
+    int screenW = GetScreenWidth();
+    int screenH = GetScreenHeight();
+    float t = (float)GetTime();
+
+    // 1. Dashboard Console Position
+    int dashW = 620;
+    int dashH = 82;
+    int dashX = (screenW - dashW) / 2;
+    int dashY = screenH - 92;
+
+    // Sleek header badge directly anchored to the cockpit dashboard console
+    int badgeW = 190;
+    int badgeH = 20;
+    int badgeX = dashX + 16;
+    int badgeY = dashY - 22;
+    DrawRectangleRounded(Rectangle{(float)badgeX, (float)badgeY, (float)badgeW, (float)badgeH}, 0.4f, 4, Color{10, 16, 31, 230});
+    DrawRectangleRoundedLines(Rectangle{(float)badgeX, (float)badgeY, (float)badgeW, (float)badgeH}, 0.4f, 4, Color{56, 189, 248, 160});
+    float recBlink = 0.5f + 0.5f * sinf(t * 4.0f);
+    DrawCircle(badgeX + 10, badgeY + 10, 4, Color{239, 68, 68, (unsigned char)(160 + 95 * recBlink)});
+    DrawText("CAB VIEW | RIDE-ALONG", badgeX + 20, badgeY + 5, 10, WHITE);
+
+    // 2. Bottom Glass Cockpit Dashboard Console
+    // Shadow & glass body
+    DrawRectangleRounded(Rectangle{(float)dashX + 2, (float)dashY + 4, (float)dashW, (float)dashH}, 0.22f, 4, Color{0, 0, 0, 90});
+    DrawRectangleRounded(Rectangle{(float)dashX, (float)dashY, (float)dashW, (float)dashH}, 0.22f, 4, Color{10, 16, 31, 245});
+    DrawRectangleRoundedLines(Rectangle{(float)dashX, (float)dashY, (float)dashW, (float)dashH}, 0.22f, 4, Color{51, 65, 85, 220});
+    DrawRectangle(dashX + 16, dashY, dashW - 32, 2, stats.themeColor);
+
+    // MODULE 1: Speedometer & Traction Notch
+    DrawText("SPEED", dashX + 18, dashY + 8, 9, Color{148, 163, 184, 255});
+    Color spdCol = isExpress ? Color{251, 191, 36, 255} : Color{56, 189, 248, 255};
+    DrawGameBoldText(TextFormat("%.0f", speedKmh), dashX + 16, dashY + 18, 28, spdCol);
+    DrawText("KM/H", dashX + 68, dashY + 28, 11, Color{203, 213, 225, 255});
+
+    // Tachometer bar
+    float spdPct = std::min(1.0f, speedKmh / 95.0f);
+    DrawRectangle(dashX + 16, dashY + 54, 95, 6, Color{30, 41, 59, 255});
+    DrawRectangle(dashX + 16, dashY + 54, (int)(95.0f * spdPct), 6, isExpress ? Color{245, 158, 11, 255} : Color{34, 197, 94, 255});
+    DrawRectangleLines(dashX + 16, dashY + 54, 95, 6, Color{71, 85, 105, 180});
+
+    // Notch status badge
+    const char* notchText = "CRUISE";
+    Color notchCol = Color{56, 189, 248, 255};
+    if (trainState == TRAIN_BOARDING) { notchText = "DOORS OPEN"; notchCol = Color{250, 204, 21, 255}; }
+    else if (trainState == TRAIN_ACCELERATING) { notchText = "P4 POWER"; notchCol = Color{34, 197, 94, 255}; }
+    else if (trainState == TRAIN_BRAKING) { notchText = "B3 BRAKE"; notchCol = Color{249, 115, 22, 255}; }
+    else if (trainState == TRAIN_SIGNAL_STOP) { notchText = "SIG HOLD"; notchCol = Color{239, 68, 68, 255}; }
+
+    int notchW = MeasureText(notchText, 10) + 12;
+    DrawRectangleRounded(Rectangle{(float)dashX + 16, (float)dashY + 65, (float)notchW, 13.0f}, 0.3f, 3, Color{notchCol.r, notchCol.g, notchCol.b, 40});
+    DrawRectangleRoundedLines(Rectangle{(float)dashX + 16, (float)dashY + 65, (float)notchW, 13.0f}, 0.3f, 3, notchCol);
+    DrawText(notchText, dashX + 22, dashY + 67, 9, notchCol);
+
+    // Vertical Divider 1
+    DrawLine(dashX + 140, dashY + 12, dashX + 140, dashY + dashH - 12, Color{51, 65, 85, 180});
+
+    // MODULE 2: Next Station Annunciator
+    DrawText("NEXT STOP", dashX + 155, dashY + 8, 9, Color{148, 163, 184, 255});
+    DrawGameBoldText(nextStationName, dashX + 155, dashY + 20, 16, WHITE);
+
+    // Station Shape Badge & Distance
+    Color shpCol = GetShapeColor(nextStationShape);
+    DrawCircle(dashX + 164, dashY + 48, 8, shpCol);
+    DrawCircleLines(dashX + 164, dashY + 48, 8, WHITE);
+    if (nextStationShape == SHAPE_SQUARE) {
+        DrawRectangle(dashX + 161, dashY + 45, 6, 6, WHITE);
+    } else if (nextStationShape == SHAPE_CROSS) {
+        DrawRectangle(dashX + 163, dashY + 44, 2, 8, WHITE);
+        DrawRectangle(dashX + 160, dashY + 47, 8, 2, WHITE);
+    } else if (nextStationShape == SHAPE_TRIANGLE) {
+        DrawTriangle(Vector2{(float)dashX + 164, (float)dashY + 44}, Vector2{(float)dashX + 160, (float)dashY + 52}, Vector2{(float)dashX + 168, (float)dashY + 52}, WHITE);
+    } else {
+        DrawCircle(dashX + 164, dashY + 48, 3, WHITE);
+    }
+
+    if (isExpress && distToNextStation < 4.0f && distToNextStation > 0.1f) {
+        float passFlash = 0.5f + 0.5f * sinf(t * 6.0f);
+        DrawText("EXP RAPID PASSING", dashX + 180, dashY + 43, 12, Color{245, 158, 11, (unsigned char)(180 + 75 * passFlash)});
+    } else {
+        DrawText(TextFormat("%.0fm  (ETA: %.1fs)", distToNextStation * 28.0f, distToNextStation / std::max(2.0f, speedKmh * 0.08f)),
+                 dashX + 180, dashY + 43, 12, Color{203, 213, 225, 255});
+    }
+
+    // Service tier badge
+    DrawRectangleRounded(Rectangle{(float)dashX + 155, (float)dashY + 63, 100.0f, 13.0f}, 0.3f, 3, isExpress ? Color{217, 119, 6, 60} : Color{2, 132, 199, 60});
+    DrawText(isExpress ? "EXPRESS (+35% FARE)" : "LOCAL ALL-STOPS", dashX + 160, dashY + 65, 8, isExpress ? Color{251, 191, 36, 255} : Color{56, 189, 248, 255});
+
+    // Vertical Divider 2
+    DrawLine(dashX + 380, dashY + 12, dashX + 380, dashY + dashH - 12, Color{51, 65, 85, 180});
+
+    // MODULE 3: Cab Signaling & Passenger Load
+    DrawText("CAB SIGNAL", dashX + 395, dashY + 8, 9, Color{148, 163, 184, 255});
+
+    // 3 Wayside Aspect Lamps
+    bool sigGreen = (currentSignalAspect == SIGNAL_GREEN);
+    bool sigAmber = (currentSignalAspect == SIGNAL_AMBER);
+    bool sigRed = (currentSignalAspect == SIGNAL_RED);
+
+    auto drawAspectLamp = [&](int lx, Color c, bool active) {
+        DrawCircle(lx, dashY + 26, 7, active ? c : Color{30, 41, 59, 200});
+        if (active) {
+            DrawCircleGradient(Vector2{(float)lx, (float)dashY + 26}, 12, Color{c.r, c.g, c.b, 70}, Color{c.r, c.g, c.b, 0});
+            DrawCircleLines(lx, dashY + 26, 7, WHITE);
+        } else {
+            DrawCircleLines(lx, dashY + 26, 7, Color{71, 85, 105, 150});
+        }
+    };
+    drawAspectLamp(dashX + 406, Color{239, 68, 68, 255}, sigRed);
+    drawAspectLamp(dashX + 424, Color{245, 158, 11, 255}, sigAmber);
+    drawAspectLamp(dashX + 442, Color{34, 197, 94, 255}, sigGreen);
+
+    // [F] Exit chip inside dashboard console
+    DrawRectangleRounded(Rectangle{(float)dashX + dashW - 86, (float)dashY + 12, 74.0f, 24.0f}, 0.3f, 4, Color{30, 41, 59, 240});
+    DrawRectangleRoundedLines(Rectangle{(float)dashX + dashW - 86, (float)dashY + 12, 74.0f, 24.0f}, 0.3f, 4, Color{250, 204, 21, 200});
+    DrawText("[F] Exit", dashX + dashW - 72, dashY + 17, 11, Color{250, 204, 21, 255});
+
+    // Passenger Occupancy Load
+    DrawText("PASSENGERS", dashX + 395, dashY + 41, 9, Color{148, 163, 184, 255});
+    DrawText(TextFormat("%d / %d", currentPassengers, maxCapacity), dashX + 395, dashY + 52, 12, WHITE);
+    float occPct = (maxCapacity > 0) ? std::min(1.0f, (float)currentPassengers / (float)maxCapacity) : 0.0f;
+    Color occCol = (occPct > 0.85f) ? Color{239, 68, 68, 255} : ((occPct > 0.60f) ? Color{234, 179, 8, 255} : Color{52, 211, 153, 255});
+    DrawRectangle(dashX + 395, dashY + 68, 205, 5, Color{30, 41, 59, 255});
+    DrawRectangle(dashX + 395, dashY + 68, (int)(205.0f * occPct), 5, occCol);
+    DrawRectangleLines(dashX + 395, dashY + 68, 205, 5, Color{71, 85, 105, 180});
+}
+
+bool UserInterface::CheckRideCamExitClick(Vector2 mousePos) const {
+    int screenW = GetScreenWidth();
+    int screenH = GetScreenHeight();
+    int dashW = 620;
+    int dashX = (screenW - dashW) / 2;
+    int dashY = screenH - 92;
+    // 1. Dashboard [F] Exit button click
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)dashX + dashW - 86, (float)dashY + 12, 74.0f, 24.0f})) return true;
+    // 2. Dashboard header badge click
+    if (CheckCollisionPointRec(mousePos, Rectangle{(float)dashX + 16, (float)dashY - 22, 190.0f, 20.0f})) return true;
+    return false;
 }

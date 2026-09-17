@@ -523,6 +523,60 @@ void DrawScenery(int gx, int gy, int gz, SceneryType type, Vector2 camOffset, fl
             break;
         }
 
+        case SCENERY_VENDING_MACHINE: {
+            // Tokyo Metro Illuminated Beverage Vending Machine
+            DrawEllipse((int)center.x, (int)center.y, 9.0f * zoom, 4.5f * zoom, Color{0, 0, 0, 70});
+
+            float machW = 12.0f * zoom;
+            float machH = 21.0f * zoom;
+            float mx = center.x - machW * 0.5f;
+            float my = center.y - machH;
+
+            // Main insulated steel cabinet (Tokyo Red or Cobalt Blue)
+            Color cabColor = ((gx + gy) % 2 == 0) ? Color{185, 28, 28, 255} : Color{2, 132, 199, 255};
+            DrawRectangleRounded(Rectangle{mx, my, machW, machH}, 0.15f, 3, cabColor);
+            DrawRectangleRoundedLines(Rectangle{mx, my, machW, machH}, 0.15f, 3, Color{30, 41, 59, 255});
+
+            // Illuminated canopy marquee
+            DrawRectangle((int)mx + 1, (int)my + 1, (int)machW - 2, (int)(3.5f * zoom), Color{255, 255, 255, 220});
+            DrawRectangle((int)mx + 2, (int)my + 2, (int)(machW * 0.6f), (int)(1.8f * zoom), Color{220, 38, 38, 200});
+
+            // Backlit Glass Product Window
+            float winW = machW - 3.0f * zoom;
+            float winH = 9.0f * zoom;
+            float winX = mx + 1.5f * zoom;
+            float winY = my + 5.0f * zoom;
+            DrawRectangle((int)winX, (int)winY, (int)winW, (int)winH, Color{15, 23, 42, 230});
+            DrawRectangleLines((int)winX, (int)winY, (int)winW, (int)winH, Color{148, 163, 184, 180});
+
+            // Canned Drinks Rows (Green Tea, Boss Coffee, Soda, Sports Water)
+            Color canColors[4] = {Color{34, 197, 94, 255}, Color{234, 179, 8, 255}, Color{239, 68, 68, 255}, Color{56, 189, 248, 255}};
+            for (int r = 0; r < 2; ++r) {
+                float cy = winY + 1.5f * zoom + (float)r * 4.0f * zoom;
+                for (int c = 0; c < 3; ++c) {
+                    float cx = winX + 1.2f * zoom + (float)c * 2.8f * zoom;
+                    DrawRectangle((int)cx, (int)cy, (int)(1.8f * zoom), (int)(2.8f * zoom), canColors[(r * 3 + c) % 4]);
+                    // Tiny selection LED below each can
+                    DrawCircle((int)(cx + 0.9f * zoom), (int)(cy + 3.4f * zoom), 0.6f * zoom, Color{255, 255, 255, 200});
+                }
+            }
+
+            // Coin Slot & Digital Display
+            float slotY = my + 15.0f * zoom;
+            DrawRectangle((int)(mx + 2.0f * zoom), (int)slotY, (int)(4.0f * zoom), (int)(1.5f * zoom), Color{30, 41, 59, 255});
+            DrawCircle((int)(mx + 8.5f * zoom), (int)(slotY + 0.8f * zoom), 1.0f * zoom, Color{250, 204, 21, 255});
+
+            // Dispenser Retrieval Pocket (illuminated bottom flap)
+            float dispY = my + 17.5f * zoom;
+            DrawRectangle((int)(mx + 2.0f * zoom), (int)dispY, (int)(machW - 4.0f * zoom), (int)(2.8f * zoom), Color{15, 23, 42, 255});
+            DrawLineEx({mx + 2.0f * zoom, dispY}, {mx + machW - 2.0f * zoom, dispY}, 1.0f * zoom, Color{100, 116, 139, 200});
+
+            // Nighttime soft aura glow
+            float pulse = 0.5f + 0.5f * sinf(GetTime() * 2.0f);
+            DrawCircleGradient(Vector2{center.x, my + machH * 0.5f}, 12.0f * zoom, Color{56, 189, 248, (unsigned char)(25 + 15 * pulse)}, Color{56, 189, 248, 0});
+            break;
+        }
+
         default: break;
     }
 }

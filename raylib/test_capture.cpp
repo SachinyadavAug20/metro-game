@@ -137,6 +137,12 @@ public:
     void SetZ(int gx, int gy, int z) { groundZ[gx][gy] = z; }
     void ReclaimDistrict() { ReclaimLand(); }
     int GetBuildRadius() const { return buildRadius; }
+    void SetRideCam(bool active) { rideCamActive = active; }
+    void SetScenery(int gx, int gy, SceneryType scn) {
+        if (gx >= 0 && gx < GRID_SIZE && gy >= 0 && gy < GRID_SIZE) {
+            scenery[gx][gy] = scn;
+        }
+    }
 };
 
 int main() {
@@ -346,6 +352,23 @@ int main() {
     game.Render();
     TakeScreenshot("test_night_lighting.png");
     std::cout << "Captured test_night_lighting.png\n";
+
+    // 12. Station Beverage Vending Machine & Driver Ride-Cam HUD Verification
+    game.SetNightMode(false);
+    game.OpenStatsWindow(false);
+    game.SelectCommuter(-1);
+    game.SetScenery(6, 9, SCENERY_VENDING_MACHINE);
+    game.SetCamera({660.0f, -30.0f}, 1.25f);
+    game.Render();
+    TakeScreenshot("test_metro_vending_machine.png");
+    std::cout << "Captured test_metro_vending_machine.png\n";
+
+    // Ride-Cam Cockpit Dashboard HUD
+    game.SetRideCam(true);
+    for (int i = 0; i < 30; ++i) game.Step(0.033f);
+    game.Render();
+    TakeScreenshot("test_metro_ridecam_hud.png");
+    std::cout << "Captured test_metro_ridecam_hud.png\n";
 
     CleanupGameFont();
     CloseWindow();

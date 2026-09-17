@@ -175,7 +175,8 @@ enum SceneryType {
     SCENERY_FOUNTAIN,      // Splashing park water fountain with animated sprays
     SCENERY_FLOWER_BED,    // Vibrant multi-color botanical blossoms
     SCENERY_VENT_GRATE,    // Subway ventilation sidewalk iron grate with rising steam wisps
-    SCENERY_PALM_TREE      // Coastal tropical palm tree with swaying fronds
+    SCENERY_PALM_TREE,     // Coastal tropical palm tree with swaying fronds
+    SCENERY_VENDING_MACHINE// Tokyo-style metro beverage vending machine (cold drinks & canned coffee)
 };
 
 // Tool Categories

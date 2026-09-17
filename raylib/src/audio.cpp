@@ -356,6 +356,23 @@ void Init() {
         sounds[SFX_EXPRESS_WHOOSH] = CreateProceduralSound(buf, sr);
     }
 
+    // 22. SFX_VENDING_DISPENSE: Beverage vending machine coin insert & can drop rattle (0.38s)
+    {
+        int n = (int)(sr * 0.38f);
+        std::vector<float> buf(n);
+        for (int i = 0; i < n; ++i) {
+            float t = (float)i / sr;
+            // Crisp coin drop ping at 1800Hz with high dampening
+            float coin = (t < 0.12f) ? sinf(2.0f * PI * 1850.0f * t) * expf(-40.0f * t) * 0.45f : 0.0f;
+            // Can chute mechanical thud & sliding rattle
+            float canT = t - 0.08f;
+            float can = (canT > 0.0f) ? (sinf(2.0f * PI * 135.0f * canT) * 0.35f +
+                                         (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * 0.22f) * expf(-12.0f * canT) : 0.0f;
+            buf[i] = (coin + can) * 0.70f;
+        }
+        sounds[SFX_VENDING_DISPENSE] = CreateProceduralSound(buf, sr);
+    }
+
     initialized = true;
 }
 

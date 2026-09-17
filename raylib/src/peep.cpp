@@ -368,6 +368,23 @@ void CommuterManager::CheckSceneryInteractions(const SceneryType scenery[GRID_SI
         } else if (s == SCENERY_PALM_TREE) {
             c.happiness = std::min(100.0f, c.happiness + 0.15f);
             c.thought = "Tropical palms swaying in the ocean breeze!";
+        } else if (s == SCENERY_VENDING_MACHINE && !c.hasCoffee && ((rand() % 100) < 30)) {
+            c.hasCoffee = true;
+            c.happiness = std::min(100.0f, c.happiness + 12.0f);
+            c.thought = "Got an ice-cold canned drink from the metro vending machine!";
+            outFunds += 1.50f;
+            AudioManager::Play(SFX_VENDING_DISPENSE, 0.75f);
+            particles.SpawnFloatingText(Vector3{c.pos.x, c.pos.y, 0.8f}, "+$1.50 Drink", Color{52, 211, 153, 255});
+            particles.SpawnSparks(Vector3{c.pos.x, c.pos.y, 0.2f}, 3);
+
+            // 10% chance for an empty aluminum can
+            if ((rand() % 100) < 10 && outMesses.size() < 30) {
+                StationMess mess;
+                mess.pos = {c.pos.x + (((float)rand()/RAND_MAX)-0.5f)*0.3f, c.pos.y + (((float)rand()/RAND_MAX)-0.5f)*0.3f};
+                mess.isSpill = false;
+                mess.timer = 0.0f;
+                outMesses.push_back(mess);
+            }
         }
     }
 }
