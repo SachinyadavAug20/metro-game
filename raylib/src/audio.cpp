@@ -301,6 +301,26 @@ void Init() {
         sounds[SFX_MORNING_BIRD] = CreateProceduralSound(buf, sr);
     }
 
+    // 19. SFX_THUNDER_ROLL: Distant rolling low atmospheric thunder rumble (0.85s)
+    {
+        int n = (int)(sr * 0.85f);
+        std::vector<float> buf(n);
+        for (int i = 0; i < n; ++i) {
+            float t = (float)i / sr;
+            float attack = std::min(1.0f, t * 15.0f);
+            float decay = expf(-2.8f * t);
+            float env = attack * decay;
+            // Low sub-harmonic sine waves (52 Hz + 74 Hz + 38 Hz)
+            float sub = sinf(2.0f * PI * 52.0f * t) * 0.5f
+                      + sinf(2.0f * PI * 74.0f * t) * 0.3f
+                      + sinf(2.0f * PI * 38.0f * t) * 0.2f;
+            // Filtered rolling rumble noise
+            float noise = (((float)rand() / RAND_MAX) * 2.0f - 1.0f) * 0.45f;
+            buf[i] = (sub + noise) * env * 0.6f;
+        }
+        sounds[SFX_THUNDER_ROLL] = CreateProceduralSound(buf, sr);
+    }
+
     initialized = true;
 }
 

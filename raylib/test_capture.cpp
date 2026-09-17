@@ -90,6 +90,7 @@ public:
     void GiveCash(double amt) { economy.balance = (float)amt; }
     void SetBest(int b) { bestSessionRiders = b; }
     void ForceRush(bool on) { rushHourActive = on; }
+    void ForceStorm(bool on) { activeEvent = on ? 6 : -1; eventTimer = 22.0f; }
     void ForcePause(bool on) { isPaused = on; }
     void ForceResultsScreen() { economy.totalDelivered = 512; week = 3; state = STATE_VICTORY; }
     void ForceGameOverScreen() { economy.totalDelivered = 343; state = STATE_GAME_OVER; }
@@ -184,10 +185,20 @@ int main() {
 
     // 0c. Arcade PAUSE overlay + RUSH HOUR banner (flickering juice)
     game.ForceRush(true);
+    game.Step(0.05f);
     game.Render();
     TakeScreenshot("test_metro_rush_banner.png");
     std::cout << "Captured test_metro_rush_banner.png\n";
     game.ForceRush(false);
+
+    // 0d. Tropical Rainstorm Event & RCT Umbrellas
+    game.ForceStorm(true);
+    game.Step(0.1f);
+    game.Render();
+    TakeScreenshot("test_metro_rain_umbrellas.png");
+    std::cout << "Captured test_metro_rain_umbrellas.png\n";
+    game.ForceStorm(false);
+
     game.ForcePause(true);
     game.Render();
     TakeScreenshot("test_metro_paused.png");

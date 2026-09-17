@@ -69,6 +69,18 @@ void CommuterManager::SpawnCommuter() {
     };
     c.balloonColor = bColors[rand() % 5];
 
+    // RCT style rain umbrella
+    Color uColors[] = {
+        Color{239, 68, 68, 255},  // Ruby Red
+        Color{56, 189, 248, 255}, // Sky Blue
+        Color{250, 204, 21, 255}, // Canary Yellow
+        Color{34, 197, 94, 255},  // Emerald Green
+        Color{168, 85, 247, 255}, // Purple
+        Color{249, 115, 22, 255}  // Tangerine
+    };
+    c.umbrellaColor = uColors[rand() % 6];
+    c.hasUmbrella = isRaining;
+
     // Assign Mini Metro Destination Shape (Circle, Triangle, Square, Cross)
     int rShape = 1 + (rand() % 4);
     c.targetShape = static_cast<StationShape>(rShape);
@@ -92,6 +104,18 @@ void CommuterManager::SpawnCommuter() {
     }
 
     commuters.push_back(c);
+}
+
+void CommuterManager::SetRaining(bool raining) {
+    if (isRaining != raining) {
+        isRaining = raining;
+        for (auto& c : commuters) {
+            c.hasUmbrella = isRaining;
+            if (isRaining && (rand() % 100 < 40)) {
+                c.thought = "Popped my umbrella open! Nice and dry.";
+            }
+        }
+    }
 }
 
 void CommuterManager::AlightPassengers(int count, Vector2 stationPos) {
@@ -385,15 +409,37 @@ void CommuterManager::Draw(Vector2 camOffset, float zoom) const {
             DrawTriangle({balloonPos.x, balloonPos.y + 4.0f * zoom}, {balloonPos.x - 1.2f * zoom, balloonPos.y + 5.5f * zoom}, {balloonPos.x + 1.2f * zoom, balloonPos.y + 5.5f * zoom}, c.balloonColor);
         }
 
+        // RollerCoaster Tycoon Open Rain Umbrella
+        if (c.hasUmbrella) {
+            float umbBob = sinf(c.walkTimer * 2.2f) * 0.8f * zoom;
+            Vector2 handlePos = { sPos.x + 3.0f * zoom, sPos.y - bodyH * 0.45f + bob };
+            Vector2 apexPos = { sPos.x + 1.2f * zoom, sPos.y - bodyH - 8.5f * zoom + bob + umbBob };
+
+            // Metallic umbrella rod
+            DrawLineEx(handlePos, apexPos, 1.2f * zoom, Color{148, 163, 184, 255});
+            // Handle hook
+            DrawCircleLines((int)handlePos.x, (int)handlePos.y + 1, 1.5f * zoom, Color{100, 116, 139, 255});
+
+            // Canopy dome
+            float canopyW = 8.5f * zoom;
+            DrawEllipse((int)apexPos.x, (int)apexPos.y, canopyW, 3.5f * zoom, Color{30, 41, 59, 220});
+            DrawCircleSector(apexPos, canopyW, 180.0f, 360.0f, 16, c.umbrellaColor);
+            DrawLineEx({apexPos.x - canopyW, apexPos.y}, {apexPos.x + canopyW, apexPos.y}, 1.0f * zoom, Color{255, 255, 255, 120});
+            DrawLineEx(apexPos, {apexPos.x - canopyW * 0.5f, apexPos.y}, 0.8f * zoom, Color{255, 255, 255, 100});
+            DrawLineEx(apexPos, {apexPos.x + canopyW * 0.5f, apexPos.y}, 0.8f * zoom, Color{255, 255, 255, 100});
+            DrawCircle((int)apexPos.x, (int)(apexPos.y - canopyW + 1.0f * zoom), 1.2f * zoom, Color{226, 232, 240, 255});
+        }
+
         // Floating Thought & Destination Shape Speech Bubble
+        float badgeLift = c.hasUmbrella ? 10.0f * zoom : 0.0f;
         float floatY = sinf(c.walkTimer * 2.0f) * 1.5f * zoom;
-        Vector2 badgePos = { sPos.x, sPos.y - bodyH - 12.0f * zoom + bob + floatY };
+        Vector2 badgePos = { sPos.x, sPos.y - bodyH - 12.0f * zoom + bob + floatY - badgeLift };
         Color badgeColor = GetShapeColor(c.targetShape);
 
         // Speech bubble pointer tail
-        Vector2 tailTip = { sPos.x, sPos.y - bodyH - 6.0f * zoom + bob };
-        Vector2 b1 = { sPos.x - 2.5f * zoom, sPos.y - bodyH - 9.0f * zoom + bob };
-        Vector2 b2 = { sPos.x + 2.5f * zoom, sPos.y - bodyH - 9.0f * zoom + bob };
+        Vector2 tailTip = { sPos.x, sPos.y - bodyH - 6.0f * zoom + bob - badgeLift };
+        Vector2 b1 = { sPos.x - 2.5f * zoom, sPos.y - bodyH - 9.0f * zoom + bob - badgeLift };
+        Vector2 b2 = { sPos.x + 2.5f * zoom, sPos.y - bodyH - 9.0f * zoom + bob - badgeLift };
         DrawTriangle(tailTip, b2, b1, Color{15, 23, 42, 235});
 
         // Speech bubble circular body

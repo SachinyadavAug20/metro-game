@@ -226,7 +226,7 @@ protected:
         Color color;
     };
     static const NaturalEvent EVENTS[];
-    static const int EVENT_COUNT = 6;
+    static const int EVENT_COUNT = 7;
     int activeEvent = -1;       // index into EVENTS[], -1 = none
     float eventTimer = 0.0f;
     float eventCooldown = 0.0f; // minimum time between events

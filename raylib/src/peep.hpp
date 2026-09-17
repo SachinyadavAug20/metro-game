@@ -25,6 +25,8 @@ struct Commuter {
     bool hasBriefcase = true;
     bool hasBalloon = false;
     Color balloonColor = Color{239, 68, 68, 255};
+    bool hasUmbrella = false;
+    Color umbrellaColor = Color{56, 189, 248, 255};
     std::string thought = "Tapped my transit card, waiting for Line 1!";
 };
 
@@ -36,6 +38,9 @@ public:
     void Update(float dt, MetroTrain& train, std::vector<MetroTrain>* extraTrains, ParticleSystem& particles, float& outSatisfaction, int& outAngryLeaves, std::vector<StationMess>& outMesses);
     void CheckSceneryInteractions(const SceneryType scenery[GRID_SIZE][GRID_SIZE], ParticleSystem& particles, float& outFunds, std::vector<StationMess>& outMesses);
     void Draw(Vector2 camOffset, float zoom) const;
+
+    void SetRaining(bool raining);
+    bool IsRaining() const { return isRaining; }
 
     int GetTotalCommuters() const { return (int)commuters.size(); }
     int GetQueueCount() const { return (int)queueCommuters.size(); }
@@ -74,6 +79,7 @@ private:
     float spawnTimer = 0.0f;
     float spawnInterval = 1.9f;
     int maxQueueCap = 18;
+    bool isRaining = false;
 
     // Overcrowding Mini-Metro style clock
     bool overcrowdActive = false;

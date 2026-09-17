@@ -16,8 +16,9 @@ const Game::NaturalEvent Game::EVENTS[] = {
     {"Calm Sunday",      "Peaceful day. Half the riders, but +x2 fare bonus", 25.0f, 0.5f, 2.0f, {100, 200, 255, 255}},
     {"City Festival",    "Festival downtown! x2 riders rush to the party!", 18.0f, 2.0f, 1.2f, {255, 50, 150, 255}},
     {"Train Strike",     "Workers protest! Half riders, half fares for 15s", 15.0f, 0.5f, 0.5f, {200, 50, 50, 255}},
-    {"Tourist Season",   "Tourists flood in! x1.8 riders, x1.3 fares", 22.0f, 1.8f, 1.3f, {50, 200, 100, 255}},
-    {"Late Night Quiet", "After midnight calm. Few riders, but x3 fare bonus", 20.0f, 0.3f, 3.0f, {80, 80, 160, 255}},
+    {"Tourist Season",     "Tourists flood in! x1.8 riders, x1.3 fares", 22.0f, 1.8f, 1.3f, {50, 200, 100, 255}},
+    {"Late Night Quiet",   "After midnight calm. Few riders, but x3 fare bonus", 20.0f, 0.3f, 3.0f, {80, 80, 160, 255}},
+    {"Tropical Rainstorm", "Sudden downpour! Commuters pop umbrellas, +25% transit ridership", 22.0f, 1.7f, 1.3f, {56, 189, 248, 255}},
 };
 
 void Game::Init() {
@@ -2066,26 +2067,37 @@ void Game::Update(float dt) {
     float investedTrains = (float)GetExtraTrainCount() * 1200.0f;
     cachedStats.parkValue = economy.balance + investedTracks + investedStations + investedCars + investedTrains + (float)economy.totalDelivered * 5.0f;
 
-    // 7b. Weather effects: rain during rush hour, cherry blossoms during calm
+    // 7b. Weather effects: rain during rush hour / storm, umbrellas, cherry blossoms during calm
     if (state == STATE_PLAYING && !isPaused) {
+        bool isRaining = rushHourActive || (activeEvent == 6);
+        peeps.SetRaining(isRaining);
+
         static float weatherTimer = 0.0f;
         weatherTimer += dt;
-        if (rushHourActive && weatherTimer > 0.3f) {
-            // Rain during rush hour
-            particles.SpawnRain(GetScreenWidth(), GetScreenHeight(), 8);
+        if (isRaining && weatherTimer > 0.25f) {
+            // Rain particle downpour
+            particles.SpawnRain(GetScreenWidth(), GetScreenHeight(), 10);
             weatherTimer = 0.0f;
-        } else if (!rushHourActive && weatherTimer > 1.5f && parkRating > 70.0f) {
+
+            // Wet rail spray mist when train runs at speed
+            if (train.GetSpeedKmh() > 15.0f) {
+                Vector3 tPos = train.GetLocomotivePos();
+                particles.SpawnSmoke(Vector3{tPos.x, tPos.y, tPos.z * 0.5f}, 1);
+            }
+        } else if (!isRaining && weatherTimer > 1.5f && parkRating > 70.0f) {
             // Cherry blossom petals when rating is good
             particles.SpawnPetals(GetScreenWidth(), GetScreenHeight(), 3);
             weatherTimer = 0.0f;
         }
 
-        // Ambient Soundscape (nature & coastal audio immersion)
+        // Ambient Soundscape (nature, coastal, crickets & thunder audio immersion)
         static float ambientTimer = 0.0f;
         ambientTimer += dt;
         if (ambientTimer >= 5.5f) {
             ambientTimer = 0.0f;
-            if (nightMode) {
+            if (isRaining) {
+                AudioManager::Play(SFX_THUNDER_ROLL, 0.45f);
+            } else if (nightMode) {
                 AudioManager::Play(SFX_NIGHT_CRICKET, 0.28f);
             } else {
                 Vector2 cGrid = Iso::ScreenToGrid(Vector2{(float)GetScreenWidth() * 0.5f, (float)GetScreenHeight() * 0.5f}, cameraPos, zoom, 0.0f);
@@ -2114,8 +2126,12 @@ void Game::Update(float dt) {
                     eventTimer = EVENTS[activeEvent].duration;
                     ShowToast(TextFormat("[EVENT] %s: %s", EVENTS[activeEvent].name, EVENTS[activeEvent].desc),
                               EVENTS[activeEvent].color, 4.0f);
-                    AudioManager::Play(SFX_UPGRADE_FANFARE, 0.8f);
-                    particles.SpawnConfetti(train.GetLocomotivePos(), 25);
+                    if (activeEvent == 6) {
+                        AudioManager::Play(SFX_THUNDER_ROLL, 0.70f);
+                    } else {
+                        AudioManager::Play(SFX_UPGRADE_FANFARE, 0.8f);
+                        particles.SpawnConfetti(train.GetLocomotivePos(), 25);
+                    }
                 }
             }
         }

@@ -20,7 +20,8 @@ enum SfxType {
     SFX_TRAIN_HORN,         // Two-tone pneumatic electric train departure horn
     SFX_OCEAN_AMBIENT,      // Gentle rolling ocean surf swell
     SFX_NIGHT_CRICKET,      // Nighttime crickets chirping
-    SFX_MORNING_BIRD        // Cheerful morning park songbird chirp
+    SFX_MORNING_BIRD,       // Cheerful morning park songbird chirp
+    SFX_THUNDER_ROLL        // Distant rolling atmospheric thunder rumble
 };
 
 namespace AudioManager {
